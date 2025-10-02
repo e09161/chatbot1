@@ -501,7 +501,12 @@
             font-size: 0.8rem;
         }
         
-        .copy-btn {
+        .code-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .copy-btn, .download-btn {
             background: #475569;
             color: white;
             border: none;
@@ -515,7 +520,7 @@
             gap: 5px;
         }
         
-        .copy-btn:hover {
+        .copy-btn:hover, .download-btn:hover {
             background: #64748b;
         }
         
@@ -589,6 +594,7 @@
         .chat-input-form {
             display: flex;
             gap: 10px;
+            align-items: flex-end;
         }
         
         .chat-input-wrapper {
@@ -598,7 +604,7 @@
         
         .chat-input {
             width: 100%;
-            padding: 12px 15px;
+            padding: 12px 50px 12px 15px;
             border: 1px solid #ddd;
             border-radius: 25px;
             outline: none;
@@ -623,7 +629,13 @@
             pointer-events: none;
         }
         
-        .send-button {
+        .input-actions {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .file-attach-btn, .send-button {
             background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: white;
             border: none;
@@ -638,12 +650,50 @@
             flex-shrink: 0;
         }
         
-        .send-button:hover {
+        .file-attach-btn:hover, .send-button:hover {
             transform: scale(1.05);
         }
         
-        .send-button:active {
+        .file-attach-btn:active, .send-button:active {
             transform: scale(0.95);
+        }
+        
+        .file-attach-btn:disabled, .send-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .attached-files {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        
+        .attached-file {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #e3f2fd;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.8rem;
+            border: 1px solid #bbdefb;
+        }
+        
+        .remove-file {
+            background: none;
+            border: none;
+            color: #f44336;
+            cursor: pointer;
+            font-size: 0.9rem;
+            padding: 0;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         
         .typing-indicator {
@@ -686,77 +736,6 @@
             border-radius: 18px;
             border-bottom-left-radius: 5px;
             border: 1px solid #ffcdd2;
-        }
-        
-        .drop-zone {
-            border: 2px dashed var(--primary);
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            margin: 10px 20px;
-            background-color: rgba(74, 95, 193, 0.05);
-            transition: all 0.3s;
-            display: none;
-        }
-        
-        .drop-zone.active {
-            display: block;
-        }
-        
-        .drop-zone.drag-over {
-            background-color: rgba(74, 95, 193, 0.1);
-            border-color: var(--primary-dark);
-        }
-        
-        .drop-zone p {
-            margin-bottom: 10px;
-            color: var(--primary);
-        }
-        
-        .file-types {
-            font-size: 12px;
-            color: #666;
-        }
-        
-        .upload-button {
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 20px;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-top: 10px;
-        }
-        
-        .streaming-cursor {
-            display: inline-block;
-            width: 8px;
-            height: 16px;
-            background: var(--primary);
-            margin-left: 2px;
-            animation: blink 1s infinite;
-            vertical-align: middle;
-        }
-        
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
-        
-        .retry-btn {
-            background: var(--warning);
-            color: white;
-            border: none;
-            border-radius: 15px;
-            padding: 6px 12px;
-            cursor: pointer;
-            font-size: 12px;
-            margin-left: 10px;
-        }
-        
-        .retry-btn:hover {
-            background: #f57c00;
         }
         
         .welcome-message {
@@ -845,10 +824,6 @@
                 max-width: 90%;
             }
             
-            .drop-zone {
-                margin: 10px;
-            }
-            
             .model-controls {
                 flex-direction: column;
                 gap: 10px;
@@ -856,6 +831,20 @@
             
             .model-control select, .model-control input {
                 min-width: 100%;
+            }
+            
+            .chat-input-form {
+                flex-wrap: wrap;
+            }
+            
+            .input-actions {
+                order: 1;
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .chat-input-wrapper {
+                order: 2;
             }
         }
     </style>
@@ -904,7 +893,7 @@
             <div class="chat-header">
                 <div class="chat-header-content">
                     <h1>DeepSeek Chatbot</h1>
-                    <p>Powered by DeepSeek API | Drag & drop files for analysis</p>
+                    <p>Powered by DeepSeek API | Attach files to your prompts</p>
                 </div>
                 <div class="chat-controls">
                     <button class="control-btn" id="menuButton">
@@ -914,13 +903,6 @@
                         <i class="fas fa-moon"></i>
                     </button>
                 </div>
-            </div>
-            
-            <div class="drop-zone" id="dropZone">
-                <p>Drop files here to analyze</p>
-                <div class="file-types">Supports: .txt, .py, .js, .html, .css, .json (text files only)</div>
-                <button class="upload-button" id="fileInputButton">Or click to select files</button>
-                <input type="file" id="fileInput" accept=".txt,.py,.js,.html,.css,.json,.md" multiple style="display: none;">
             </div>
             
             <div class="chat-messages" id="chatMessages">
@@ -945,17 +927,17 @@
                         </div>
                         <div class="feature-card">
                             <div class="feature-icon">
-                                <i class="fas fa-bolt"></i>
+                                <i class="fas fa-download"></i>
                             </div>
-                            <h3>Fast Responses</h3>
-                            <p>Streaming responses for real-time interaction</p>
+                            <h3>Download Code</h3>
+                            <p>Save generated code as files</p>
                         </div>
                         <div class="feature-card">
                             <div class="feature-icon">
-                                <i class="fas fa-history"></i>
+                                <i class="fas fa-paperclip"></i>
                             </div>
-                            <h3>Chat History</h3>
-                            <p>Save and revisit your conversations</p>
+                            <h3>File Attachments</h3>
+                            <p>Attach files directly to your prompts</p>
                         </div>
                     </div>
                 </div>
@@ -989,14 +971,24 @@
                     </div>
                 </div>
                 
+                <!-- ATTACHED FILES DISPLAY -->
+                <div class="attached-files" id="attachedFiles"></div>
+                
                 <form class="chat-input-form" id="chatForm">
                     <div class="chat-input-wrapper">
                         <textarea class="chat-input" id="userInput" placeholder="Type your message... (Shift+Enter for new line)" disabled></textarea>
                         <div class="input-hint">Shift+Enter for new line</div>
                     </div>
-                    <button type="submit" class="send-button" id="sendButton" disabled>
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
+                    
+                    <div class="input-actions">
+                        <button type="button" class="file-attach-btn" id="fileAttachBtn" disabled>
+                            <i class="fas fa-paperclip"></i>
+                        </button>
+                        <input type="file" id="fileInput" accept=".txt,.py,.js,.html,.css,.json,.md" multiple style="display: none;">
+                        <button type="submit" class="send-button" id="sendButton" disabled>
+                            <i class="fas fa-paper-plane"></i>
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -1011,9 +1003,9 @@
             const apiKeyInput = document.getElementById('apiKey');
             const saveApiKeyButton = document.getElementById('saveApiKey');
             const sendButton = document.getElementById('sendButton');
-            const dropZone = document.getElementById('dropZone');
             const fileInput = document.getElementById('fileInput');
-            const fileInputButton = document.getElementById('fileInputButton');
+            const fileAttachBtn = document.getElementById('fileAttachBtn');
+            const attachedFiles = document.getElementById('attachedFiles');
             const statusIndicator = document.getElementById('statusIndicator');
             const statusText = document.getElementById('statusText');
             const newChatBtn = document.getElementById('newChatBtn');
@@ -1033,7 +1025,7 @@
             let isStreaming = false;
             let currentStreamController = null;
             let isConnected = false;
-            let pendingFileAnalysis = null;
+            let attachedFilesList = [];
             
             // Initialize highlight.js
             hljs.highlightAll();
@@ -1074,46 +1066,14 @@
                 // Theme toggle
                 themeButton.addEventListener('click', toggleTheme);
                 
-                // File input button click
-                fileInputButton.addEventListener('click', function() {
+                // File attachment button click
+                fileAttachBtn.addEventListener('click', function() {
                     fileInput.click();
                 });
                 
                 // File input change
                 fileInput.addEventListener('change', function(e) {
-                    handleFiles(e.target.files);
-                });
-                
-                // Drag and drop functionality
-                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                    dropZone.addEventListener(eventName, preventDefaults, false);
-                });
-                
-                function preventDefaults(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-                
-                ['dragenter', 'dragover'].forEach(eventName => {
-                    dropZone.addEventListener(eventName, highlight, false);
-                });
-                
-                ['dragleave', 'drop'].forEach(eventName => {
-                    dropZone.addEventListener(eventName, unhighlight, false);
-                });
-                
-                function highlight() {
-                    dropZone.classList.add('drag-over');
-                }
-                
-                function unhighlight() {
-                    dropZone.classList.remove('drag-over');
-                }
-                
-                dropZone.addEventListener('drop', function(e) {
-                    const dt = e.dataTransfer;
-                    const files = dt.files;
-                    handleFiles(files);
+                    handleFileSelection(e.target.files);
                 });
                 
                 // New Chat functionality
@@ -1127,9 +1087,11 @@
                     currentChatId = generateChatId();
                     conversationHistory = [];
                     chatMessages.innerHTML = '';
+                    attachedFilesList = [];
+                    updateAttachedFilesDisplay();
                     
                     // Add welcome message
-                    addMessage('Hello! Start a new conversation with DeepSeek AI. You can ask questions, upload files, or request code analysis.', 'bot');
+                    addMessage('Hello! Start a new conversation with DeepSeek AI. You can ask questions, attach files, or request code analysis.', 'bot');
                     
                     // Update chat history
                     loadChatSessions();
@@ -1221,14 +1183,108 @@
             function enableChat() {
                 userInput.disabled = false;
                 sendButton.disabled = false;
-                dropZone.classList.add('active');
+                fileAttachBtn.disabled = false;
             }
             
             // Disable chat input
             function disableChat() {
                 userInput.disabled = true;
                 sendButton.disabled = true;
-                dropZone.classList.remove('active');
+                fileAttachBtn.disabled = true;
+            }
+            
+            // Handle file selection
+            async function handleFileSelection(files) {
+                if (!apiKey) {
+                    alert('Please enter your API key first');
+                    return;
+                }
+                
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    
+                    // Check file type - only allow text-based files for analysis
+                    const allowedExtensions = ['.txt', '.py', '.js', '.html', '.css', '.json', '.md'];
+                    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+                    const isTextFile = allowedExtensions.includes(fileExtension);
+                    const isImageFile = file.type.startsWith('image/');
+                    
+                    if (!isTextFile && !isImageFile) {
+                        alert(`File type not supported for analysis: ${file.name}. Please upload text files (txt, py, js, etc.) or images.`);
+                        continue;
+                    }
+                    
+                    let fileContent = null;
+                    let fileUrl = null;
+                    
+                    if (isTextFile) {
+                        // Read text file content
+                        fileContent = await readFileAsText(file);
+                    } else if (isImageFile) {
+                        // Create object URL for image preview
+                        fileUrl = URL.createObjectURL(file);
+                    }
+                    
+                    // Add file to attached files list
+                    attachedFilesList.push({
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        content: fileContent,
+                        url: fileUrl
+                    });
+                }
+                
+                // Update the attached files display
+                updateAttachedFilesDisplay();
+                
+                // Clear the file input
+                fileInput.value = '';
+            }
+            
+            // Update attached files display
+            function updateAttachedFilesDisplay() {
+                attachedFiles.innerHTML = '';
+                
+                attachedFilesList.forEach((file, index) => {
+                    const fileElement = document.createElement('div');
+                    fileElement.className = 'attached-file';
+                    fileElement.innerHTML = `
+                        <i class="fas ${getFileIconClass(file.type, file.name)}"></i>
+                        <span>${file.name}</span>
+                        <button class="remove-file" data-index="${index}">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    `;
+                    
+                    attachedFiles.appendChild(fileElement);
+                });
+                
+                // Add event listeners to remove buttons
+                document.querySelectorAll('.remove-file').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const index = parseInt(this.getAttribute('data-index'));
+                        attachedFilesList.splice(index, 1);
+                        updateAttachedFilesDisplay();
+                    });
+                });
+            }
+            
+            // Get file icon class based on file type
+            function getFileIconClass(fileType, fileName) {
+                if (fileName.toLowerCase().endsWith('.py')) {
+                    return 'fa-file-code';
+                } else if (fileType.startsWith('image/')) {
+                    return 'fa-file-image';
+                } else if (fileType === 'application/pdf') {
+                    return 'fa-file-pdf';
+                } else if (fileType.includes('document') || fileType.includes('word')) {
+                    return 'fa-file-word';
+                } else if (fileName.toLowerCase().endsWith('.js')) {
+                    return 'fa-file-code';
+                } else {
+                    return 'fa-file';
+                }
             }
             
             // Add message to chat
@@ -1402,11 +1458,18 @@
                             hljs.highlightElement(block);
                         });
                         
-                        // Add copy functionality to code blocks
-                        document.querySelectorAll('.copy-btn').forEach(button => {
-                            button.addEventListener('click', function() {
-                                const codeContent = this.parentElement.nextElementSibling.textContent;
-                                navigator.clipboard.writeText(codeContent).then(() => {
+                        // Add copy and download functionality to code blocks
+                        document.querySelectorAll('.code-block').forEach(block => {
+                            const copyBtn = block.querySelector('.copy-btn');
+                            const downloadBtn = block.querySelector('.download-btn');
+                            const codeContent = block.querySelector('.code-content');
+                            
+                            // Extract clean code without line numbers
+                            const cleanCode = extractCleanCode(codeContent);
+                            
+                            // Copy button functionality
+                            copyBtn.addEventListener('click', function() {
+                                navigator.clipboard.writeText(cleanCode).then(() => {
                                     const originalText = this.innerHTML;
                                     this.innerHTML = '<i class="fas fa-check"></i> Copied!';
                                     setTimeout(() => {
@@ -1414,11 +1477,61 @@
                                     }, 2000);
                                 });
                             });
+                            
+                            // Download button functionality
+                            if (downloadBtn) {
+                                downloadBtn.addEventListener('click', function() {
+                                    const language = block.querySelector('.language-tag').textContent;
+                                    downloadCode(cleanCode, language);
+                                });
+                            }
                         });
                     }, 0);
                 }
                 
                 return messageDiv;
+            }
+            
+            // Extract clean code without line numbers
+            function extractCleanCode(codeContent) {
+                const lines = codeContent.querySelectorAll('div');
+                let cleanCode = '';
+                
+                lines.forEach(line => {
+                    // Skip the line number and get the actual code
+                    const codeLine = line.textContent.replace(/^\s*\d+\s*/, '');
+                    cleanCode += codeLine + '\n';
+                });
+                
+                return cleanCode.trim();
+            }
+            
+            // Download code as a file
+            function downloadCode(code, language) {
+                // Map language to file extension
+                const extensionMap = {
+                    'python': 'py',
+                    'javascript': 'js',
+                    'html': 'html',
+                    'css': 'css',
+                    'json': 'json',
+                    'markdown': 'md',
+                    'text': 'txt'
+                };
+                
+                const extension = extensionMap[language] || 'txt';
+                const filename = `deepseek_code_${Date.now()}.${extension}`;
+                
+                // Create a blob and download link
+                const blob = new Blob([code], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
             }
             
             // Format message with code blocks and syntax highlighting
@@ -1459,9 +1572,14 @@
                             <div class="code-block">
                                 <div class="code-header">
                                     <span class="language-tag">${language}</span>
-                                    <button class="copy-btn">
-                                        <i class="fas fa-copy"></i> Copy Code
-                                    </button>
+                                    <div class="code-actions">
+                                        <button class="copy-btn">
+                                            <i class="fas fa-copy"></i> Copy
+                                        </button>
+                                        <button class="download-btn">
+                                            <i class="fas fa-download"></i> Download
+                                        </button>
+                                    </div>
                                 </div>
                                 <div class="code-content">${numberedCode}</div>
                             </div>
@@ -1522,7 +1640,7 @@
             }
             
             // REAL DeepSeek API call with streaming
-            async function callDeepSeekAPI(userMessage, fileData = null, stream = true) {
+            async function callDeepSeekAPI(userMessage, attachedFiles = [], stream = true) {
                 if (!apiKey) {
                     throw new Error('API key not found. Please enter your DeepSeek API key.');
                 }
@@ -1540,14 +1658,22 @@
                     
                     // Add current user message
                     let messageContent = userMessage;
-                    if (fileData && fileData.content) {
-                        // For text files, include the content in the message
-                        messageContent += `\n\nI've uploaded a file: ${fileData.name} (${fileData.type}, ${formatFileSize(fileData.size)})`;
-                        messageContent += `\n\nFile content:\n\`\`\`${getFileLanguage(fileData.name)}\n${fileData.content.substring(0, 3000)}\n\`\`\``;
-                    } else if (fileData) {
-                        // For non-text files (like images), just mention the file
-                        messageContent += `\n\nI've uploaded a file: ${fileData.name} (${fileData.type}, ${formatFileSize(fileData.size)})`;
-                        messageContent += `\n\nNote: This is a ${fileData.type} file. I can describe what I see in the filename and help with related questions.`;
+                    
+                    // Add attached files to the message
+                    if (attachedFiles.length > 0) {
+                        messageContent += `\n\nI've attached ${attachedFiles.length} file(s):`;
+                        
+                        attachedFiles.forEach(file => {
+                            if (file.content) {
+                                // For text files, include the content in the message
+                                messageContent += `\n\nFile: ${file.name} (${file.type}, ${formatFileSize(file.size)})`;
+                                messageContent += `\nContent:\n\`\`\`${getFileLanguage(file.name)}\n${file.content.substring(0, 3000)}\n\`\`\``;
+                            } else {
+                                // For non-text files (like images), just mention the file
+                                messageContent += `\n\nFile: ${file.name} (${file.type}, ${formatFileSize(file.size)})`;
+                                messageContent += `\nNote: This is a ${file.type} file. I can describe what I see in the filename and help with related questions.`;
+                            }
+                        });
                     }
                     
                     messages.push({ role: 'user', content: messageContent });
@@ -1737,20 +1863,29 @@
             // Send message to API
             function sendMessage() {
                 const message = userInput.value.trim();
-                if (!message) return;
+                if (!message && attachedFilesList.length === 0) return;
                 
-                // Add user message to chat
-                addMessage(message, 'user');
+                // Add user message to chat with attached files
+                if (attachedFilesList.length > 0) {
+                    // Show files in the message
+                    attachedFilesList.forEach(file => {
+                        addMessage(message || `Attached file: ${file.name}`, 'user', file);
+                    });
+                } else {
+                    addMessage(message, 'user');
+                }
+                
+                // Add to conversation history
                 conversationHistory.push({ role: 'user', content: message });
                 
-                // Clear input and reset height
+                // Clear input, reset height, and clear attached files
                 userInput.value = '';
                 userInput.style.height = 'auto';
                 
                 try {
                     // Get response from DeepSeek with streaming
                     const useStreaming = responseStrategySelect.value === 'streaming';
-                    const response = callDeepSeekAPI(message, null, useStreaming);
+                    const response = callDeepSeekAPI(message, attachedFilesList, useStreaming);
                     
                     response.then(apiResponse => {
                         // Add bot response to conversation history
@@ -1758,6 +1893,10 @@
                         
                         // Save chat session
                         saveChatSession();
+                        
+                        // Clear attached files after sending
+                        attachedFilesList = [];
+                        updateAttachedFilesDisplay();
                     }).catch(error => {
                         // Show error message
                         const errorDiv = document.createElement('div');
@@ -1785,110 +1924,6 @@
                     errorDiv.textContent = `Error: ${error.message}`;
                     chatMessages.appendChild(errorDiv);
                     chatMessages.scrollTop = chatMessages.scrollHeight;
-                }
-            }
-            
-            // Handle uploaded files
-            async function handleFiles(files) {
-                if (!apiKey) {
-                    alert('Please enter your API key first');
-                    return;
-                }
-                
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    
-                    // Check file type - only allow text-based files for analysis
-                    const allowedExtensions = ['.txt', '.py', '.js', '.html', '.css', '.json', '.md'];
-                    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
-                    const isTextFile = allowedExtensions.includes(fileExtension);
-                    const isImageFile = file.type.startsWith('image/');
-                    
-                    if (!isTextFile && !isImageFile) {
-                        alert(`File type not supported for analysis: ${file.name}. Please upload text files (txt, py, js, etc.) or images.`);
-                        continue;
-                    }
-                    
-                    let fileContent = null;
-                    let fileUrl = null;
-                    
-                    if (isTextFile) {
-                        // Read text file content
-                        fileContent = await readFileAsText(file);
-                    } else if (isImageFile) {
-                        // Create object URL for image preview
-                        fileUrl = URL.createObjectURL(file);
-                    }
-                    
-                    // Add file message to chat
-                    addMessage(`Uploaded file: ${file.name}`, 'user', {
-                        name: file.name,
-                        type: file.type,
-                        size: file.size,
-                        content: fileContent,
-                        url: fileUrl
-                    });
-                    
-                    // Store file data for analysis when user asks for it
-                    pendingFileAnalysis = {
-                        name: file.name,
-                        type: file.type,
-                        size: file.size,
-                        content: fileContent,
-                        url: fileUrl
-                    };
-                    
-                    // Add prompt to ask user if they want to analyze the file
-                    addMessage(`I see you uploaded a file: "${file.name}". Would you like me to analyze it? Just ask me a question about the file or say "analyze this file".`, 'bot');
-                    
-                    // Update conversation history
-                    conversationHistory.push({ 
-                        role: 'user', 
-                        content: `I uploaded a file: ${file.name}`
-                    });
-                    conversationHistory.push({ 
-                        role: 'assistant', 
-                        content: `I see you uploaded a file: "${file.name}". Would you like me to analyze it? Just ask me a question about the file or say "analyze this file".`
-                    });
-                    
-                    saveChatSession();
-                }
-            }
-            
-            // Check if user message is requesting file analysis
-            function isFileAnalysisRequest(message) {
-                if (!pendingFileAnalysis) return false;
-                
-                const lowerMessage = message.toLowerCase();
-                return (
-                    lowerMessage.includes('analyze') ||
-                    lowerMessage.includes('explain') ||
-                    lowerMessage.includes('review') ||
-                    lowerMessage.includes('what') ||
-                    lowerMessage.includes('how') ||
-                    lowerMessage.includes('tell me about') ||
-                    lowerMessage.includes('help with') ||
-                    lowerMessage.includes('file')
-                );
-            }
-            
-            // Analyze file when user requests it
-            async function analyzeFileOnRequest(userMessage) {
-                if (!pendingFileAnalysis || !isFileAnalysisRequest(userMessage)) {
-                    return null;
-                }
-                
-                try {
-                    const useStreaming = responseStrategySelect.value === 'streaming';
-                    const response = await callDeepSeekAPI(userMessage, pendingFileAnalysis, useStreaming);
-                    
-                    // Clear pending file after analysis
-                    pendingFileAnalysis = null;
-                    
-                    return response;
-                } catch (error) {
-                    console.error('Error analyzing file:', error);
-                    return `Error analyzing file: ${error.message}`;
                 }
             }
             
