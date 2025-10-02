@@ -792,6 +792,87 @@
             color: var(--gray);
         }
         
+        /* Image paste overlay */
+        .image-paste-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+        
+        .image-paste-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .image-paste-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .image-paste-container h3 {
+            margin-bottom: 15px;
+            color: var(--dark);
+        }
+        
+        .image-paste-container p {
+            margin-bottom: 20px;
+            color: var(--gray);
+        }
+        
+        .image-paste-area {
+            border: 2px dashed var(--primary);
+            border-radius: 10px;
+            padding: 40px 20px;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .image-paste-area:hover {
+            background: #f0f7ff;
+        }
+        
+        .image-paste-icon {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 15px;
+        }
+        
+        .image-paste-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        
+        .paste-cancel-btn {
+            background: var(--gray-light);
+            color: var(--dark);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
+        .paste-cancel-btn:hover {
+            background: #d1d5db;
+        }
+        
         @media (max-width: 900px) {
             .app-container {
                 flex-direction: column;
@@ -893,7 +974,7 @@
             <div class="chat-header">
                 <div class="chat-header-content">
                     <h1>DeepSeek Chatbot</h1>
-                    <p>Powered by DeepSeek API | Attach files to your prompts</p>
+                    <p>Powered by DeepSeek API | Attach files or paste images to your prompts</p>
                 </div>
                 <div class="chat-controls">
                     <button class="control-btn" id="menuButton">
@@ -934,10 +1015,10 @@
                         </div>
                         <div class="feature-card">
                             <div class="feature-icon">
-                                <i class="fas fa-paperclip"></i>
+                                <i class="fas fa-image"></i>
                             </div>
-                            <h3>File Attachments</h3>
-                            <p>Attach files directly to your prompts</p>
+                            <h3>Image Analysis</h3>
+                            <p>Paste images directly for analysis</p>
                         </div>
                     </div>
                 </div>
@@ -976,20 +1057,37 @@
                 
                 <form class="chat-input-form" id="chatForm">
                     <div class="chat-input-wrapper">
-                        <textarea class="chat-input" id="userInput" placeholder="Type your message... (Shift+Enter for new line)" disabled></textarea>
-                        <div class="input-hint">Shift+Enter for new line</div>
+                        <textarea class="chat-input" id="userInput" placeholder="Type your message... (Shift+Enter for new line, Ctrl+V to paste images)" disabled></textarea>
+                        <div class="input-hint">Shift+Enter for new line, Ctrl+V to paste images</div>
                     </div>
                     
                     <div class="input-actions">
                         <button type="button" class="file-attach-btn" id="fileAttachBtn" disabled>
                             <i class="fas fa-paperclip"></i>
                         </button>
-                        <input type="file" id="fileInput" accept=".txt,.py,.js,.html,.css,.json,.md" multiple style="display: none;">
+                        <input type="file" id="fileInput" accept=".txt,.py,.js,.html,.css,.json,.md,image/*" multiple style="display: none;">
                         <button type="submit" class="send-button" id="sendButton" disabled>
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Image Paste Overlay -->
+    <div class="image-paste-overlay" id="imagePasteOverlay">
+        <div class="image-paste-container">
+            <h3>Paste Image</h3>
+            <p>Paste an image from your clipboard or drag and drop an image file</p>
+            <div class="image-paste-area" id="imagePasteArea">
+                <div class="image-paste-icon">
+                    <i class="fas fa-image"></i>
+                </div>
+                <p>Paste image (Ctrl+V) or click to select file</p>
+            </div>
+            <div class="image-paste-buttons">
+                <button class="paste-cancel-btn" id="pasteCancelBtn">Cancel</button>
             </div>
         </div>
     </div>
@@ -1017,6 +1115,11 @@
             const maxTokensInput = document.getElementById('maxTokens');
             const temperatureInput = document.getElementById('temperature');
             const responseStrategySelect = document.getElementById('responseStrategy');
+            
+            // Image paste elements
+            const imagePasteOverlay = document.getElementById('imagePasteOverlay');
+            const imagePasteArea = document.getElementById('imagePasteArea');
+            const pasteCancelBtn = document.getElementById('pasteCancelBtn');
             
             let apiKey = localStorage.getItem('deepseekApiKey');
             let currentChatId = generateChatId();
@@ -1096,6 +1199,97 @@
                     // Update chat history
                     loadChatSessions();
                 });
+                
+                // Image paste functionality
+                userInput.addEventListener('paste', handlePaste);
+                imagePasteArea.addEventListener('click', function() {
+                    fileInput.click();
+                });
+                pasteCancelBtn.addEventListener('click', function() {
+                    imagePasteOverlay.classList.remove('active');
+                });
+                
+                // Close image paste overlay when clicking outside
+                imagePasteOverlay.addEventListener('click', function(e) {
+                    if (e.target === imagePasteOverlay) {
+                        imagePasteOverlay.classList.remove('active');
+                    }
+                });
+            }
+            
+            // Handle paste event for images
+            function handlePaste(e) {
+                const items = e.clipboardData?.items;
+                if (!items) return;
+                
+                for (let i = 0; i < items.length; i++) {
+                    const item = items[i];
+                    if (item.type.indexOf('image') !== -1) {
+                        e.preventDefault();
+                        const file = item.getAsFile();
+                        if (file) {
+                            showImagePasteOverlay(file);
+                        }
+                        break;
+                    }
+                }
+            }
+            
+            // Show image paste overlay with preview
+            function showImagePasteOverlay(file) {
+                imagePasteOverlay.classList.add('active');
+                
+                // Create preview
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const preview = document.createElement('img');
+                    preview.src = e.target.result;
+                    preview.style.maxWidth = '100%';
+                    preview.style.maxHeight = '300px';
+                    preview.style.borderRadius = '8px';
+                    
+                    // Clear previous content and add preview
+                    imagePasteArea.innerHTML = '';
+                    imagePasteArea.appendChild(preview);
+                    
+                    // Add confirm button
+                    const confirmBtn = document.createElement('button');
+                    confirmBtn.className = 'btn btn-primary';
+                    confirmBtn.innerHTML = '<i class="fas fa-check"></i> Use this image';
+                    confirmBtn.style.marginTop = '15px';
+                    confirmBtn.onclick = function() {
+                        handleImageFile(file);
+                        imagePasteOverlay.classList.remove('active');
+                    };
+                    imagePasteArea.appendChild(confirmBtn);
+                };
+                reader.readAsDataURL(file);
+            }
+            
+            // Handle image file
+            function handleImageFile(file) {
+                if (!apiKey) {
+                    alert('Please enter your API key first');
+                    return;
+                }
+                
+                // Create object URL for image preview
+                const fileUrl = URL.createObjectURL(file);
+                
+                // Add file to attached files list
+                attachedFilesList.push({
+                    name: file.name || 'pasted-image.png',
+                    type: file.type,
+                    size: file.size,
+                    content: null,
+                    url: fileUrl
+                });
+                
+                // Update the attached files display
+                updateAttachedFilesDisplay();
+                
+                // Focus the input field
+                userInput.focus();
             }
             
             // Check if API key is already saved
