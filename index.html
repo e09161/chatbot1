@@ -11,6 +11,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/xml.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/css.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/json.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/yaml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/markdown.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -258,21 +261,77 @@
             background: #f8f9fa;
             border: 1px solid #e9ecef;
             border-radius: 8px;
-            padding: 15px;
-            margin: 10px 0;
+            padding: 0;
+            margin: 15px 0;
             overflow-x: auto;
             position: relative;
         }
         
+        .code-header {
+            background: #e9ecef;
+            padding: 8px 12px;
+            border-bottom: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 8px 8px 0 0;
+        }
+        
         .code-language {
-            position: absolute;
-            top: 5px;
-            right: 10px;
             font-size: 12px;
             color: #6c757d;
-            background: #e9ecef;
-            padding: 2px 8px;
+            font-weight: 600;
+        }
+        
+        .copy-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
             border-radius: 4px;
+            padding: 4px 8px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: background 0.2s;
+        }
+        
+        .copy-btn:hover {
+            background: #5a6268;
+        }
+        
+        .code-content {
+            padding: 15px;
+            margin: 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            tab-size: 4;
+        }
+        
+        .code-content code {
+            background: transparent !important;
+            padding: 0 !important;
+        }
+        
+        .code-line {
+            display: block;
+            min-height: 1.5em;
+            padding: 0 5px;
+            border-left: 3px solid transparent;
+        }
+        
+        .code-line:hover {
+            background: #f8f9fa;
+            border-left-color: #4a5fc1;
+        }
+        
+        .line-number {
+            display: inline-block;
+            width: 40px;
+            color: #6c757d;
+            text-align: right;
+            margin-right: 15px;
+            user-select: none;
+            opacity: 0.7;
         }
         
         .continue-btn {
@@ -392,6 +451,17 @@
             display: none;
         }
         
+        .progress-indicator {
+            align-self: flex-start;
+            background-color: #e3f2fd;
+            color: #1565c0;
+            padding: 12px 18px;
+            border-radius: 18px;
+            border-bottom-left-radius: 5px;
+            font-size: 14px;
+            display: none;
+        }
+        
         .error-message {
             align-self: flex-start;
             background-color: #ffebee;
@@ -490,6 +560,39 @@
             background: #f57c00;
         }
         
+        .token-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            text-align: center;
+        }
+        
+        .settings-panel {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            margin: 10px 0;
+        }
+        
+        .setting-item {
+            margin-bottom: 10px;
+        }
+        
+        .setting-label {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 5px;
+            color: #333;
+        }
+        
+        .setting-input {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        
         @media (max-width: 900px) {
             .app-container {
                 flex-direction: column;
@@ -548,7 +651,7 @@
         <div class="chat-container">
             <div class="chat-header">
                 <h1>DeepSeek Chatbot</h1>
-                <p>Powered by DeepSeek API | Drag & drop files for analysis</p>
+                <p>Powered by DeepSeek API | Enhanced Code Display</p>
             </div>
             
             <div class="api-key-container">
@@ -564,24 +667,41 @@
                 <div class="api-status disconnected" id="apiStatus">Not Connected</div>
             </div>
             
+            <div class="settings-panel">
+                <div class="setting-item">
+                    <label class="setting-label">Max Response Length (tokens):</label>
+                    <input type="number" class="setting-input" id="maxTokens" value="8000" min="1000" max="32000">
+                </div>
+                <div class="setting-item">
+                    <label class="setting-label">Response Strategy:</label>
+                    <select class="setting-input" id="responseStrategy">
+                        <option value="streaming">Streaming (Real-time)</option>
+                        <option value="chunked">Chunked (More reliable)</option>
+                        <option value="direct">Direct (Fastest)</option>
+                    </select>
+                </div>
+                <div class="token-info" id="tokenInfo">Estimated tokens: 0</div>
+            </div>
+            
             <div class="drop-zone" id="dropZone">
                 <p>Drop files here to analyze</p>
-                <div class="file-types">Supports: .txt, .py, .js, .html, .css, .json (text files only)</div>
+                <div class="file-types">Supports: .txt, .py, .js, .html, .css, .json, .md (up to 50KB)</div>
                 <button class="upload-button" id="fileInputButton">Or click to select files</button>
                 <input type="file" id="fileInput" accept=".txt,.py,.js,.html,.css,.json,.md" multiple style="display: none;">
             </div>
             
             <div class="chat-messages" id="chatMessages">
                 <div class="message bot-message">
-                    Hello! I'm your DeepSeek AI assistant. Please enter your API key above to start chatting.
+                    Hello! I'm your DeepSeek AI assistant with enhanced code display.
                     
-                    You can:
-                    - Type messages and press Enter to send
-                    - Use Shift+Enter for a new line
-                    - Drag and drop text files for analysis (Python, JavaScript, etc.)
-                    - View your chat history in the sidebar
+                    New Features:
+                    • Beautiful code blocks with line numbers
+                    • Copy-to-clipboard functionality
+                    • Proper syntax highlighting for all languages
+                    • Line-by-line display with hover effects
+                    • Improved file upload handling
                     
-                    Note: Image files are displayed but cannot be analyzed by the API.
+                    Try uploading a Python file or asking for code examples!
                 </div>
             </div>
             
@@ -589,10 +709,14 @@
                 DeepSeek is thinking... <span class="streaming-cursor"></span>
             </div>
             
+            <div class="progress-indicator" id="progressIndicator">
+                Processing your request... This may take a moment for complex tasks.
+            </div>
+            
             <div class="chat-input-container">
                 <form class="chat-input-form" id="chatForm">
                     <div class="chat-input-wrapper">
-                        <textarea class="chat-input" id="userInput" placeholder="Type your message... (Shift+Enter for new line)" disabled></textarea>
+                        <textarea class="chat-input" id="userInput" placeholder="Type your message... (Shift+Enter for new line, no length limits)" disabled></textarea>
                         <div class="input-hint">Shift+Enter for new line</div>
                     </div>
                     <button type="submit" class="send-button" id="sendButton" disabled>
@@ -612,6 +736,7 @@
             const userInput = document.getElementById('userInput');
             const chatForm = document.getElementById('chatForm');
             const typingIndicator = document.getElementById('typingIndicator');
+            const progressIndicator = document.getElementById('progressIndicator');
             const apiKeyInput = document.getElementById('apiKey');
             const saveApiKeyButton = document.getElementById('saveApiKey');
             const sendButton = document.getElementById('sendButton');
@@ -621,6 +746,9 @@
             const apiStatus = document.getElementById('apiStatus');
             const newChatBtn = document.getElementById('newChatBtn');
             const chatHistory = document.getElementById('chatHistory');
+            const maxTokensInput = document.getElementById('maxTokens');
+            const responseStrategySelect = document.getElementById('responseStrategy');
+            const tokenInfo = document.getElementById('tokenInfo');
             
             let apiKey = localStorage.getItem('deepseekApiKey');
             let currentChatId = generateChatId();
@@ -629,12 +757,20 @@
             let isStreaming = false;
             let currentStreamController = null;
             
-            // Initialize highlight.js
-            hljs.highlightAll();
+            // Configuration
+            const MAX_FILE_SIZE = 50000; // 50KB
+            const CHUNK_SIZE = 6000; // tokens per chunk
+            const TIMEOUT_DURATION = 120000; // 2 minutes
             
-            // DeepSeek API configuration
-            const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
-            const DEEPSEEK_MODEL = 'deepseek-chat';
+            // Initialize highlight.js with additional languages
+            hljs.registerLanguage('python', window.hljsDefinePython);
+            hljs.registerLanguage('javascript', window.hljsDefineJavaScript);
+            hljs.registerLanguage('xml', window.hljsDefineXml);
+            hljs.registerLanguage('css', window.hljsDefineCss);
+            hljs.registerLanguage('json', window.hljsDefineJson);
+            hljs.registerLanguage('bash', window.hljsDefineBash);
+            hljs.registerLanguage('yaml', window.hljsDefineYaml);
+            hljs.registerLanguage('markdown', window.hljsDefineMarkdown);
             
             // Check if API key is already saved
             if (apiKey) {
@@ -642,6 +778,9 @@
                 enableChat();
                 updateApiStatus('connected');
             }
+            
+            // Load settings from localStorage
+            loadSettings();
             
             // Load chat sessions
             loadChatSessions();
@@ -655,6 +794,48 @@
             function updateApiStatus(status) {
                 apiStatus.textContent = status === 'connected' ? 'Connected' : 'Not Connected';
                 apiStatus.className = `api-status ${status}`;
+            }
+            
+            // Save settings to localStorage
+            function saveSettings() {
+                const settings = {
+                    maxTokens: maxTokensInput.value,
+                    responseStrategy: responseStrategySelect.value
+                };
+                localStorage.setItem('deepseekSettings', JSON.stringify(settings));
+            }
+            
+            // Load settings from localStorage
+            function loadSettings() {
+                const settings = JSON.parse(localStorage.getItem('deepseekSettings')) || {};
+                if (settings.maxTokens) maxTokensInput.value = settings.maxTokens;
+                if (settings.responseStrategy) responseStrategySelect.value = settings.responseStrategy;
+                
+                // Add event listeners for settings changes
+                maxTokensInput.addEventListener('change', saveSettings);
+                responseStrategySelect.addEventListener('change', saveSettings);
+            }
+            
+            // Estimate token count (rough approximation)
+            function estimateTokens(text) {
+                // Rough approximation: 1 token ≈ 4 characters for English text
+                return Math.ceil(text.length / 4);
+            }
+            
+            // Update token info display
+            function updateTokenInfo() {
+                const message = userInput.value;
+                const tokens = estimateTokens(message);
+                tokenInfo.textContent = `Estimated tokens: ${tokens}`;
+                
+                // Color code based on token count
+                if (tokens > 3000) {
+                    tokenInfo.style.color = '#d32f2f';
+                } else if (tokens > 1000) {
+                    tokenInfo.style.color = '#f57c00';
+                } else {
+                    tokenInfo.style.color = '#666';
+                }
             }
             
             // Save API key
@@ -681,7 +862,7 @@
             // Test API connection
             async function testApiConnection() {
                 try {
-                    const response = await callDeepSeekAPI('Hello! Please respond with a short greeting to confirm connection.', null, false);
+                    const response = await callDeepSeekAPI('Hello! Please respond with a short greeting to confirm connection.', null, 'direct');
                     console.log('DeepSeek API connection successful');
                 } catch (error) {
                     console.error('DeepSeek API connection failed:', error);
@@ -695,9 +876,77 @@
                 userInput.disabled = false;
                 sendButton.disabled = false;
                 dropZone.classList.add('active');
+                
+                // Add token counting to input
+                userInput.addEventListener('input', updateTokenInfo);
+                updateTokenInfo();
             }
             
-            // Add message to chat
+            // Enhanced code block formatter with line numbers and copy functionality
+            function createEnhancedCodeBlock(code, language = 'text') {
+                const codeBlock = document.createElement('div');
+                codeBlock.className = 'code-block';
+                
+                // Create header with language and copy button
+                const header = document.createElement('div');
+                header.className = 'code-header';
+                
+                const languageSpan = document.createElement('span');
+                languageSpan.className = 'code-language';
+                languageSpan.textContent = language;
+                
+                const copyButton = document.createElement('button');
+                copyButton.className = 'copy-btn';
+                copyButton.textContent = 'Copy';
+                copyButton.onclick = function() {
+                    navigator.clipboard.writeText(code).then(() => {
+                        copyButton.textContent = 'Copied!';
+                        setTimeout(() => {
+                            copyButton.textContent = 'Copy';
+                        }, 2000);
+                    });
+                };
+                
+                header.appendChild(languageSpan);
+                header.appendChild(copyButton);
+                
+                // Create code content area
+                const content = document.createElement('div');
+                content.className = 'code-content';
+                
+                // Split code into lines and create numbered lines
+                const lines = code.split('\n');
+                const pre = document.createElement('pre');
+                const codeElement = document.createElement('code');
+                codeElement.className = `language-${language}`;
+                
+                lines.forEach((line, index) => {
+                    const lineDiv = document.createElement('div');
+                    lineDiv.className = 'code-line';
+                    
+                    const lineNumber = document.createElement('span');
+                    lineNumber.className = 'line-number';
+                    lineNumber.textContent = (index + 1).toString().padStart(3, ' ');
+                    
+                    const lineContent = document.createElement('span');
+                    lineContent.className = 'line-content';
+                    lineContent.textContent = line;
+                    
+                    lineDiv.appendChild(lineNumber);
+                    lineDiv.appendChild(lineContent);
+                    codeElement.appendChild(lineDiv);
+                });
+                
+                pre.appendChild(codeElement);
+                content.appendChild(pre);
+                
+                codeBlock.appendChild(header);
+                codeBlock.appendChild(content);
+                
+                return codeBlock;
+            }
+            
+            // Add message to chat with enhanced code display
             function addMessage(text, sender, fileData = null, messageId = null) {
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
@@ -741,11 +990,11 @@
                     messageDiv.appendChild(fileInfo);
                     
                     if (fileData.content && !isImageFile) {
-                        if (isPythonFile) {
-                            const codeContent = document.createElement('div');
-                            codeContent.classList.add('python-code');
-                            codeContent.textContent = fileData.content;
-                            messageDiv.appendChild(codeContent);
+                        if (isPythonFile || fileData.name.toLowerCase().endsWith('.js') || 
+                            fileData.name.toLowerCase().endsWith('.html') || fileData.name.toLowerCase().endsWith('.css')) {
+                            const language = getFileLanguage(fileData.name);
+                            const codeBlock = createEnhancedCodeBlock(fileData.content, language);
+                            messageDiv.appendChild(codeBlock);
                         } else {
                             const fileContent = document.createElement('div');
                             fileContent.classList.add('file-content');
@@ -772,7 +1021,7 @@
                     if (sender === 'bot') {
                         const contentDiv = document.createElement('div');
                         contentDiv.className = 'bot-message-content';
-                        contentDiv.innerHTML = formatMessageWithCode(text);
+                        contentDiv.innerHTML = formatMessageWithEnhancedCode(text);
                         messageDiv.appendChild(contentDiv);
                         
                         // Add continue button for incomplete responses
@@ -791,10 +1040,10 @@
                 chatMessages.appendChild(messageDiv);
                 chatMessages.scrollTop = chatMessages.scrollHeight;
                 
-                // Apply syntax highlighting
+                // Apply syntax highlighting to enhanced code blocks
                 if (sender === 'bot') {
                     setTimeout(() => {
-                        messageDiv.querySelectorAll('pre code').forEach((block) => {
+                        messageDiv.querySelectorAll('.code-content code').forEach((block) => {
                             hljs.highlightElement(block);
                         });
                     }, 0);
@@ -803,14 +1052,15 @@
                 return messageDiv;
             }
             
-            // Format message with code blocks and syntax highlighting
-            function formatMessageWithCode(text) {
+            // Enhanced message formatting with improved code block detection
+            function formatMessageWithEnhancedCode(text) {
                 if (!text) return '';
                 
-                // Replace code blocks with formatted HTML
+                // Enhanced code block detection with better language detection
                 let formattedText = text.replace(/```(\w+)?\n([\s\S]*?)```/g, function(match, lang, code) {
-                    const language = lang || 'text';
-                    return `<div class="code-block"><span class="code-language">${language}</span><pre><code class="language-${language}">${escapeHtml(code.trim())}</code></pre></div>`;
+                    const language = lang || detectLanguage(code);
+                    const codeBlock = createEnhancedCodeBlock(code.trim(), language);
+                    return codeBlock.outerHTML;
                 });
                 
                 // Replace inline code
@@ -820,6 +1070,27 @@
                 formattedText = formattedText.replace(/\n/g, '<br>');
                 
                 return formattedText;
+            }
+            
+            // Detect programming language from code content
+            function detectLanguage(code) {
+                const firstLine = code.split('\n')[0].toLowerCase();
+                
+                if (firstLine.includes('python') || firstLine.includes('#!/usr/bin/env python') || firstLine.includes('#!/usr/bin/python')) {
+                    return 'python';
+                } else if (firstLine.includes('javascript') || firstLine.includes('function') || code.includes('const ') || code.includes('let ') || code.includes('var ')) {
+                    return 'javascript';
+                } else if (firstLine.includes('html') || code.includes('<html') || code.includes('<!DOCTYPE')) {
+                    return 'html';
+                } else if (firstLine.includes('css') || code.includes('{') && code.includes('}') && code.includes(':')) {
+                    return 'css';
+                } else if (code.trim().startsWith('{') || code.trim().startsWith('[')) {
+                    return 'json';
+                } else if (firstLine.includes('bash') || firstLine.includes('#!/bin/bash') || firstLine.includes('#!/bin/sh')) {
+                    return 'bash';
+                } else {
+                    return 'text';
+                }
             }
             
             // Escape HTML to prevent XSS
@@ -843,6 +1114,12 @@
                     return '📃';
                 } else if (fileName.toLowerCase().endsWith('.js')) {
                     return '📜';
+                } else if (fileName.toLowerCase().endsWith('.html')) {
+                    return '🌐';
+                } else if (fileName.toLowerCase().endsWith('.css')) {
+                    return '🎨';
+                } else if (fileName.toLowerCase().endsWith('.json')) {
+                    return '📋';
                 } else {
                     return '📎';
                 }
@@ -863,13 +1140,66 @@
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
             
-            // Hide typing indicator
-            function hideTypingIndicator() {
-                typingIndicator.style.display = 'none';
+            // Show progress indicator for long operations
+            function showProgressIndicator() {
+                progressIndicator.style.display = 'block';
+                chatMessages.scrollTop = chatMessages.scrollHeight;
             }
             
-            // REAL DeepSeek API call with streaming
-            async function callDeepSeekAPI(userMessage, fileData = null, stream = true) {
+            // Hide indicators
+            function hideIndicators() {
+                typingIndicator.style.display = 'none';
+                progressIndicator.style.display = 'none';
+            }
+            
+            // Smart message chunking for long conversations
+            function getOptimizedMessages(userMessage, fileData = null) {
+                let messages = [...conversationHistory];
+                
+                // Add current user message
+                let messageContent = userMessage;
+                if (fileData && fileData.content) {
+                    // For large files, we might need to chunk the content
+                    if (fileData.content.length > 10000) {
+                        messageContent += `\n\nI've uploaded a large file: ${fileData.name}. Due to size, I'll summarize key sections.`;
+                        // Include first and last parts of large files
+                        const firstPart = fileData.content.substring(0, 5000);
+                        const lastPart = fileData.content.substring(fileData.content.length - 5000);
+                        messageContent += `\n\nFile preview (first 5000 chars):\n\`\`\`${getFileLanguage(fileData.name)}\n${firstPart}\n...\n[Content truncated for size - file continues]\n...\n${lastPart}\n\`\`\``;
+                    } else {
+                        messageContent += `\n\nI've uploaded a file: ${fileData.name}\n\nFile content:\n\`\`\`${getFileLanguage(fileData.name)}\n${fileData.content}\n\`\`\``;
+                    }
+                } else if (fileData) {
+                    messageContent += `\n\nI've uploaded a file: ${fileData.name} (${fileData.type})`;
+                }
+                
+                messages.push({ role: 'user', content: messageContent });
+                
+                // If conversation is getting long, summarize or remove older messages
+                const totalTokens = estimateTokens(JSON.stringify(messages));
+                const maxContextTokens = 32000; // DeepSeek context window
+                
+                if (totalTokens > maxContextTokens * 0.8) { // Leave 20% buffer
+                    // Keep most recent messages and system message if present
+                    const recentMessages = messages.slice(-10); // Keep last 10 messages
+                    const systemMessage = messages.find(m => m.role === 'system');
+                    
+                    messages = systemMessage ? [systemMessage, ...recentMessages] : recentMessages;
+                    
+                    // Add a note about context truncation
+                    if (messages.length > 1) {
+                        messages.splice(1, 0, {
+                            role: 'system',
+                            content: 'Note: Previous conversation history has been truncated to fit context limits. Focus on the most recent messages.'
+                        });
+                    }
+                }
+                
+                return messages;
+            }
+            
+            // Enhanced DeepSeek API call with multiple strategies
+            async function callDeepSeekAPI(userMessage, fileData = null, strategy = null) {
                 if (!apiKey) {
                     throw new Error('API key not found. Please enter your DeepSeek API key.');
                 }
@@ -878,57 +1208,22 @@
                     currentStreamController.abort();
                 }
                 
-                // Show typing indicator
+                const selectedStrategy = strategy || responseStrategySelect.value;
+                const maxTokens = parseInt(maxTokensInput.value);
+                
                 showTypingIndicator();
                 
                 try {
-                    // Prepare messages for the API
-                    const messages = [...conversationHistory];
+                    const messages = getOptimizedMessages(userMessage, fileData);
                     
-                    // Add current user message
-                    let messageContent = userMessage;
-                    if (fileData && fileData.content) {
-                        // For text files, include the content in the message
-                        messageContent += `\n\nI've uploaded a file: ${fileData.name} (${fileData.type}, ${formatFileSize(fileData.size)})`;
-                        messageContent += `\n\nFile content:\n\`\`\`${getFileLanguage(fileData.name)}\n${fileData.content.substring(0, 3000)}\n\`\`\``;
-                    } else if (fileData) {
-                        // For non-text files (like images), just mention the file
-                        messageContent += `\n\nI've uploaded a file: ${fileData.name} (${fileData.type}, ${formatFileSize(fileData.size)})`;
-                        messageContent += `\n\nNote: This is a ${fileData.type} file. I can describe what I see in the filename and help with related questions.`;
-                    }
-                    
-                    messages.push({ role: 'user', content: messageContent });
-                    
-                    if (stream) {
-                        return await callDeepSeekAPIStream(messages);
-                    } else {
-                        // Make actual API call to DeepSeek (non-streaming)
-                        const response = await fetch(DEEPSEEK_API_URL, {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${apiKey}`
-                            },
-                            body: JSON.stringify({
-                                model: DEEPSEEK_MODEL,
-                                messages: messages,
-                                stream: false,
-                                max_tokens: 4000
-                            })
-                        });
-                        
-                        if (!response.ok) {
-                            const errorData = await response.json().catch(() => ({}));
-                            throw new Error(`API error: ${response.status} - ${errorData.error?.message || response.statusText}`);
-                        }
-                        
-                        const data = await response.json();
-                        
-                        if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-                            throw new Error('Invalid response format from DeepSeek API');
-                        }
-                        
-                        return data.choices[0].message.content;
+                    switch (selectedStrategy) {
+                        case 'streaming':
+                            return await callDeepSeekAPIStream(messages, maxTokens);
+                        case 'chunked':
+                            return await callDeepSeekAPIChunked(messages, maxTokens);
+                        case 'direct':
+                        default:
+                            return await callDeepSeekAPIDirect(messages, maxTokens);
                     }
                     
                 } catch (error) {
@@ -943,34 +1238,70 @@
                         throw new Error('DeepSeek API server error. Please try again later.');
                     } else if (error.message.includes('Network Error')) {
                         throw new Error('Network connection failed. Please check your internet connection.');
+                    } else if (error.message.includes('timeout')) {
+                        throw new Error('Request timeout. Try using "Chunked" response strategy for long answers.');
                     } else {
                         throw error;
                     }
                 } finally {
-                    hideTypingIndicator();
+                    hideIndicators();
                 }
             }
             
-            // Get programming language from filename
-            function getFileLanguage(filename) {
-                const ext = filename.split('.').pop().toLowerCase();
-                const languageMap = {
-                    'py': 'python',
-                    'js': 'javascript',
-                    'html': 'html',
-                    'css': 'css',
-                    'json': 'json',
-                    'txt': 'text',
-                    'md': 'markdown'
-                };
-                return languageMap[ext] || 'text';
+            // Direct API call (simple, fast)
+            async function callDeepSeekAPIDirect(messages, maxTokens) {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_DURATION);
+                currentStreamController = controller;
+                
+                try {
+                    const response = await fetch(DEEPSEEK_API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify({
+                            model: DEEPSEEK_MODEL,
+                            messages: messages,
+                            stream: false,
+                            max_tokens: maxTokens,
+                            temperature: 0.7
+                        }),
+                        signal: controller.signal
+                    });
+                    
+                    clearTimeout(timeoutId);
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json().catch(() => ({}));
+                        throw new Error(`API error: ${response.status} - ${errorData.error?.message || response.statusText}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+                        throw new Error('Invalid response format from DeepSeek API');
+                    }
+                    
+                    return data.choices[0].message.content;
+                    
+                } catch (error) {
+                    clearTimeout(timeoutId);
+                    if (error.name === 'AbortError') {
+                        throw new Error('Request timeout. Try using "Chunked" response strategy.');
+                    }
+                    throw error;
+                }
             }
             
             // Streaming API call
-            async function callDeepSeekAPIStream(messages) {
+            async function callDeepSeekAPIStream(messages, maxTokens) {
                 return new Promise(async (resolve, reject) => {
                     isStreaming = true;
-                    currentStreamController = new AbortController();
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_DURATION);
+                    currentStreamController = controller;
                     
                     try {
                         const response = await fetch(DEEPSEEK_API_URL, {
@@ -983,10 +1314,13 @@
                                 model: DEEPSEEK_MODEL,
                                 messages: messages,
                                 stream: true,
-                                max_tokens: 4000
+                                max_tokens: maxTokens,
+                                temperature: 0.7
                             }),
-                            signal: currentStreamController.signal
+                            signal: controller.signal
                         });
+                        
+                        clearTimeout(timeoutId);
                         
                         if (!response.ok) {
                             const errorData = await response.json().catch(() => ({}));
@@ -1020,11 +1354,11 @@
                                             fullResponse += content;
                                             
                                             // Update the message with formatted content
-                                            contentElement.innerHTML = formatMessageWithCode(fullResponse) + '<span class="streaming-cursor"></span>';
+                                            contentElement.innerHTML = formatMessageWithEnhancedCode(fullResponse) + '<span class="streaming-cursor"></span>';
                                             
                                             // Apply syntax highlighting
                                             setTimeout(() => {
-                                                contentElement.querySelectorAll('pre code').forEach((block) => {
+                                                contentElement.querySelectorAll('.code-content code').forEach((block) => {
                                                     hljs.highlightElement(block);
                                                 });
                                             }, 0);
@@ -1040,11 +1374,11 @@
                         }
                         
                         // Remove streaming cursor
-                        contentElement.innerHTML = formatMessageWithCode(fullResponse);
+                        contentElement.innerHTML = formatMessageWithEnhancedCode(fullResponse);
                         
                         // Apply final syntax highlighting
                         setTimeout(() => {
-                            contentElement.querySelectorAll('pre code').forEach((block) => {
+                            contentElement.querySelectorAll('.code-content code').forEach((block) => {
                                 hljs.highlightElement(block);
                             });
                         }, 0);
@@ -1053,14 +1387,73 @@
                         resolve(fullResponse);
                         
                     } catch (error) {
+                        clearTimeout(timeoutId);
                         isStreaming = false;
-                        if (error.name !== 'AbortError') {
-                            reject(error);
+                        if (error.name === 'AbortError') {
+                            reject(new Error('Streaming timeout. Try "Chunked" strategy for long responses.'));
                         } else {
-                            resolve(''); // Resolve with empty string if aborted
+                            reject(error);
                         }
                     }
                 });
+            }
+            
+            // Chunked API call for very long responses
+            async function callDeepSeekAPIChunked(messages, maxTokens) {
+                showProgressIndicator();
+                
+                let fullResponse = '';
+                let continuePrompt = "Please continue your response. Provide the next part of your answer.";
+                
+                // Initial request
+                try {
+                    const initialResponse = await callDeepSeekAPIDirect(messages, Math.min(maxTokens, 4000));
+                    fullResponse = initialResponse;
+                    
+                    // Check if response seems complete
+                    if (!initialResponse.trim().endsWith('.') && !initialResponse.trim().endsWith('!') && !initialResponse.trim().endsWith('?') && initialResponse.length > 3000) {
+                        // Likely truncated, continue
+                        for (let i = 0; i < 3; i++) { // Max 3 continuations
+                            const continuation = await callDeepSeekAPIDirect(
+                                [...messages, { role: 'assistant', content: fullResponse }, { role: 'user', content: continuePrompt }],
+                                Math.min(maxTokens, 4000)
+                            );
+                            
+                            fullResponse += '\n\n' + continuation;
+                            
+                            // Check if continuation seems complete
+                            if (continuation.trim().endsWith('.') || continuation.trim().endsWith('!') || continuation.trim().endsWith('?') || continuation.length < 1000) {
+                                break;
+                            }
+                            
+                            // Add small delay to avoid rate limits
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                        }
+                    }
+                    
+                    return fullResponse;
+                    
+                } catch (error) {
+                    throw error;
+                }
+            }
+            
+            // Get programming language from filename
+            function getFileLanguage(filename) {
+                const ext = filename.split('.').pop().toLowerCase();
+                const languageMap = {
+                    'py': 'python',
+                    'js': 'javascript',
+                    'html': 'html',
+                    'css': 'css',
+                    'json': 'json',
+                    'txt': 'text',
+                    'md': 'markdown',
+                    'sh': 'bash',
+                    'yaml': 'yaml',
+                    'yml': 'yaml'
+                };
+                return languageMap[ext] || 'text';
             }
             
             // Continue incomplete response
@@ -1070,13 +1463,13 @@
                 try {
                     const lastMessage = conversationHistory[conversationHistory.length - 1];
                     if (lastMessage && lastMessage.role === 'assistant') {
-                        const continuePrompt = "Please continue from where you left off.";
+                        const continuePrompt = "Please continue from where you left off, providing the next part of your response.";
                         
                         // Add continue message to conversation
                         conversationHistory.push({ role: 'user', content: continuePrompt });
                         
                         // Get continued response
-                        const response = await callDeepSeekAPI(continuePrompt, null, true);
+                        const response = await callDeepSeekAPI(continuePrompt, null, 'chunked');
                         
                         // Add to conversation history
                         conversationHistory.push({ role: 'assistant', content: response });
@@ -1112,10 +1505,11 @@
                 // Clear input and reset height
                 userInput.value = '';
                 userInput.style.height = 'auto';
+                updateTokenInfo();
                 
                 try {
-                    // Get response from DeepSeek with streaming
-                    const response = await callDeepSeekAPI(message, null, true);
+                    // Get response from DeepSeek
+                    const response = await callDeepSeekAPI(message, null);
                     
                     // Add bot response to conversation history
                     conversationHistory.push({ role: 'assistant', content: response });
@@ -1215,8 +1609,14 @@
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
                     
+                    // Check file size
+                    if (file.size > MAX_FILE_SIZE) {
+                        alert(`File too large: ${file.name}. Maximum size is 50KB.`);
+                        continue;
+                    }
+                    
                     // Check file type - only allow text-based files for analysis
-                    const allowedExtensions = ['.txt', '.py', '.js', '.html', '.css', '.json', '.md'];
+                    const allowedExtensions = ['.txt', '.py', '.js', '.html', '.css', '.json', '.md', '.sh', '.yaml', '.yml'];
                     const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
                     const isTextFile = allowedExtensions.includes(fileExtension);
                     const isImageFile = file.type.startsWith('image/');
@@ -1231,7 +1631,13 @@
                     
                     if (isTextFile) {
                         // Read text file content
-                        fileContent = await readFileAsText(file);
+                        try {
+                            fileContent = await readFileAsText(file);
+                        } catch (error) {
+                            console.error('Error reading file:', error);
+                            addMessage(`Error reading file ${file.name}: ${error.message}`, 'bot');
+                            continue;
+                        }
                     } else if (isImageFile) {
                         // Create object URL for image preview
                         fileUrl = URL.createObjectURL(file);
@@ -1248,16 +1654,6 @@
                     
                     // Only analyze text files with the API
                     if (isTextFile && fileContent) {
-                        conversationHistory.push({ 
-                            role: 'user', 
-                            content: `I've uploaded a file: ${file.name}. Please analyze it.`,
-                            fileData: {
-                                name: file.name,
-                                type: file.type,
-                                size: file.size
-                            }
-                        });
-                        
                         try {
                             // Get response from DeepSeek about the file
                             const response = await callDeepSeekAPI(`Please analyze this ${getFileLanguage(file.name)} file: ${file.name}`, {
@@ -1265,7 +1661,7 @@
                                 type: file.type,
                                 size: file.size,
                                 content: fileContent
-                            }, true);
+                            });
                             
                             // Add bot response to conversation history
                             conversationHistory.push({ role: 'assistant', content: response });
@@ -1313,7 +1709,7 @@
                         type: file.type,
                         size: file.size,
                         content: fileContent
-                    }, true);
+                    });
                     
                     conversationHistory.push({ role: 'assistant', content: response });
                     saveChatSession();
