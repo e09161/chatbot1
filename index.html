@@ -738,31 +738,6 @@
             border: 1px solid #ffcdd2;
         }
         
-        .network-status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            background: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 8px;
-            margin: 10px 20px;
-            font-size: 0.8rem;
-            color: #856404;
-        }
-        
-        .network-status.warning {
-            background: #fff3cd;
-            border-color: #ffeaa7;
-            color: #856404;
-        }
-        
-        .network-status.error {
-            background: #f8d7da;
-            border-color: #f5c6cb;
-            color: #721c24;
-        }
-        
         .welcome-message {
             text-align: center;
             padding: 30px 20px;
@@ -930,12 +905,6 @@
                 </div>
             </div>
             
-            <!-- Network Status Indicator -->
-            <div class="network-status" id="networkStatus" style="display: none;">
-                <i class="fas fa-wifi"></i>
-                <span id="networkStatusText">Checking connection...</span>
-            </div>
-            
             <div class="chat-messages" id="chatMessages">
                 <div class="welcome-message">
                     <h2>Welcome to DeepSeek Chat</h2>
@@ -1048,8 +1017,6 @@
             const maxTokensInput = document.getElementById('maxTokens');
             const temperatureInput = document.getElementById('temperature');
             const responseStrategySelect = document.getElementById('responseStrategy');
-            const networkStatus = document.getElementById('networkStatus');
-            const networkStatusText = document.getElementById('networkStatusText');
             
             let apiKey = localStorage.getItem('deepseekApiKey');
             let currentChatId = generateChatId();
@@ -1059,9 +1026,6 @@
             let currentStreamController = null;
             let isConnected = false;
             let attachedFilesList = [];
-            let retryCount = 0;
-            const MAX_RETRIES = 3;
-            const REQUEST_TIMEOUT = 30000; // 30 seconds
             
             // Initialize highlight.js
             hljs.highlightAll();
@@ -1076,7 +1040,6 @@
                 setupEventListeners();
                 updateConnectionStatus();
                 scrollToBottom();
-                startNetworkMonitoring();
             }
             
             // Set up event listeners
@@ -1133,49 +1096,6 @@
                     // Update chat history
                     loadChatSessions();
                 });
-            }
-            
-            // Network monitoring
-            function startNetworkMonitoring() {
-                // Check network status periodically
-                setInterval(checkNetworkStatus, 30000); // Check every 30 seconds
-                checkNetworkStatus();
-            }
-            
-            function checkNetworkStatus() {
-                if (!navigator.onLine) {
-                    showNetworkStatus('No internet connection', 'error');
-                    return;
-                }
-                
-                // Test connection to a reliable endpoint
-                fetch('https://httpbin.org/get', { 
-                    method: 'HEAD',
-                    mode: 'no-cors',
-                    cache: 'no-cache'
-                }).then(() => {
-                    showNetworkStatus('Connection stable', 'warning', false);
-                }).catch(() => {
-                    showNetworkStatus('Network issues detected', 'error');
-                });
-            }
-            
-            function showNetworkStatus(message, type, show = true) {
-                if (!show) {
-                    networkStatus.style.display = 'none';
-                    return;
-                }
-                
-                networkStatus.className = `network-status ${type}`;
-                networkStatusText.textContent = message;
-                networkStatus.style.display = 'flex';
-                
-                // Auto-hide after 5 seconds for warnings
-                if (type === 'warning') {
-                    setTimeout(() => {
-                        networkStatus.style.display = 'none';
-                    }, 5000);
-                }
             }
             
             // Check if API key is already saved
@@ -1291,13 +1211,6 @@
                     
                     if (!isTextFile && !isImageFile) {
                         alert(`File type not supported for analysis: ${file.name}. Please upload text files (txt, py, js, etc.) or images.`);
-                        continue;
-                    }
-                    
-                    // Check file size (limit to 2MB for text files, 5MB for images)
-                    const maxSize = isTextFile ? 2 * 1024 * 1024 : 5 * 1024 * 1024;
-                    if (file.size > maxSize) {
-                        alert(`File too large: ${file.name}. Maximum size is ${isTextFile ? '2MB' : '5MB'}.`);
                         continue;
                     }
                     
@@ -1746,19 +1659,15 @@
                     // Add current user message
                     let messageContent = userMessage;
                     
-                    // Add attached files to the message (limit content to prevent timeout)
+                    // Add attached files to the message
                     if (attachedFiles.length > 0) {
                         messageContent += `\n\nI've attached ${attachedFiles.length} file(s):`;
                         
                         attachedFiles.forEach(file => {
                             if (file.content) {
-                                // For text files, include the content in the message (limit to 2000 chars)
-                                const contentPreview = file.content.length > 2000 ? 
-                                    file.content.substring(0, 2000) + '\n\n... (content truncated due to length)' : 
-                                    file.content;
-                                
+                                // For text files, include the content in the message
                                 messageContent += `\n\nFile: ${file.name} (${file.type}, ${formatFileSize(file.size)})`;
-                                messageContent += `\nContent:\n\`\`\`${getFileLanguage(file.name)}\n${contentPreview}\n\`\`\``;
+                                messageContent += `\nContent:\n\`\`\`${getFileLanguage(file.name)}\n${file.content.substring(0, 3000)}\n\`\`\``;
                             } else {
                                 // For non-text files (like images), just mention the file
                                 messageContent += `\n\nFile: ${file.name} (${file.type}, ${formatFileSize(file.size)})`;
@@ -1772,14 +1681,13 @@
                     // Create headers with proper encoding
                     const headers = new Headers();
                     headers.append('Content-Type', 'application/json; charset=utf-8');
+                    
+                    // Ensure the API key is properly encoded
+                    const encodedApiKey = encodeURIComponent(apiKey);
                     headers.append('Authorization', `Bearer ${apiKey}`);
                     
-                    // Create timeout controller
-                    const timeoutController = new AbortController();
-                    const timeoutId = setTimeout(() => timeoutController.abort(), REQUEST_TIMEOUT);
-                    
                     if (stream) {
-                        return await callDeepSeekAPIStream(messages, headers, timeoutController);
+                        return await callDeepSeekAPIStream(messages, headers);
                     } else {
                         // Make actual API call to DeepSeek (non-streaming)
                         const response = await fetch(DEEPSEEK_API_URL, {
@@ -1791,11 +1699,8 @@
                                 stream: false,
                                 max_tokens: parseInt(maxTokensInput.value),
                                 temperature: parseFloat(temperatureInput.value)
-                            }),
-                            signal: timeoutController.signal
+                            })
                         });
-                        
-                        clearTimeout(timeoutId);
                         
                         if (!response.ok) {
                             const errorText = await response.text();
@@ -1821,23 +1726,20 @@
                 } catch (error) {
                     console.error('DeepSeek API Error:', error);
                     
-                    // Handle specific error types
-                    if (error.name === 'AbortError') {
-                        throw new Error('Request timeout. The server took too long to respond.');
-                    } else if (error.message.includes('Network Error') || error.message.includes('Failed to fetch')) {
-                        throw new Error('Network connection failed. Please check your internet connection and try again.');
-                    } else if (error.message.includes('401')) {
+                    // Provide more specific error messages
+                    if (error.message.includes('401')) {
                         throw new Error('Invalid API key. Please check your DeepSeek API key.');
                     } else if (error.message.includes('429')) {
-                        throw new Error('Rate limit exceeded. Please try again in a few moments.');
+                        throw new Error('Rate limit exceeded. Please try again later.');
                     } else if (error.message.includes('500')) {
                         throw new Error('DeepSeek API server error. Please try again later.');
+                    } else if (error.message.includes('Network Error')) {
+                        throw new Error('Network connection failed. Please check your internet connection.');
                     } else {
                         throw error;
                     }
                 } finally {
                     hideTypingIndicator();
-                    clearTimeout(timeoutId);
                 }
             }
             
@@ -1857,18 +1759,10 @@
             }
             
             // Streaming API call
-            async function callDeepSeekAPIStream(messages, headers, timeoutController) {
+            async function callDeepSeekAPIStream(messages, headers) {
                 return new Promise(async (resolve, reject) => {
                     isStreaming = true;
                     currentStreamController = new AbortController();
-                    
-                    // Combine signals for both timeout and user cancellation
-                    const combinedSignal = (() => {
-                        const controller = new AbortController();
-                        timeoutController.signal.addEventListener('abort', () => controller.abort());
-                        currentStreamController.signal.addEventListener('abort', () => controller.abort());
-                        return controller.signal;
-                    })();
                     
                     try {
                         const response = await fetch(DEEPSEEK_API_URL, {
@@ -1881,7 +1775,7 @@
                                 max_tokens: parseInt(maxTokensInput.value),
                                 temperature: parseFloat(temperatureInput.value)
                             }),
-                            signal: combinedSignal
+                            signal: currentStreamController.signal
                         });
                         
                         if (!response.ok) {
@@ -2003,27 +1897,16 @@
                         // Clear attached files after sending
                         attachedFilesList = [];
                         updateAttachedFilesDisplay();
-                        
-                        // Reset retry count on success
-                        retryCount = 0;
                     }).catch(error => {
-                        // Show error message with retry option
+                        // Show error message
                         const errorDiv = document.createElement('div');
                         errorDiv.classList.add('error-message');
                         errorDiv.textContent = `Error: ${error.message}`;
-                        
-                        if (retryCount < MAX_RETRIES) {
-                            const retryBtn = document.createElement('button');
-                            retryBtn.className = 'retry-btn';
-                            retryBtn.textContent = `Retry (${MAX_RETRIES - retryCount} left)`;
-                            retryBtn.onclick = () => {
-                                retryCount++;
-                                errorDiv.remove();
-                                sendMessage();
-                            };
-                            errorDiv.appendChild(retryBtn);
-                        }
-                        
+                        const retryBtn = document.createElement('button');
+                        retryBtn.className = 'retry-btn';
+                        retryBtn.textContent = 'Retry';
+                        retryBtn.onclick = () => sendMessage();
+                        errorDiv.appendChild(retryBtn);
                         chatMessages.appendChild(errorDiv);
                         chatMessages.scrollTop = chatMessages.scrollHeight;
                         
@@ -2031,11 +1914,6 @@
                         if (error.message.includes('API key') || error.message.includes('401')) {
                             isConnected = false;
                             updateConnectionStatus();
-                        }
-                        
-                        // Show network status for network errors
-                        if (error.message.includes('Network') || error.message.includes('timeout')) {
-                            showNetworkStatus('Network issue detected. Please check your connection.', 'error');
                         }
                     });
                     
