@@ -89,6 +89,7 @@
         .sidebar-header h2 {
             color: white;
             margin-bottom: 0;
+            font-size: 1.2rem;
         }
         
         .toggle-sidebar {
@@ -102,11 +103,11 @@
         
         .new-chat-btn {
             width: 100%;
-            padding: 12px;
+            padding: 10px;
             background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: white;
             border: none;
-            border-radius: 10px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
@@ -262,25 +263,29 @@
             overflow: hidden;
         }
         
+        /* COMPACT HEADER */
         .chat-header {
             background: linear-gradient(90deg, var(--primary), var(--primary-dark));
             color: white;
-            padding: 20px;
-            text-align: center;
+            padding: 12px 20px;
             border-radius: 20px 20px 0 0;
-            position: relative;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
         
+        .chat-header-content {
+            display: flex;
+            flex-direction: column;
+        }
+        
         .chat-header h1 {
-            font-size: 24px;
-            margin-bottom: 5px;
+            font-size: 1.2rem;
+            margin-bottom: 2px;
         }
         
         .chat-header p {
-            font-size: 14px;
+            font-size: 0.8rem;
             opacity: 0.8;
         }
         
@@ -292,7 +297,7 @@
         .control-btn {
             background: none;
             border: none;
-            font-size: 1.2rem;
+            font-size: 1rem;
             color: white;
             cursor: pointer;
             padding: 5px;
@@ -533,58 +538,52 @@
             background: var(--primary);
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 15px;
             padding: 8px 16px;
             cursor: pointer;
             font-size: 14px;
             margin-top: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.2s;
+            display: none;
         }
         
         .continue-btn:hover {
             background: var(--primary-dark);
-            transform: translateY(-1px);
-        }
-        
-        .continue-btn:active {
-            transform: translateY(0);
         }
         
         .chat-input-container {
-            padding: 20px;
+            padding: 15px;
             border-top: 1px solid #eee;
             background-color: white;
         }
         
-        .input-controls {
+        /* COMPACT MODEL CONTROLS */
+        .model-controls {
             display: flex;
-            gap: 15px;
+            gap: 10px;
             margin-bottom: 15px;
             flex-wrap: wrap;
+            align-items: center;
         }
         
-        .control-group {
+        .model-control {
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 3px;
         }
         
-        .control-group label {
-            font-size: 0.8rem;
+        .model-control label {
+            font-size: 0.75rem;
             color: var(--gray);
             font-weight: 500;
         }
         
-        .control-group select, .control-group input {
-            padding: 8px 12px;
+        .model-control select, .model-control input {
+            padding: 6px 10px;
             border: 1px solid var(--gray-light);
             border-radius: 6px;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             background: white;
-            min-width: 150px;
+            min-width: 120px;
         }
         
         .chat-input-form {
@@ -689,6 +688,47 @@
             border: 1px solid #ffcdd2;
         }
         
+        .drop-zone {
+            border: 2px dashed var(--primary);
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin: 10px 20px;
+            background-color: rgba(74, 95, 193, 0.05);
+            transition: all 0.3s;
+            display: none;
+        }
+        
+        .drop-zone.active {
+            display: block;
+        }
+        
+        .drop-zone.drag-over {
+            background-color: rgba(74, 95, 193, 0.1);
+            border-color: var(--primary-dark);
+        }
+        
+        .drop-zone p {
+            margin-bottom: 10px;
+            color: var(--primary);
+        }
+        
+        .file-types {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .upload-button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
         .streaming-cursor {
             display: inline-block;
             width: 8px;
@@ -773,20 +813,6 @@
             color: var(--gray);
         }
         
-        .file-upload-btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 20px;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-top: 10px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
         @media (max-width: 900px) {
             .app-container {
                 flex-direction: column;
@@ -819,12 +845,16 @@
                 max-width: 90%;
             }
             
-            .input-controls {
+            .drop-zone {
+                margin: 10px;
+            }
+            
+            .model-controls {
                 flex-direction: column;
                 gap: 10px;
             }
             
-            .control-group select, .control-group input {
+            .model-control select, .model-control input {
                 min-width: 100%;
             }
         }
@@ -870,10 +900,11 @@
         </div>
         
         <div class="chat-container">
+            <!-- COMPACT HEADER -->
             <div class="chat-header">
-                <div>
+                <div class="chat-header-content">
                     <h1>DeepSeek Chatbot</h1>
-                    <p>Powered by DeepSeek API | You can still upload files using the button below</p>
+                    <p>Powered by DeepSeek API | Drag & drop files for analysis</p>
                 </div>
                 <div class="chat-controls">
                     <button class="control-btn" id="menuButton">
@@ -882,11 +913,14 @@
                     <button class="control-btn" id="themeButton">
                         <i class="fas fa-moon"></i>
                     </button>
-                    <input type="file" id="fileInput" accept=".txt,.py,.js,.html,.css,.json,.md" multiple style="display: none;">
-                    <button class="control-btn" id="fileUploadBtn" title="Upload files">
-                        <i class="fas fa-paperclip"></i>
-                    </button>
                 </div>
+            </div>
+            
+            <div class="drop-zone" id="dropZone">
+                <p>Drop files here to analyze</p>
+                <div class="file-types">Supports: .txt, .py, .js, .html, .css, .json (text files only)</div>
+                <button class="upload-button" id="fileInputButton">Or click to select files</button>
+                <input type="file" id="fileInput" accept=".txt,.py,.js,.html,.css,.json,.md" multiple style="display: none;">
             </div>
             
             <div class="chat-messages" id="chatMessages">
@@ -936,20 +970,21 @@
             </div>
             
             <div class="chat-input-container">
-                <div class="input-controls">
-                    <div class="control-group">
+                <!-- COMPACT MODEL CONTROLS -->
+                <div class="model-controls">
+                    <div class="model-control">
                         <label>Max Tokens:</label>
                         <input type="number" id="maxTokens" value="4000" min="100" max="32000">
                     </div>
-                    <div class="control-group">
+                    <div class="model-control">
                         <label>Temperature:</label>
                         <input type="number" id="temperature" value="0.7" min="0" max="1" step="0.1">
                     </div>
-                    <div class="control-group">
-                        <label>Response Strategy:</label>
+                    <div class="model-control">
+                        <label>Response:</label>
                         <select id="responseStrategy">
-                            <option value="streaming">Streaming (Real-time)</option>
-                            <option value="complete">Complete Response</option>
+                            <option value="streaming">Streaming</option>
+                            <option value="complete">Complete</option>
                         </select>
                     </div>
                 </div>
@@ -976,8 +1011,9 @@
             const apiKeyInput = document.getElementById('apiKey');
             const saveApiKeyButton = document.getElementById('saveApiKey');
             const sendButton = document.getElementById('sendButton');
+            const dropZone = document.getElementById('dropZone');
             const fileInput = document.getElementById('fileInput');
-            const fileUploadBtn = document.getElementById('fileUploadBtn');
+            const fileInputButton = document.getElementById('fileInputButton');
             const statusIndicator = document.getElementById('statusIndicator');
             const statusText = document.getElementById('statusText');
             const newChatBtn = document.getElementById('newChatBtn');
@@ -997,7 +1033,7 @@
             let isStreaming = false;
             let currentStreamController = null;
             let isConnected = false;
-            let currentStreamingMessage = null;
+            let pendingFileAnalysis = null;
             
             // Initialize highlight.js
             hljs.highlightAll();
@@ -1038,14 +1074,46 @@
                 // Theme toggle
                 themeButton.addEventListener('click', toggleTheme);
                 
-                // File upload button click
-                fileUploadBtn.addEventListener('click', function() {
+                // File input button click
+                fileInputButton.addEventListener('click', function() {
                     fileInput.click();
                 });
                 
                 // File input change
                 fileInput.addEventListener('change', function(e) {
                     handleFiles(e.target.files);
+                });
+                
+                // Drag and drop functionality
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, preventDefaults, false);
+                });
+                
+                function preventDefaults(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, highlight, false);
+                });
+                
+                ['dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, unhighlight, false);
+                });
+                
+                function highlight() {
+                    dropZone.classList.add('drag-over');
+                }
+                
+                function unhighlight() {
+                    dropZone.classList.remove('drag-over');
+                }
+                
+                dropZone.addEventListener('drop', function(e) {
+                    const dt = e.dataTransfer;
+                    const files = dt.files;
+                    handleFiles(files);
                 });
                 
                 // New Chat functionality
@@ -1153,12 +1221,14 @@
             function enableChat() {
                 userInput.disabled = false;
                 sendButton.disabled = false;
+                dropZone.classList.add('active');
             }
             
             // Disable chat input
             function disableChat() {
                 userInput.disabled = true;
                 sendButton.disabled = true;
+                dropZone.classList.remove('active');
             }
             
             // Add message to chat
@@ -1171,9 +1241,6 @@
                 
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
-                if (messageId) {
-                    messageDiv.dataset.messageId = messageId;
-                }
                 
                 const now = new Date();
                 const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1490,6 +1557,7 @@
                     headers.append('Content-Type', 'application/json; charset=utf-8');
                     
                     // Ensure the API key is properly encoded
+                    const encodedApiKey = encodeURIComponent(apiKey);
                     headers.append('Authorization', `Bearer ${apiKey}`);
                     
                     if (stream) {
@@ -1602,8 +1670,8 @@
                         let buffer = '';
                         
                         // Create streaming message element
-                        currentStreamingMessage = addMessage('', 'bot');
-                        const contentElement = currentStreamingMessage.querySelector('.bot-message-content');
+                        const messageElement = addMessage('', 'bot');
+                        const contentElement = messageElement.querySelector('.bot-message-content');
                         
                         while (true) {
                             const { done, value } = await reader.read();
@@ -1652,18 +1720,11 @@
                             });
                         }, 0);
                         
-                        // Check if response was cut off and add continue button if needed
-                        if (fullResponse.length > 1900 || fullResponse.trim().endsWith('...')) {
-                            addContinueButton(currentStreamingMessage, fullResponse, messages);
-                        }
-                        
                         isStreaming = false;
-                        currentStreamingMessage = null;
                         resolve(fullResponse);
                         
                     } catch (error) {
                         isStreaming = false;
-                        currentStreamingMessage = null;
                         if (error.name !== 'AbortError') {
                             reject(error);
                         } else {
@@ -1671,113 +1732,6 @@
                         }
                     }
                 });
-            }
-            
-            // Add continue button to message
-            function addContinueButton(messageElement, currentResponse, previousMessages) {
-                const continueBtn = document.createElement('button');
-                continueBtn.className = 'continue-btn';
-                continueBtn.innerHTML = '<i class="fas fa-arrow-down"></i> Continue';
-                continueBtn.onclick = () => continueResponse(messageElement, currentResponse, previousMessages);
-                
-                // Add the button to the message actions
-                const messageActions = messageElement.querySelector('.message-actions');
-                if (messageActions) {
-                    messageActions.appendChild(continueBtn);
-                } else {
-                    messageElement.appendChild(continueBtn);
-                }
-            }
-            
-            // Continue incomplete response
-            async function continueResponse(messageElement, currentResponse, previousMessages) {
-                if (!apiKey) return;
-                
-                try {
-                    // Remove the continue button
-                    const continueBtn = messageElement.querySelector('.continue-btn');
-                    if (continueBtn) {
-                        continueBtn.remove();
-                    }
-                    
-                    // Add typing indicator
-                    showTypingIndicator();
-                    
-                    // Prepare the continue prompt
-                    const continuePrompt = "Please continue from where you left off.";
-                    
-                    // Add the continue message to the conversation history
-                    const updatedMessages = [...previousMessages, { role: 'assistant', content: currentResponse }, { role: 'user', content: continuePrompt }];
-                    
-                    // Create headers with proper encoding
-                    const headers = new Headers();
-                    headers.append('Content-Type', 'application/json; charset=utf-8');
-                    headers.append('Authorization', `Bearer ${apiKey}`);
-                    
-                    // Get continued response
-                    const response = await fetch(DEEPSEEK_API_URL, {
-                        method: 'POST',
-                        headers: headers,
-                        body: JSON.stringify({
-                            model: DEEPSEEK_MODEL,
-                            messages: updatedMessages,
-                            stream: false,
-                            max_tokens: parseInt(maxTokensInput.value),
-                            temperature: parseFloat(temperatureInput.value)
-                        })
-                    });
-                    
-                    if (!response.ok) {
-                        const errorText = await response.text();
-                        throw new Error(`API error: ${response.status} - ${errorText}`);
-                    }
-                    
-                    const data = await response.json();
-                    
-                    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-                        throw new Error('Invalid response format from DeepSeek API');
-                    }
-                    
-                    const continuedResponse = data.choices[0].message.content;
-                    const fullResponse = currentResponse + continuedResponse;
-                    
-                    // Update the message content
-                    const contentElement = messageElement.querySelector('.bot-message-content');
-                    contentElement.innerHTML = formatMessageWithCode(fullResponse);
-                    
-                    // Update conversation history
-                    conversationHistory.push({ role: 'user', content: continuePrompt });
-                    conversationHistory.push({ role: 'assistant', content: continuedResponse });
-                    
-                    // Apply syntax highlighting
-                    setTimeout(() => {
-                        contentElement.querySelectorAll('pre code').forEach((block) => {
-                            hljs.highlightElement(block);
-                        });
-                    }, 0);
-                    
-                    // Save chat session
-                    saveChatSession();
-                    
-                    // Check if we need another continue button
-                    if (continuedResponse.length > 1900 || continuedResponse.trim().endsWith('...')) {
-                        addContinueButton(messageElement, fullResponse, updatedMessages);
-                    }
-                    
-                } catch (error) {
-                    const errorDiv = document.createElement('div');
-                    errorDiv.classList.add('error-message');
-                    errorDiv.textContent = `Error continuing response: ${error.message}`;
-                    const retryBtn = document.createElement('button');
-                    retryBtn.className = 'retry-btn';
-                    retryBtn.textContent = 'Retry';
-                    retryBtn.onclick = () => continueResponse(messageElement, currentResponse, previousMessages);
-                    errorDiv.appendChild(retryBtn);
-                    chatMessages.appendChild(errorDiv);
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                } finally {
-                    hideTypingIndicator();
-                }
             }
             
             // Send message to API
@@ -1875,81 +1829,66 @@
                         url: fileUrl
                     });
                     
-                    // Only analyze text files with the API
-                    if (isTextFile && fileContent) {
-                        conversationHistory.push({ 
-                            role: 'user', 
-                            content: `I've uploaded a file: ${file.name}. Please analyze it.`
-                        });
-                        
-                        try {
-                            // Get response from DeepSeek about the file
-                            const useStreaming = responseStrategySelect.value === 'streaming';
-                            const response = await callDeepSeekAPI(`Please analyze this ${getFileLanguage(file.name)} file: ${file.name}`, {
-                                name: file.name,
-                                type: file.type,
-                                size: file.size,
-                                content: fileContent
-                            }, useStreaming);
-                            
-                            // Add bot response to conversation history
-                            conversationHistory.push({ role: 'assistant', content: response });
-                            
-                            // Save chat session
-                            saveChatSession();
-                            
-                        } catch (error) {
-                            // Show error message with retry button
-                            const errorDiv = document.createElement('div');
-                            errorDiv.classList.add('error-message');
-                            errorDiv.textContent = `Error analyzing file: ${error.message}`;
-                            const retryBtn = document.createElement('button');
-                            retryBtn.className = 'retry-btn';
-                            retryBtn.textContent = 'Retry';
-                            retryBtn.onclick = () => {
-                                errorDiv.remove();
-                                analyzeFile(file, fileContent);
-                            };
-                            errorDiv.appendChild(retryBtn);
-                            chatMessages.appendChild(errorDiv);
-                            chatMessages.scrollTop = chatMessages.scrollHeight;
-                        }
-                    } else if (isImageFile) {
-                        // For images, just add a message that we can't analyze them via API
-                        addMessage(`I can see you uploaded an image (${file.name}). While I can display it, I cannot analyze image content through the DeepSeek API. You can ask me questions about image processing or related topics.`, 'bot');
-                        conversationHistory.push({ 
-                            role: 'user', 
-                            content: `I uploaded an image: ${file.name}`
-                        });
-                        conversationHistory.push({ 
-                            role: 'assistant', 
-                            content: `I can see you uploaded an image (${file.name}). While I can display it, I cannot analyze image content through the DeepSeek API. You can ask me questions about image processing or related topics.`
-                        });
-                        saveChatSession();
-                    }
-                }
-            }
-            
-            // Separate function to analyze files with retry capability
-            async function analyzeFile(file, fileContent) {
-                try {
-                    const useStreaming = responseStrategySelect.value === 'streaming';
-                    const response = await callDeepSeekAPI(`Please analyze this ${getFileLanguage(file.name)} file: ${file.name}`, {
+                    // Store file data for analysis when user asks for it
+                    pendingFileAnalysis = {
                         name: file.name,
                         type: file.type,
                         size: file.size,
-                        content: fileContent
-                    }, useStreaming);
+                        content: fileContent,
+                        url: fileUrl
+                    };
                     
-                    conversationHistory.push({ role: 'assistant', content: response });
+                    // Add prompt to ask user if they want to analyze the file
+                    addMessage(`I see you uploaded a file: "${file.name}". Would you like me to analyze it? Just ask me a question about the file or say "analyze this file".`, 'bot');
+                    
+                    // Update conversation history
+                    conversationHistory.push({ 
+                        role: 'user', 
+                        content: `I uploaded a file: ${file.name}`
+                    });
+                    conversationHistory.push({ 
+                        role: 'assistant', 
+                        content: `I see you uploaded a file: "${file.name}". Would you like me to analyze it? Just ask me a question about the file or say "analyze this file".`
+                    });
+                    
                     saveChatSession();
+                }
+            }
+            
+            // Check if user message is requesting file analysis
+            function isFileAnalysisRequest(message) {
+                if (!pendingFileAnalysis) return false;
+                
+                const lowerMessage = message.toLowerCase();
+                return (
+                    lowerMessage.includes('analyze') ||
+                    lowerMessage.includes('explain') ||
+                    lowerMessage.includes('review') ||
+                    lowerMessage.includes('what') ||
+                    lowerMessage.includes('how') ||
+                    lowerMessage.includes('tell me about') ||
+                    lowerMessage.includes('help with') ||
+                    lowerMessage.includes('file')
+                );
+            }
+            
+            // Analyze file when user requests it
+            async function analyzeFileOnRequest(userMessage) {
+                if (!pendingFileAnalysis || !isFileAnalysisRequest(userMessage)) {
+                    return null;
+                }
+                
+                try {
+                    const useStreaming = responseStrategySelect.value === 'streaming';
+                    const response = await callDeepSeekAPI(userMessage, pendingFileAnalysis, useStreaming);
                     
+                    // Clear pending file after analysis
+                    pendingFileAnalysis = null;
+                    
+                    return response;
                 } catch (error) {
-                    const errorDiv = document.createElement('div');
-                    errorDiv.classList.add('error-message');
-                    errorDiv.textContent = `Error analyzing file: ${error.message}`;
-                    chatMessages.appendChild(errorDiv);
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    console.error('Error analyzing file:', error);
+                    return `Error analyzing file: ${error.message}`;
                 }
             }
             
