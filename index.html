@@ -533,16 +533,24 @@
             background: var(--primary);
             color: white;
             border: none;
-            border-radius: 15px;
+            border-radius: 8px;
             padding: 8px 16px;
             cursor: pointer;
             font-size: 14px;
             margin-top: 10px;
-            display: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
         }
         
         .continue-btn:hover {
             background: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+        
+        .continue-btn:active {
+            transform: translateY(0);
         }
         
         .chat-input-container {
@@ -681,47 +689,6 @@
             border: 1px solid #ffcdd2;
         }
         
-        .drop-zone {
-            border: 2px dashed var(--primary);
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            margin: 10px 20px;
-            background-color: rgba(74, 95, 193, 0.05);
-            transition: all 0.3s;
-            display: none;
-        }
-        
-        .drop-zone.active {
-            display: block;
-        }
-        
-        .drop-zone.drag-over {
-            background-color: rgba(74, 95, 193, 0.1);
-            border-color: var(--primary-dark);
-        }
-        
-        .drop-zone p {
-            margin-bottom: 10px;
-            color: var(--primary);
-        }
-        
-        .file-types {
-            font-size: 12px;
-            color: #666;
-        }
-        
-        .upload-button {
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 20px;
-            padding: 8px 16px;
-            cursor: pointer;
-            font-size: 14px;
-            margin-top: 10px;
-        }
-        
         .streaming-cursor {
             display: inline-block;
             width: 8px;
@@ -806,6 +773,20 @@
             color: var(--gray);
         }
         
+        .file-upload-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 8px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
         @media (max-width: 900px) {
             .app-container {
                 flex-direction: column;
@@ -836,10 +817,6 @@
             
             .message {
                 max-width: 90%;
-            }
-            
-            .drop-zone {
-                margin: 10px;
             }
             
             .input-controls {
@@ -896,7 +873,7 @@
             <div class="chat-header">
                 <div>
                     <h1>DeepSeek Chatbot</h1>
-                    <p>Powered by DeepSeek API | Drag & drop files for analysis</p>
+                    <p>Powered by DeepSeek API | You can still upload files using the button below</p>
                 </div>
                 <div class="chat-controls">
                     <button class="control-btn" id="menuButton">
@@ -905,14 +882,11 @@
                     <button class="control-btn" id="themeButton">
                         <i class="fas fa-moon"></i>
                     </button>
+                    <input type="file" id="fileInput" accept=".txt,.py,.js,.html,.css,.json,.md" multiple style="display: none;">
+                    <button class="control-btn" id="fileUploadBtn" title="Upload files">
+                        <i class="fas fa-paperclip"></i>
+                    </button>
                 </div>
-            </div>
-            
-            <div class="drop-zone" id="dropZone">
-                <p>Drop files here to analyze</p>
-                <div class="file-types">Supports: .txt, .py, .js, .html, .css, .json (text files only)</div>
-                <button class="upload-button" id="fileInputButton">Or click to select files</button>
-                <input type="file" id="fileInput" accept=".txt,.py,.js,.html,.css,.json,.md" multiple style="display: none;">
             </div>
             
             <div class="chat-messages" id="chatMessages">
@@ -1002,9 +976,8 @@
             const apiKeyInput = document.getElementById('apiKey');
             const saveApiKeyButton = document.getElementById('saveApiKey');
             const sendButton = document.getElementById('sendButton');
-            const dropZone = document.getElementById('dropZone');
             const fileInput = document.getElementById('fileInput');
-            const fileInputButton = document.getElementById('fileInputButton');
+            const fileUploadBtn = document.getElementById('fileUploadBtn');
             const statusIndicator = document.getElementById('statusIndicator');
             const statusText = document.getElementById('statusText');
             const newChatBtn = document.getElementById('newChatBtn');
@@ -1024,6 +997,7 @@
             let isStreaming = false;
             let currentStreamController = null;
             let isConnected = false;
+            let currentStreamingMessage = null;
             
             // Initialize highlight.js
             hljs.highlightAll();
@@ -1064,46 +1038,14 @@
                 // Theme toggle
                 themeButton.addEventListener('click', toggleTheme);
                 
-                // File input button click
-                fileInputButton.addEventListener('click', function() {
+                // File upload button click
+                fileUploadBtn.addEventListener('click', function() {
                     fileInput.click();
                 });
                 
                 // File input change
                 fileInput.addEventListener('change', function(e) {
                     handleFiles(e.target.files);
-                });
-                
-                // Drag and drop functionality
-                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                    dropZone.addEventListener(eventName, preventDefaults, false);
-                });
-                
-                function preventDefaults(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                }
-                
-                ['dragenter', 'dragover'].forEach(eventName => {
-                    dropZone.addEventListener(eventName, highlight, false);
-                });
-                
-                ['dragleave', 'drop'].forEach(eventName => {
-                    dropZone.addEventListener(eventName, unhighlight, false);
-                });
-                
-                function highlight() {
-                    dropZone.classList.add('drag-over');
-                }
-                
-                function unhighlight() {
-                    dropZone.classList.remove('drag-over');
-                }
-                
-                dropZone.addEventListener('drop', function(e) {
-                    const dt = e.dataTransfer;
-                    const files = dt.files;
-                    handleFiles(files);
                 });
                 
                 // New Chat functionality
@@ -1211,14 +1153,12 @@
             function enableChat() {
                 userInput.disabled = false;
                 sendButton.disabled = false;
-                dropZone.classList.add('active');
             }
             
             // Disable chat input
             function disableChat() {
                 userInput.disabled = true;
                 sendButton.disabled = true;
-                dropZone.classList.remove('active');
             }
             
             // Add message to chat
@@ -1231,6 +1171,9 @@
                 
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
+                if (messageId) {
+                    messageDiv.dataset.messageId = messageId;
+                }
                 
                 const now = new Date();
                 const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -1547,7 +1490,6 @@
                     headers.append('Content-Type', 'application/json; charset=utf-8');
                     
                     // Ensure the API key is properly encoded
-                    const encodedApiKey = encodeURIComponent(apiKey);
                     headers.append('Authorization', `Bearer ${apiKey}`);
                     
                     if (stream) {
@@ -1660,8 +1602,8 @@
                         let buffer = '';
                         
                         // Create streaming message element
-                        const messageElement = addMessage('', 'bot');
-                        const contentElement = messageElement.querySelector('.bot-message-content');
+                        currentStreamingMessage = addMessage('', 'bot');
+                        const contentElement = currentStreamingMessage.querySelector('.bot-message-content');
                         
                         while (true) {
                             const { done, value } = await reader.read();
@@ -1710,11 +1652,18 @@
                             });
                         }, 0);
                         
+                        // Check if response was cut off and add continue button if needed
+                        if (fullResponse.length > 1900 || fullResponse.trim().endsWith('...')) {
+                            addContinueButton(currentStreamingMessage, fullResponse, messages);
+                        }
+                        
                         isStreaming = false;
+                        currentStreamingMessage = null;
                         resolve(fullResponse);
                         
                     } catch (error) {
                         isStreaming = false;
+                        currentStreamingMessage = null;
                         if (error.name !== 'AbortError') {
                             reject(error);
                         } else {
@@ -1722,6 +1671,113 @@
                         }
                     }
                 });
+            }
+            
+            // Add continue button to message
+            function addContinueButton(messageElement, currentResponse, previousMessages) {
+                const continueBtn = document.createElement('button');
+                continueBtn.className = 'continue-btn';
+                continueBtn.innerHTML = '<i class="fas fa-arrow-down"></i> Continue';
+                continueBtn.onclick = () => continueResponse(messageElement, currentResponse, previousMessages);
+                
+                // Add the button to the message actions
+                const messageActions = messageElement.querySelector('.message-actions');
+                if (messageActions) {
+                    messageActions.appendChild(continueBtn);
+                } else {
+                    messageElement.appendChild(continueBtn);
+                }
+            }
+            
+            // Continue incomplete response
+            async function continueResponse(messageElement, currentResponse, previousMessages) {
+                if (!apiKey) return;
+                
+                try {
+                    // Remove the continue button
+                    const continueBtn = messageElement.querySelector('.continue-btn');
+                    if (continueBtn) {
+                        continueBtn.remove();
+                    }
+                    
+                    // Add typing indicator
+                    showTypingIndicator();
+                    
+                    // Prepare the continue prompt
+                    const continuePrompt = "Please continue from where you left off.";
+                    
+                    // Add the continue message to the conversation history
+                    const updatedMessages = [...previousMessages, { role: 'assistant', content: currentResponse }, { role: 'user', content: continuePrompt }];
+                    
+                    // Create headers with proper encoding
+                    const headers = new Headers();
+                    headers.append('Content-Type', 'application/json; charset=utf-8');
+                    headers.append('Authorization', `Bearer ${apiKey}`);
+                    
+                    // Get continued response
+                    const response = await fetch(DEEPSEEK_API_URL, {
+                        method: 'POST',
+                        headers: headers,
+                        body: JSON.stringify({
+                            model: DEEPSEEK_MODEL,
+                            messages: updatedMessages,
+                            stream: false,
+                            max_tokens: parseInt(maxTokensInput.value),
+                            temperature: parseFloat(temperatureInput.value)
+                        })
+                    });
+                    
+                    if (!response.ok) {
+                        const errorText = await response.text();
+                        throw new Error(`API error: ${response.status} - ${errorText}`);
+                    }
+                    
+                    const data = await response.json();
+                    
+                    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+                        throw new Error('Invalid response format from DeepSeek API');
+                    }
+                    
+                    const continuedResponse = data.choices[0].message.content;
+                    const fullResponse = currentResponse + continuedResponse;
+                    
+                    // Update the message content
+                    const contentElement = messageElement.querySelector('.bot-message-content');
+                    contentElement.innerHTML = formatMessageWithCode(fullResponse);
+                    
+                    // Update conversation history
+                    conversationHistory.push({ role: 'user', content: continuePrompt });
+                    conversationHistory.push({ role: 'assistant', content: continuedResponse });
+                    
+                    // Apply syntax highlighting
+                    setTimeout(() => {
+                        contentElement.querySelectorAll('pre code').forEach((block) => {
+                            hljs.highlightElement(block);
+                        });
+                    }, 0);
+                    
+                    // Save chat session
+                    saveChatSession();
+                    
+                    // Check if we need another continue button
+                    if (continuedResponse.length > 1900 || continuedResponse.trim().endsWith('...')) {
+                        addContinueButton(messageElement, fullResponse, updatedMessages);
+                    }
+                    
+                } catch (error) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.classList.add('error-message');
+                    errorDiv.textContent = `Error continuing response: ${error.message}`;
+                    const retryBtn = document.createElement('button');
+                    retryBtn.className = 'retry-btn';
+                    retryBtn.textContent = 'Retry';
+                    retryBtn.onclick = () => continueResponse(messageElement, currentResponse, previousMessages);
+                    errorDiv.appendChild(retryBtn);
+                    chatMessages.appendChild(errorDiv);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                } finally {
+                    hideTypingIndicator();
+                }
             }
             
             // Send message to API
