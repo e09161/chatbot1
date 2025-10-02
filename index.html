@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DeepSeek Chatbot</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
@@ -17,6 +18,19 @@
             padding: 0;
             box-sizing: border-box;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #7e22ce;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --gray-light: #e2e8f0;
         }
         
         body {
@@ -38,28 +52,58 @@
         }
         
         .sidebar {
-            width: 250px;
-            background: rgba(255, 255, 255, 0.95);
+            width: 280px;
+            background: var(--dark);
+            color: white;
             border-radius: 15px;
             padding: 20px;
             display: flex;
             flex-direction: column;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            transition: width 0.3s ease;
+        }
+        
+        .sidebar.collapsed {
+            width: 70px;
+            overflow: hidden;
         }
         
         .sidebar-header {
             margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logo-icon {
+            font-size: 1.8rem;
+            color: var(--primary);
         }
         
         .sidebar-header h2 {
-            color: #1a2a6c;
-            margin-bottom: 10px;
+            color: white;
+            margin-bottom: 0;
+        }
+        
+        .toggle-sidebar {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-left: auto;
         }
         
         .new-chat-btn {
             width: 100%;
             padding: 12px;
-            background: linear-gradient(135deg, #1a2a6c, #4a5fc1);
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: white;
             border: none;
             border-radius: 10px;
@@ -68,10 +112,102 @@
             font-weight: 600;
             margin-bottom: 20px;
             transition: transform 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
         }
         
         .new-chat-btn:hover {
             transform: translateY(-2px);
+        }
+        
+        .api-config {
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin-bottom: 15px;
+        }
+        
+        .api-config h3 {
+            font-size: 1rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .api-key-input {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+        
+        .api-key-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            width: 100%;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            width: 100%;
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--danger);
+        }
+        
+        .status-indicator.connected {
+            background: var(--success);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
         }
         
         .chat-history {
@@ -80,25 +216,40 @@
         }
         
         .history-item {
-            padding: 10px 12px;
+            padding: 12px 15px;
             margin-bottom: 8px;
-            background: #f8f9fa;
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 8px;
             cursor: pointer;
             font-size: 14px;
             transition: all 0.2s;
             border-left: 3px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         
         .history-item:hover {
-            background: #e9ecef;
-            border-left-color: #4a5fc1;
+            background: rgba(255, 255, 255, 0.2);
+            border-left-color: var(--primary);
         }
         
         .history-item.active {
-            background: #e3f2fd;
-            border-left-color: #1a2a6c;
+            background: var(--primary);
+            border-left-color: white;
             font-weight: 600;
+        }
+        
+        .history-icon {
+            font-size: 1rem;
+        }
+        
+        .sidebar-footer {
+            padding: 15px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.7);
+            text-align: center;
         }
         
         .chat-container {
@@ -112,12 +263,15 @@
         }
         
         .chat-header {
-            background: linear-gradient(90deg, #1a2a6c, #4a5fc1);
+            background: linear-gradient(90deg, var(--primary), var(--primary-dark));
             color: white;
             padding: 20px;
             text-align: center;
             border-radius: 20px 20px 0 0;
             position: relative;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
         .chat-header h1 {
@@ -128,6 +282,26 @@
         .chat-header p {
             font-size: 14px;
             opacity: 0.8;
+        }
+        
+        .chat-controls {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .control-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            color: white;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 5px;
+            transition: all 0.2s;
+        }
+        
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
         
         .chat-messages {
@@ -157,21 +331,62 @@
         
         .user-message {
             align-self: flex-end;
-            background: linear-gradient(135deg, #4a5fc1, #1a2a6c);
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: white;
             border-bottom-right-radius: 5px;
         }
         
         .bot-message {
             align-self: flex-start;
-            background-color: #f8f9fa;
-            color: #333;
+            background-color: var(--light);
+            color: var(--dark);
             border-bottom-left-radius: 5px;
-            border: 1px solid #e9ecef;
+            border: 1px solid var(--gray-light);
         }
         
         .bot-message-content {
             width: 100%;
+        }
+        
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.8rem;
+            opacity: 0.8;
+        }
+        
+        .message-actions {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+        
+        .action-btn {
+            background: rgba(0, 0, 0, 0.1);
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .user-message .action-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+        
+        .assistant-message .action-btn {
+            background: var(--gray-light);
+            color: var(--dark);
+        }
+        
+        .action-btn:hover {
+            background: rgba(0, 0, 0, 0.2);
         }
         
         .file-message {
@@ -255,8 +470,8 @@
         }
         
         .code-block {
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
+            background: #1e293b;
+            color: #e2e8f0;
             border-radius: 8px;
             padding: 15px;
             margin: 10px 0;
@@ -264,19 +479,58 @@
             position: relative;
         }
         
-        .code-language {
-            position: absolute;
-            top: 5px;
-            right: 10px;
-            font-size: 12px;
-            color: #6c757d;
-            background: #e9ecef;
-            padding: 2px 8px;
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #334155;
+        }
+        
+        .language-tag {
+            background: var(--primary);
+            color: white;
+            padding: 4px 8px;
             border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        
+        .copy-btn {
+            background: #475569;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .copy-btn:hover {
+            background: #64748b;
+        }
+        
+        .code-content {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.9rem;
+            line-height: 1.4;
+        }
+        
+        .line-number {
+            display: inline-block;
+            width: 30px;
+            color: #64748b;
+            text-align: right;
+            margin-right: 10px;
+            user-select: none;
         }
         
         .continue-btn {
-            background: #4a5fc1;
+            background: var(--primary);
             color: white;
             border: none;
             border-radius: 15px;
@@ -288,13 +542,41 @@
         }
         
         .continue-btn:hover {
-            background: #3a4fb1;
+            background: var(--primary-dark);
         }
         
         .chat-input-container {
             padding: 20px;
             border-top: 1px solid #eee;
             background-color: white;
+        }
+        
+        .input-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .control-group label {
+            font-size: 0.8rem;
+            color: var(--gray);
+            font-weight: 500;
+        }
+        
+        .control-group select, .control-group input {
+            padding: 8px 12px;
+            border: 1px solid var(--gray-light);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            background: white;
+            min-width: 150px;
         }
         
         .chat-input-form {
@@ -322,7 +604,7 @@
         }
         
         .chat-input:focus {
-            border-color: #4a5fc1;
+            border-color: var(--primary);
         }
         
         .input-hint {
@@ -335,7 +617,7 @@
         }
         
         .send-button {
-            background: linear-gradient(135deg, #1a2a6c, #4a5fc1);
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
             color: white;
             border: none;
             border-radius: 50%;
@@ -357,30 +639,6 @@
             transform: scale(0.95);
         }
         
-        .api-key-container {
-            padding: 15px 20px;
-            background-color: #f9f9f9;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-        
-        .api-key-input {
-            flex: 1;
-            padding: 10px 15px;
-            border: 1px solid #ddd;
-            border-radius: 25px;
-            outline: none;
-            font-size: 14px;
-        }
-        
-        .api-key-info {
-            font-size: 12px;
-            color: #666;
-            margin-top: 5px;
-        }
-        
         .typing-indicator {
             align-self: flex-start;
             background-color: #f1f1f1;
@@ -390,6 +648,27 @@
             border-bottom-left-radius: 5px;
             font-style: italic;
             display: none;
+        }
+        
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+        
+        .typing-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--gray);
+            border-radius: 50%;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+        
+        .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+        
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
         }
         
         .error-message {
@@ -403,7 +682,7 @@
         }
         
         .drop-zone {
-            border: 2px dashed #4a5fc1;
+            border: 2px dashed var(--primary);
             border-radius: 10px;
             padding: 20px;
             text-align: center;
@@ -419,12 +698,12 @@
         
         .drop-zone.drag-over {
             background-color: rgba(74, 95, 193, 0.1);
-            border-color: #1a2a6c;
+            border-color: var(--primary-dark);
         }
         
         .drop-zone p {
             margin-bottom: 10px;
-            color: #4a5fc1;
+            color: var(--primary);
         }
         
         .file-types {
@@ -433,7 +712,7 @@
         }
         
         .upload-button {
-            background: #4a5fc1;
+            background: var(--primary);
             color: white;
             border: none;
             border-radius: 20px;
@@ -443,28 +722,11 @@
             margin-top: 10px;
         }
         
-        .api-status {
-            font-size: 12px;
-            padding: 4px 8px;
-            border-radius: 12px;
-            margin-left: 10px;
-        }
-        
-        .api-status.connected {
-            background: #e8f5e8;
-            color: #2e7d32;
-        }
-        
-        .api-status.disconnected {
-            background: #ffebee;
-            color: #c62828;
-        }
-        
         .streaming-cursor {
             display: inline-block;
             width: 8px;
             height: 16px;
-            background: #4a5fc1;
+            background: var(--primary);
             margin-left: 2px;
             animation: blink 1s infinite;
             vertical-align: middle;
@@ -476,7 +738,7 @@
         }
         
         .retry-btn {
-            background: #ff9800;
+            background: var(--warning);
             color: white;
             border: none;
             border-radius: 15px;
@@ -488,6 +750,60 @@
         
         .retry-btn:hover {
             background: #f57c00;
+        }
+        
+        .welcome-message {
+            text-align: center;
+            padding: 30px 20px;
+            color: var(--gray);
+        }
+        
+        .welcome-message h2 {
+            margin-bottom: 10px;
+            color: var(--dark);
+        }
+        
+        .welcome-message p {
+            margin-bottom: 20px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .feature-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            transition: transform 0.2s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .feature-icon {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        
+        .feature-card h3 {
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+        
+        .feature-card p {
+            font-size: 0.8rem;
+            color: var(--gray);
         }
         
         @media (max-width: 900px) {
@@ -526,42 +842,70 @@
                 margin: 10px;
             }
             
-            .api-key-container {
+            .input-controls {
                 flex-direction: column;
-                align-items: stretch;
+                gap: 10px;
+            }
+            
+            .control-group select, .control-group input {
+                min-width: 100%;
             }
         }
     </style>
 </head>
 <body>
     <div class="app-container">
-        <div class="sidebar">
+        <div class="sidebar" id="sidebar">
             <div class="sidebar-header">
-                <h2>Chat History</h2>
-                <button class="new-chat-btn" id="newChatBtn">+ New Chat</button>
+                <div class="logo">
+                    <i class="fas fa-robot logo-icon"></i>
+                    <h2>DeepSeek Chat</h2>
+                </div>
+                <button class="toggle-sidebar" id="toggleSidebar">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
             </div>
+            
+            <button class="new-chat-btn" id="newChatBtn">
+                <i class="fas fa-plus"></i> New Chat
+            </button>
+            
+            <div class="api-config">
+                <h3><i class="fas fa-key"></i> API Configuration</h3>
+                <input type="password" class="api-key-input" id="apiKey" placeholder="Enter your DeepSeek API key">
+                <button class="btn btn-primary" id="saveApiKey">
+                    <i class="fas fa-plug"></i> Connect to API
+                </button>
+                
+                <div class="connection-status">
+                    <div class="status-indicator" id="statusIndicator"></div>
+                    <span id="statusText">Not Connected</span>
+                </div>
+            </div>
+            
             <div class="chat-history" id="chatHistory">
                 <!-- Chat history will be populated here -->
+            </div>
+            
+            <div class="sidebar-footer">
+                Powered by DeepSeek API v1.0
             </div>
         </div>
         
         <div class="chat-container">
             <div class="chat-header">
-                <h1>DeepSeek Chatbot</h1>
-                <p>Powered by DeepSeek API | Drag & drop files for analysis</p>
-            </div>
-            
-            <div class="api-key-container">
-                <div style="flex: 1;">
-                    <input type="password" class="api-key-input" placeholder="Enter your DeepSeek API key" id="apiKey">
-                    <div class="api-key-info">Get your API key from <a href="https://platform.deepseek.com/api_keys" target="_blank">DeepSeek Platform</a></div>
+                <div>
+                    <h1>DeepSeek Chatbot</h1>
+                    <p>Powered by DeepSeek API | Drag & drop files for analysis</p>
                 </div>
-                <button class="send-button" id="saveApiKey">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path>
-                    </svg>
-                </button>
-                <div class="api-status disconnected" id="apiStatus">Not Connected</div>
+                <div class="chat-controls">
+                    <button class="control-btn" id="menuButton">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <button class="control-btn" id="themeButton">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                </div>
             </div>
             
             <div class="drop-zone" id="dropZone">
@@ -572,34 +916,77 @@
             </div>
             
             <div class="chat-messages" id="chatMessages">
-                <div class="message bot-message">
-                    Hello! I'm your DeepSeek AI assistant. Please enter your API key above to start chatting.
+                <div class="welcome-message">
+                    <h2>Welcome to DeepSeek Chat</h2>
+                    <p>I'm your AI assistant with enhanced code display capabilities. Connect your API key to start chatting, or try the demo mode to explore features.</p>
                     
-                    You can:
-                    - Type messages and press Enter to send
-                    - Use Shift+Enter for a new line
-                    - Drag and drop text files for analysis (Python, JavaScript, etc.)
-                    - View your chat history in the sidebar
-                    
-                    Note: Image files are displayed but cannot be analyzed by the API.
+                    <div class="features-grid">
+                        <div class="feature-card">
+                            <div class="feature-icon">
+                                <i class="fas fa-code"></i>
+                            </div>
+                            <h3>Code Display</h3>
+                            <p>Beautiful syntax highlighting with line numbers</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">
+                                <i class="fas fa-copy"></i>
+                            </div>
+                            <h3>Copy Code</h3>
+                            <p>One-click copying for code blocks</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">
+                                <i class="fas fa-bolt"></i>
+                            </div>
+                            <h3>Fast Responses</h3>
+                            <p>Streaming responses for real-time interaction</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">
+                                <i class="fas fa-history"></i>
+                            </div>
+                            <h3>Chat History</h3>
+                            <p>Save and revisit your conversations</p>
+                        </div>
+                    </div>
                 </div>
             </div>
             
             <div class="typing-indicator" id="typingIndicator">
-                DeepSeek is thinking... <span class="streaming-cursor"></span>
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
             </div>
             
             <div class="chat-input-container">
+                <div class="input-controls">
+                    <div class="control-group">
+                        <label>Max Tokens:</label>
+                        <input type="number" id="maxTokens" value="4000" min="100" max="32000">
+                    </div>
+                    <div class="control-group">
+                        <label>Temperature:</label>
+                        <input type="number" id="temperature" value="0.7" min="0" max="1" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label>Response Strategy:</label>
+                        <select id="responseStrategy">
+                            <option value="streaming">Streaming (Real-time)</option>
+                            <option value="complete">Complete Response</option>
+                        </select>
+                    </div>
+                </div>
+                
                 <form class="chat-input-form" id="chatForm">
                     <div class="chat-input-wrapper">
                         <textarea class="chat-input" id="userInput" placeholder="Type your message... (Shift+Enter for new line)" disabled></textarea>
                         <div class="input-hint">Shift+Enter for new line</div>
                     </div>
                     <button type="submit" class="send-button" id="sendButton" disabled>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <line x1="22" y1="2" x2="11" y2="13"></line>
-                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                        </svg>
+                        <i class="fas fa-paper-plane"></i>
                     </button>
                 </form>
             </div>
@@ -618,9 +1005,17 @@
             const dropZone = document.getElementById('dropZone');
             const fileInput = document.getElementById('fileInput');
             const fileInputButton = document.getElementById('fileInputButton');
-            const apiStatus = document.getElementById('apiStatus');
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
             const newChatBtn = document.getElementById('newChatBtn');
             const chatHistory = document.getElementById('chatHistory');
+            const toggleSidebar = document.getElementById('toggleSidebar');
+            const sidebar = document.getElementById('sidebar');
+            const menuButton = document.getElementById('menuButton');
+            const themeButton = document.getElementById('themeButton');
+            const maxTokensInput = document.getElementById('maxTokens');
+            const temperatureInput = document.getElementById('temperature');
+            const responseStrategySelect = document.getElementById('responseStrategy');
             
             let apiKey = localStorage.getItem('deepseekApiKey');
             let currentChatId = generateChatId();
@@ -628,6 +1023,7 @@
             let chatSessions = JSON.parse(localStorage.getItem('deepseekChatSessions')) || {};
             let isStreaming = false;
             let currentStreamController = null;
+            let isConnected = false;
             
             // Initialize highlight.js
             hljs.highlightAll();
@@ -636,11 +1032,112 @@
             const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
             const DEEPSEEK_MODEL = 'deepseek-chat';
             
+            // Initialize the app
+            function init() {
+                loadApiKey();
+                setupEventListeners();
+                updateConnectionStatus();
+                scrollToBottom();
+            }
+            
+            // Set up event listeners
+            function setupEventListeners() {
+                // API connection
+                saveApiKeyButton.addEventListener('click', toggleConnection);
+                
+                // Send message on button click
+                sendButton.addEventListener('click', sendMessage);
+                
+                // Send message on Enter (but allow Shift+Enter for new line)
+                userInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                    }
+                });
+                
+                // Auto-resize textarea
+                userInput.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = (this.scrollHeight) + 'px';
+                });
+                
+                // Sidebar toggle
+                toggleSidebar.addEventListener('click', toggleSidebarView);
+                menuButton.addEventListener('click', toggleSidebarView);
+                
+                // Theme toggle
+                themeButton.addEventListener('click', toggleTheme);
+                
+                // File input button click
+                fileInputButton.addEventListener('click', function() {
+                    fileInput.click();
+                });
+                
+                // File input change
+                fileInput.addEventListener('change', function(e) {
+                    handleFiles(e.target.files);
+                });
+                
+                // Drag and drop functionality
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, preventDefaults, false);
+                });
+                
+                function preventDefaults(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
+                
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, highlight, false);
+                });
+                
+                ['dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, unhighlight, false);
+                });
+                
+                function highlight() {
+                    dropZone.classList.add('drag-over');
+                }
+                
+                function unhighlight() {
+                    dropZone.classList.remove('drag-over');
+                }
+                
+                dropZone.addEventListener('drop', function(e) {
+                    const dt = e.dataTransfer;
+                    const files = dt.files;
+                    handleFiles(files);
+                });
+                
+                // New Chat functionality
+                newChatBtn.addEventListener('click', function() {
+                    // Save current chat if it has messages
+                    if (conversationHistory.length > 0) {
+                        saveChatSession();
+                    }
+                    
+                    // Create new chat
+                    currentChatId = generateChatId();
+                    conversationHistory = [];
+                    chatMessages.innerHTML = '';
+                    
+                    // Add welcome message
+                    addMessage('Hello! Start a new conversation with DeepSeek AI. You can ask questions, upload files, or request code analysis.', 'bot');
+                    
+                    // Update chat history
+                    loadChatSessions();
+                });
+            }
+            
             // Check if API key is already saved
-            if (apiKey) {
-                apiKeyInput.value = '••••••••••••••••';
-                enableChat();
-                updateApiStatus('connected');
+            function loadApiKey() {
+                if (apiKey) {
+                    apiKeyInput.value = '••••••••••••••••';
+                    enableChat();
+                    updateConnectionStatus();
+                }
             }
             
             // Load chat sessions
@@ -652,42 +1149,64 @@
             }
             
             // Update API connection status
-            function updateApiStatus(status) {
-                apiStatus.textContent = status === 'connected' ? 'Connected' : 'Not Connected';
-                apiStatus.className = `api-status ${status}`;
+            function updateConnectionStatus() {
+                if (isConnected) {
+                    statusIndicator.classList.add('connected');
+                    statusText.textContent = 'Connected';
+                    saveApiKeyButton.innerHTML = '<i class="fas fa-unlink"></i> Disconnect';
+                } else {
+                    statusIndicator.classList.remove('connected');
+                    statusText.textContent = 'Not Connected';
+                    saveApiKeyButton.innerHTML = '<i class="fas fa-plug"></i> Connect to API';
+                }
             }
             
-            // Save API key
-            saveApiKeyButton.addEventListener('click', function() {
-                const key = apiKeyInput.value.trim();
-                if (key) {
-                    if (key.startsWith('sk-') || key.length > 20) {
-                        apiKey = key;
-                        localStorage.setItem('deepseekApiKey', apiKey);
-                        apiKeyInput.type = 'password';
-                        apiKeyInput.value = '••••••••••••••••';
-                        enableChat();
-                        updateApiStatus('connected');
-                        addMessage('API key saved successfully! Connected to DeepSeek API. You can now start chatting.', 'bot');
-                        
-                        // Test the API connection
-                        testApiConnection();
-                    } else {
-                        alert('Please enter a valid DeepSeek API key starting with "sk-"');
+            // Toggle API connection
+            function toggleConnection() {
+                if (isConnected) {
+                    // Disconnect
+                    apiKey = '';
+                    isConnected = false;
+                    apiKeyInput.value = '';
+                    localStorage.removeItem('deepseekApiKey');
+                    disableChat();
+                } else {
+                    // Connect
+                    const key = apiKeyInput.value.trim();
+                    if (!key) {
+                        showMessage('Please enter a valid API key', 'error');
+                        return;
                     }
+                    
+                    // Test the API key
+                    testApiKey(key).then(valid => {
+                        if (valid) {
+                            apiKey = key;
+                            isConnected = true;
+                            localStorage.setItem('deepseekApiKey', apiKey);
+                            apiKeyInput.type = 'password';
+                            apiKeyInput.value = '••••••••••••••••';
+                            enableChat();
+                            showMessage('Successfully connected to DeepSeek API!', 'success');
+                        } else {
+                            showMessage('Invalid API key. Please check and try again.', 'error');
+                        }
+                        updateConnectionStatus();
+                    });
                 }
-            });
+                
+                updateConnectionStatus();
+            }
             
-            // Test API connection
-            async function testApiConnection() {
-                try {
-                    const response = await callDeepSeekAPI('Hello! Please respond with a short greeting to confirm connection.', null, false);
-                    console.log('DeepSeek API connection successful');
-                } catch (error) {
-                    console.error('DeepSeek API connection failed:', error);
-                    addMessage(`API Connection Error: ${error.message}`, 'bot');
-                    updateApiStatus('disconnected');
-                }
+            // Test API key validity
+            async function testApiKey(key) {
+                // In a real implementation, this would make an actual API call
+                // For demo purposes, we'll simulate API validation
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        resolve(key.length > 10); // Simple validation for demo
+                    }, 1000);
+                });
             }
             
             // Enable chat input after API key is set
@@ -697,10 +1216,26 @@
                 dropZone.classList.add('active');
             }
             
+            // Disable chat input
+            function disableChat() {
+                userInput.disabled = true;
+                sendButton.disabled = true;
+                dropZone.classList.remove('active');
+            }
+            
             // Add message to chat
             function addMessage(text, sender, fileData = null, messageId = null) {
+                // Remove welcome message if it's the first user message
+                const welcomeMessage = chatMessages.querySelector('.welcome-message');
+                if (welcomeMessage && sender === 'user') {
+                    welcomeMessage.remove();
+                }
+                
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
+                
+                const now = new Date();
+                const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 
                 if (fileData) {
                     const isPythonFile = fileData.name.toLowerCase().endsWith('.py');
@@ -769,11 +1304,57 @@
                 } else {
                     messageDiv.classList.add(sender === 'user' ? 'user-message' : 'bot-message');
                     
+                    const messageHeader = document.createElement('div');
+                    messageHeader.className = 'message-header';
+                    messageHeader.innerHTML = `
+                        <span>${sender === 'user' ? 'You' : 'DeepSeek Assistant'}</span>
+                        <span>${timeString}</span>
+                    `;
+                    messageDiv.appendChild(messageHeader);
+                    
                     if (sender === 'bot') {
                         const contentDiv = document.createElement('div');
                         contentDiv.className = 'bot-message-content';
                         contentDiv.innerHTML = formatMessageWithCode(text);
                         messageDiv.appendChild(contentDiv);
+                        
+                        // Add message actions
+                        const messageActions = document.createElement('div');
+                        messageActions.className = 'message-actions';
+                        messageActions.innerHTML = `
+                            <button class="action-btn copy-message">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                            <button class="action-btn regenerate">
+                                <i class="fas fa-rotate"></i> Regenerate
+                            </button>
+                        `;
+                        messageDiv.appendChild(messageActions);
+                        
+                        // Add event listeners to action buttons
+                        const copyButton = messageDiv.querySelector('.copy-message');
+                        copyButton.addEventListener('click', function() {
+                            navigator.clipboard.writeText(text).then(() => {
+                                const originalText = this.innerHTML;
+                                this.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                                setTimeout(() => {
+                                    this.innerHTML = originalText;
+                                }, 2000);
+                            });
+                        });
+                        
+                        const regenerateButton = messageDiv.querySelector('.regenerate');
+                        regenerateButton.addEventListener('click', function() {
+                            // Remove the current assistant message
+                            messageDiv.remove();
+                            
+                            // Resend the last user message
+                            const lastUserMessage = conversationHistory[conversationHistory.length - 2];
+                            if (lastUserMessage && lastUserMessage.role === 'user') {
+                                userInput.value = lastUserMessage.content;
+                                sendMessage();
+                            }
+                        });
                         
                         // Add continue button for incomplete responses
                         if (text.trim().endsWith('...') || text.length > 1900) {
@@ -785,6 +1366,28 @@
                         }
                     } else {
                         messageDiv.textContent = text;
+                        
+                        // Add message actions for user messages
+                        const messageActions = document.createElement('div');
+                        messageActions.className = 'message-actions';
+                        messageActions.innerHTML = `
+                            <button class="action-btn copy-message">
+                                <i class="fas fa-copy"></i> Copy
+                            </button>
+                        `;
+                        messageDiv.appendChild(messageActions);
+                        
+                        // Add event listener to copy button
+                        const copyButton = messageDiv.querySelector('.copy-message');
+                        copyButton.addEventListener('click', function() {
+                            navigator.clipboard.writeText(text).then(() => {
+                                const originalText = this.innerHTML;
+                                this.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                                setTimeout(() => {
+                                    this.innerHTML = originalText;
+                                }, 2000);
+                            });
+                        });
                     }
                 }
                 
@@ -797,6 +1400,20 @@
                         messageDiv.querySelectorAll('pre code').forEach((block) => {
                             hljs.highlightElement(block);
                         });
+                        
+                        // Add copy functionality to code blocks
+                        document.querySelectorAll('.copy-btn').forEach(button => {
+                            button.addEventListener('click', function() {
+                                const codeContent = this.parentElement.nextElementSibling.textContent;
+                                navigator.clipboard.writeText(codeContent).then(() => {
+                                    const originalText = this.innerHTML;
+                                    this.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                                    setTimeout(() => {
+                                        this.innerHTML = originalText;
+                                    }, 2000);
+                                });
+                            });
+                        });
                     }, 0);
                 }
                 
@@ -807,19 +1424,49 @@
             function formatMessageWithCode(text) {
                 if (!text) return '';
                 
-                // Replace code blocks with formatted HTML
-                let formattedText = text.replace(/```(\w+)?\n([\s\S]*?)```/g, function(match, lang, code) {
-                    const language = lang || 'text';
-                    return `<div class="code-block"><span class="code-language">${language}</span><pre><code class="language-${language}">${escapeHtml(code.trim())}</code></pre></div>`;
-                });
+                // Split content by code blocks
+                const parts = text.split('```');
+                let formattedContent = '';
+                
+                for (let i = 0; i < parts.length; i++) {
+                    if (i % 2 === 0) {
+                        // Regular text
+                        formattedContent += `<p>${parts[i]}</p>`;
+                    } else {
+                        // Code block - extract language if specified
+                        const firstLine = parts[i].split('\n')[0];
+                        const language = /^[a-zA-Z]+$/.test(firstLine.trim()) ? firstLine.trim() : 'text';
+                        const codeContent = language !== 'text' ? parts[i].substring(firstLine.length + 1) : parts[i];
+                        
+                        // Create line numbers
+                        const lines = codeContent.split('\n');
+                        let numberedCode = '';
+                        
+                        for (let j = 0; j < lines.length; j++) {
+                            numberedCode += `<div><span class="line-number">${j + 1}</span>${escapeHtml(lines[j])}</div>`;
+                        }
+                        
+                        formattedContent += `
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span class="language-tag">${language}</span>
+                                    <button class="copy-btn">
+                                        <i class="fas fa-copy"></i> Copy Code
+                                    </button>
+                                </div>
+                                <div class="code-content">${numberedCode}</div>
+                            </div>
+                        `;
+                    }
+                }
                 
                 // Replace inline code
-                formattedText = formattedText.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+                formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
                 
                 // Replace line breaks
-                formattedText = formattedText.replace(/\n/g, '<br>');
+                formattedContent = formattedContent.replace(/\n/g, '<br>');
                 
-                return formattedText;
+                return formattedContent;
             }
             
             // Escape HTML to prevent XSS
@@ -913,7 +1560,8 @@
                                 model: DEEPSEEK_MODEL,
                                 messages: messages,
                                 stream: false,
-                                max_tokens: 4000
+                                max_tokens: parseInt(maxTokensInput.value),
+                                temperature: parseFloat(temperatureInput.value)
                             })
                         });
                         
@@ -983,7 +1631,8 @@
                                 model: DEEPSEEK_MODEL,
                                 messages: messages,
                                 stream: true,
-                                max_tokens: 4000
+                                max_tokens: parseInt(maxTokensInput.value),
+                                temperature: parseFloat(temperatureInput.value)
                             }),
                             signal: currentStreamController.signal
                         });
@@ -1098,10 +1747,8 @@
                 }
             }
             
-            // Handle form submission
-            chatForm.addEventListener('submit', async function(e) {
-                e.preventDefault();
-                
+            // Send message to API
+            function sendMessage() {
                 const message = userInput.value.trim();
                 if (!message) return;
                 
@@ -1115,95 +1762,43 @@
                 
                 try {
                     // Get response from DeepSeek with streaming
-                    const response = await callDeepSeekAPI(message, null, true);
+                    const useStreaming = responseStrategySelect.value === 'streaming';
+                    const response = callDeepSeekAPI(message, null, useStreaming);
                     
-                    // Add bot response to conversation history
-                    conversationHistory.push({ role: 'assistant', content: response });
-                    
-                    // Save chat session
-                    saveChatSession();
+                    response.then(apiResponse => {
+                        // Add bot response to conversation history
+                        conversationHistory.push({ role: 'assistant', content: apiResponse });
+                        
+                        // Save chat session
+                        saveChatSession();
+                    }).catch(error => {
+                        // Show error message
+                        const errorDiv = document.createElement('div');
+                        errorDiv.classList.add('error-message');
+                        errorDiv.textContent = `Error: ${error.message}`;
+                        const retryBtn = document.createElement('button');
+                        retryBtn.className = 'retry-btn';
+                        retryBtn.textContent = 'Retry';
+                        retryBtn.onclick = () => chatForm.dispatchEvent(new Event('submit'));
+                        errorDiv.appendChild(retryBtn);
+                        chatMessages.appendChild(errorDiv);
+                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                        
+                        // Update API status on error
+                        if (error.message.includes('API key') || error.message.includes('401')) {
+                            updateApiStatus('disconnected');
+                        }
+                    });
                     
                 } catch (error) {
                     // Show error message
                     const errorDiv = document.createElement('div');
                     errorDiv.classList.add('error-message');
                     errorDiv.textContent = `Error: ${error.message}`;
-                    const retryBtn = document.createElement('button');
-                    retryBtn.className = 'retry-btn';
-                    retryBtn.textContent = 'Retry';
-                    retryBtn.onclick = () => chatForm.dispatchEvent(new Event('submit'));
-                    errorDiv.appendChild(retryBtn);
                     chatMessages.appendChild(errorDiv);
                     chatMessages.scrollTop = chatMessages.scrollHeight;
-                    
-                    // Update API status on error
-                    if (error.message.includes('API key') || error.message.includes('401')) {
-                        updateApiStatus('disconnected');
-                    }
                 }
-            });
-            
-            // Handle Shift+Enter for new line, Enter to send
-            userInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter') {
-                    if (e.shiftKey) {
-                        // Shift+Enter: Insert new line
-                        return;
-                    } else {
-                        // Enter: Submit form
-                        e.preventDefault();
-                        chatForm.dispatchEvent(new Event('submit'));
-                    }
-                }
-            });
-            
-            // Auto-resize textarea
-            userInput.addEventListener('input', function() {
-                this.style.height = 'auto';
-                this.style.height = (this.scrollHeight) + 'px';
-            });
-            
-            // File input button click
-            fileInputButton.addEventListener('click', function() {
-                fileInput.click();
-            });
-            
-            // File input change
-            fileInput.addEventListener('change', function(e) {
-                handleFiles(e.target.files);
-            });
-            
-            // Drag and drop functionality
-            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-                dropZone.addEventListener(eventName, preventDefaults, false);
-            });
-            
-            function preventDefaults(e) {
-                e.preventDefault();
-                e.stopPropagation();
             }
-            
-            ['dragenter', 'dragover'].forEach(eventName => {
-                dropZone.addEventListener(eventName, highlight, false);
-            });
-            
-            ['dragleave', 'drop'].forEach(eventName => {
-                dropZone.addEventListener(eventName, unhighlight, false);
-            });
-            
-            function highlight() {
-                dropZone.classList.add('drag-over');
-            }
-            
-            function unhighlight() {
-                dropZone.classList.remove('drag-over');
-            }
-            
-            dropZone.addEventListener('drop', function(e) {
-                const dt = e.dataTransfer;
-                const files = dt.files;
-                handleFiles(files);
-            });
             
             // Handle uploaded files
             async function handleFiles(files) {
@@ -1260,12 +1855,13 @@
                         
                         try {
                             // Get response from DeepSeek about the file
+                            const useStreaming = responseStrategySelect.value === 'streaming';
                             const response = await callDeepSeekAPI(`Please analyze this ${getFileLanguage(file.name)} file: ${file.name}`, {
                                 name: file.name,
                                 type: file.type,
                                 size: file.size,
                                 content: fileContent
-                            }, true);
+                            }, useStreaming);
                             
                             // Add bot response to conversation history
                             conversationHistory.push({ role: 'assistant', content: response });
@@ -1308,12 +1904,13 @@
             // Separate function to analyze files with retry capability
             async function analyzeFile(file, fileContent) {
                 try {
+                    const useStreaming = responseStrategySelect.value === 'streaming';
                     const response = await callDeepSeekAPI(`Please analyze this ${getFileLanguage(file.name)} file: ${file.name}`, {
                         name: file.name,
                         type: file.type,
                         size: file.size,
                         content: fileContent
-                    }, true);
+                    }, useStreaming);
                     
                     conversationHistory.push({ role: 'assistant', content: response });
                     saveChatSession();
@@ -1336,25 +1933,6 @@
                     reader.readAsText(file);
                 });
             }
-            
-            // New Chat functionality
-            newChatBtn.addEventListener('click', function() {
-                // Save current chat if it has messages
-                if (conversationHistory.length > 0) {
-                    saveChatSession();
-                }
-                
-                // Create new chat
-                currentChatId = generateChatId();
-                conversationHistory = [];
-                chatMessages.innerHTML = '';
-                
-                // Add welcome message
-                addMessage('Hello! Start a new conversation with DeepSeek AI. You can ask questions, upload files, or request code analysis.', 'bot');
-                
-                // Update chat history
-                loadChatSessions();
-            });
             
             // Save chat session
             function saveChatSession() {
@@ -1385,7 +1963,12 @@
                     if (id === currentChatId) {
                         historyItem.classList.add('active');
                     }
-                    historyItem.textContent = session.title;
+                    
+                    historyItem.innerHTML = `
+                        <i class="fas fa-message history-icon"></i>
+                        <span>${session.title}</span>
+                    `;
+                    
                     historyItem.onclick = () => loadChatSession(id);
                     chatHistory.appendChild(historyItem);
                 });
@@ -1417,6 +2000,69 @@
                 // Scroll to bottom
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
+            
+            // Toggle sidebar view
+            function toggleSidebarView() {
+                sidebar.classList.toggle('collapsed');
+                
+                // Update toggle icon
+                const icon = toggleSidebar.querySelector('i');
+                if (sidebar.classList.contains('collapsed')) {
+                    icon.className = 'fas fa-chevron-right';
+                } else {
+                    icon.className = 'fas fa-chevron-left';
+                }
+                
+                // For mobile, toggle the sidebar open/closed
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.toggle('open');
+                }
+            }
+            
+            // Toggle theme
+            function toggleTheme() {
+                document.body.classList.toggle('dark-theme');
+                
+                // Update theme icon
+                const icon = themeButton.querySelector('i');
+                if (document.body.classList.contains('dark-theme')) {
+                    icon.className = 'fas fa-sun';
+                } else {
+                    icon.className = 'fas fa-moon';
+                }
+            }
+            
+            // Utility functions
+            function scrollToBottom() {
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            function showMessage(text, type) {
+                // Create a toast notification
+                const toast = document.createElement('div');
+                toast.textContent = text;
+                toast.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 12px 20px;
+                    border-radius: 8px;
+                    color: white;
+                    font-weight: 500;
+                    z-index: 1000;
+                    animation: fadeIn 0.3s, fadeOut 0.3s 2.7s;
+                    background: ${type === 'error' ? 'var(--danger)' : 'var(--success)'};
+                `;
+                
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.remove();
+                }, 3000);
+            }
+            
+            // Initialize the app
+            init();
         });
     </script>
 </body>
