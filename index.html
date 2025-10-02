@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeepSeek Chat Interface</title>
+    <title>DeepSeek Chat - Complete Application</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
             margin: 0;
@@ -12,35 +13,60 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --secondary: #7e22ce;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --gray-light: #e2e8f0;
+        }
+
         body {
             background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
-            height: 100vh;
+            min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
         }
 
-        .chat-container {
+        .app-container {
             width: 100%;
-            max-width: 900px;
-            height: 90vh;
+            max-width: 1200px;
+            height: 95vh;
             background: rgba(255, 255, 255, 0.95);
             border-radius: 16px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
             display: flex;
-            flex-direction: column;
             overflow: hidden;
         }
 
-        .header {
-            background: linear-gradient(90deg, #1a2a6c, #2a3a9c);
+        /* Sidebar Styles */
+        .sidebar {
+            width: 280px;
+            background: var(--dark);
             color: white;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transition: width 0.3s ease;
+        }
+
+        .sidebar.collapsed {
+            width: 70px;
+        }
+
+        .sidebar-header {
             padding: 20px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            gap: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .logo {
@@ -49,15 +75,91 @@
             gap: 10px;
         }
 
-        .logo h1 {
-            font-size: 1.5rem;
-            font-weight: 600;
+        .logo-icon {
+            font-size: 1.8rem;
+            color: var(--primary);
         }
 
-        .api-status {
+        .logo h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        .toggle-sidebar {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.2rem;
+            cursor: pointer;
+            margin-left: auto;
+        }
+
+        .api-config {
+            padding: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .api-config h3 {
+            font-size: 1rem;
+            margin-bottom: 15px;
             display: flex;
             align-items: center;
             gap: 8px;
+        }
+
+        .api-key-input {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+
+        .api-key-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            width: 100%;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 15px;
             font-size: 0.9rem;
         }
 
@@ -65,7 +167,11 @@
             width: 10px;
             height: 10px;
             border-radius: 50%;
-            background: #4ade80;
+            background: var(--danger);
+        }
+
+        .status-indicator.connected {
+            background: var(--success);
             animation: pulse 2s infinite;
         }
 
@@ -75,33 +181,87 @@
             100% { opacity: 1; }
         }
 
-        .controls {
-            background: #f8fafc;
-            padding: 15px 20px;
-            border-bottom: 1px solid #e2e8f0;
-            display: flex;
-            gap: 20px;
-            flex-wrap: wrap;
+        .chat-history {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
         }
 
-        .control-group {
+        .history-item {
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .history-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .history-item.active {
+            background: var(--primary);
+        }
+
+        .history-icon {
+            font-size: 1rem;
+        }
+
+        .sidebar-footer {
+            padding: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.7);
+            text-align: center;
+        }
+
+        /* Main Chat Area */
+        .chat-area {
+            flex: 1;
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            overflow: hidden;
         }
 
-        .control-group label {
-            font-size: 0.8rem;
-            color: #64748b;
-            font-weight: 500;
-        }
-
-        .control-group select, .control-group input {
-            padding: 8px 12px;
-            border: 1px solid #cbd5e1;
-            border-radius: 6px;
-            font-size: 0.9rem;
+        .chat-header {
+            padding: 15px 20px;
             background: white;
+            border-bottom: 1px solid var(--gray-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .chat-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        .chat-controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        .control-btn {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            color: var(--gray);
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 5px;
+            transition: all 0.2s;
+        }
+
+        .control-btn:hover {
+            background: var(--gray-light);
+            color: var(--dark);
         }
 
         .messages-container {
@@ -111,6 +271,7 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
+            background: var(--light);
         }
 
         .message {
@@ -119,20 +280,27 @@
             border-radius: 12px;
             line-height: 1.5;
             box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
         }
 
         .user-message {
             align-self: flex-end;
-            background: #3b82f6;
+            background: var(--primary);
             color: white;
             border-bottom-right-radius: 4px;
         }
 
         .assistant-message {
             align-self: flex-start;
-            background: #f1f5f9;
-            color: #334155;
+            background: white;
+            color: var(--dark);
             border-bottom-left-radius: 4px;
+            border: 1px solid var(--gray-light);
         }
 
         .message-header {
@@ -141,6 +309,39 @@
             margin-bottom: 8px;
             font-size: 0.8rem;
             opacity: 0.8;
+        }
+
+        .message-actions {
+            display: flex;
+            gap: 5px;
+            margin-top: 10px;
+        }
+
+        .action-btn {
+            background: rgba(0, 0, 0, 0.1);
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .user-message .action-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+        }
+
+        .assistant-message .action-btn {
+            background: var(--gray-light);
+            color: var(--dark);
+        }
+
+        .action-btn:hover {
+            background: rgba(0, 0, 0, 0.2);
         }
 
         .code-block {
@@ -163,7 +364,7 @@
         }
 
         .language-tag {
-            background: #0ea5e9;
+            background: var(--primary);
             color: white;
             padding: 4px 8px;
             border-radius: 4px;
@@ -179,6 +380,9 @@
             cursor: pointer;
             font-size: 0.8rem;
             transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .copy-btn:hover {
@@ -202,8 +406,36 @@
 
         .input-container {
             padding: 20px;
-            border-top: 1px solid #e2e8f0;
+            border-top: 1px solid var(--gray-light);
             background: white;
+        }
+
+        .input-controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .control-group label {
+            font-size: 0.8rem;
+            color: var(--gray);
+            font-weight: 500;
+        }
+
+        .control-group select, .control-group input {
+            padding: 8px 12px;
+            border: 1px solid var(--gray-light);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            background: white;
+            min-width: 150px;
         }
 
         .input-area {
@@ -214,33 +446,42 @@
         .message-input {
             flex: 1;
             padding: 12px 16px;
-            border: 1px solid #cbd5e1;
-            border-radius: 8px;
+            border: 1px solid var(--gray-light);
+            border-radius: 12px;
             resize: none;
             font-size: 1rem;
             line-height: 1.5;
             max-height: 120px;
             overflow-y: auto;
+            transition: border 0.2s;
+        }
+
+        .message-input:focus {
+            outline: none;
+            border-color: var(--primary);
         }
 
         .send-btn {
-            background: #3b82f6;
+            background: var(--primary);
             color: white;
             border: none;
-            border-radius: 8px;
+            border-radius: 12px;
             padding: 0 20px;
             cursor: pointer;
             font-weight: 500;
             transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .send-btn:hover {
-            background: #2563eb;
+            background: var(--primary-dark);
         }
 
         .input-hint {
             font-size: 0.8rem;
-            color: #64748b;
+            color: var(--gray);
             margin-top: 8px;
             text-align: center;
         }
@@ -248,11 +489,12 @@
         .typing-indicator {
             display: none;
             align-self: flex-start;
-            background: #f1f5f9;
+            background: white;
             padding: 15px;
             border-radius: 12px;
             border-bottom-left-radius: 4px;
             margin-bottom: 10px;
+            border: 1px solid var(--gray-light);
         }
 
         .typing-dots {
@@ -263,7 +505,7 @@
         .typing-dot {
             width: 8px;
             height: 8px;
-            background: #94a3b8;
+            background: var(--gray);
             border-radius: 50%;
             animation: typing 1.4s infinite ease-in-out;
         }
@@ -276,136 +518,404 @@
             40% { transform: scale(1); opacity: 1; }
         }
 
-        .features {
-            background: #e0f2fe;
-            padding: 15px 20px;
-            border-radius: 8px;
-            margin-top: 10px;
+        .welcome-message {
+            text-align: center;
+            padding: 30px 20px;
+            color: var(--gray);
         }
 
-        .features h3 {
-            color: #0369a1;
+        .welcome-message h2 {
             margin-bottom: 10px;
+            color: var(--dark);
+        }
+
+        .welcome-message p {
+            margin-bottom: 20px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            transition: transform 0.2s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+
+        .feature-card h3 {
             font-size: 1rem;
+            margin-bottom: 8px;
         }
 
-        .features ul {
-            padding-left: 20px;
-            color: #0c4a6e;
+        .feature-card p {
+            font-size: 0.8rem;
+            color: var(--gray);
         }
 
-        .features li {
-            margin-bottom: 5px;
-            font-size: 0.9rem;
-        }
-
+        /* Responsive Design */
         @media (max-width: 768px) {
-            .chat-container {
-                height: 95vh;
+            .app-container {
+                height: 100vh;
+                border-radius: 0;
+            }
+            
+            .sidebar {
+                position: absolute;
+                z-index: 100;
+                height: 100%;
+                transform: translateX(-100%);
+            }
+            
+            .sidebar.open {
+                transform: translateX(0);
             }
             
             .message {
                 max-width: 90%;
             }
             
-            .controls {
+            .input-controls {
                 flex-direction: column;
                 gap: 10px;
+            }
+            
+            .control-group select, .control-group input {
+                min-width: 100%;
+            }
+        }
+
+        /* Dark mode support */
+        @media (prefers-color-scheme: dark) {
+            .chat-area, .chat-header, .input-container {
+                background: #1e293b;
+                color: white;
+            }
+            
+            .assistant-message {
+                background: #334155;
+                color: white;
+                border-color: #475569;
+            }
+            
+            .message-input, .control-group select, .control-group input {
+                background: #334155;
+                color: white;
+                border-color: #475569;
+            }
+            
+            .control-btn {
+                color: #cbd5e1;
+            }
+            
+            .control-btn:hover {
+                background: #475569;
+                color: white;
             }
         }
     </style>
 </head>
 <body>
-    <div class="chat-container">
-        <div class="header">
-            <div class="logo">
-                <h1>DeepSeek Chatbot</h1>
-            </div>
-            <div class="api-status">
-                <div class="status-indicator"></div>
-                <span>Connected</span>
-            </div>
-        </div>
-        
-        <div class="controls">
-            <div class="control-group">
-                <label>Max Response Length (tokens):</label>
-                <input type="number" id="maxTokens" value="8000" min="100" max="32000">
-            </div>
-            <div class="control-group">
-                <label>Response Strategy:</label>
-                <select id="responseStrategy">
-                    <option value="streaming">Streaming (Real-time)</option>
-                    <option value="complete">Complete Response</option>
-                </select>
-            </div>
-        </div>
-        
-        <div class="messages-container" id="messagesContainer">
-            <div class="message assistant-message">
-                <div class="message-header">
-                    <span>DeepSeek Assistant</span>
-                    <span>Just now</span>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i class="fas fa-robot logo-icon"></i>
+                    <h1>DeepSeek Chat</h1>
                 </div>
-                <p>Hello! I'm your DeepSeek AI assistant with enhanced code display capabilities.</p>
-                
-                <div class="features">
-                    <h3>New Features:</h3>
-                    <ul>
-                        <li>Beautiful code blocks with line numbers</li>
-                        <li>Copy-to-clipboard functionality</li>
-                        <li>Proper syntax highlighting for all languages</li>
-                    </ul>
-                </div>
-                
-                <p>How can I help you today?</p>
+                <button class="toggle-sidebar" id="toggleSidebar">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
             </div>
             
-            <div class="typing-indicator" id="typingIndicator">
-                <div class="typing-dots">
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
-                    <div class="typing-dot"></div>
+            <div class="api-config">
+                <h3><i class="fas fa-key"></i> API Configuration</h3>
+                <input type="password" class="api-key-input" id="apiKeyInput" placeholder="Enter your DeepSeek API key">
+                <button class="btn btn-primary" id="connectButton">
+                    <i class="fas fa-plug"></i> Connect to API
+                </button>
+                <button class="btn btn-secondary" id="clearChatButton">
+                    <i class="fas fa-broom"></i> Clear Chat
+                </button>
+                
+                <div class="connection-status">
+                    <div class="status-indicator" id="statusIndicator"></div>
+                    <span id="statusText">Not Connected</span>
                 </div>
+            </div>
+            
+            <div class="chat-history">
+                <div class="history-item active">
+                    <i class="fas fa-message history-icon"></i>
+                    <span>Current Conversation</span>
+                </div>
+                <div class="history-item">
+                    <i class="fas fa-message history-icon"></i>
+                    <span>Python Code Help</span>
+                </div>
+                <div class="history-item">
+                    <i class="fas fa-message history-icon"></i>
+                    <span>API Integration</span>
+                </div>
+                <div class="history-item">
+                    <i class="fas fa-message history-icon"></i>
+                    <span>Web Development</span>
+                </div>
+            </div>
+            
+            <div class="sidebar-footer">
+                Powered by DeepSeek API v1.0
             </div>
         </div>
         
-        <div class="input-container">
-            <div class="input-area">
-                <textarea class="message-input" id="messageInput" placeholder="Type your message... (Shift+Enter for new line)" rows="1"></textarea>
-                <button class="send-btn" id="sendButton">Send</button>
+        <!-- Main Chat Area -->
+        <div class="chat-area">
+            <div class="chat-header">
+                <div class="chat-title">DeepSeek AI Assistant</div>
+                <div class="chat-controls">
+                    <button class="control-btn" id="menuButton">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <button class="control-btn" id="themeButton">
+                        <i class="fas fa-moon"></i>
+                    </button>
+                    <button class="control-btn" id="settingsButton">
+                        <i class="fas fa-cog"></i>
+                    </button>
+                </div>
             </div>
-            <div class="input-hint">Shift+Enter for new line</div>
+            
+            <div class="messages-container" id="messagesContainer">
+                <div class="welcome-message">
+                    <h2>Welcome to DeepSeek Chat</h2>
+                    <p>I'm your AI assistant with enhanced code display capabilities. Connect your API key to start chatting, or try the demo mode to explore features.</p>
+                    
+                    <div class="features-grid">
+                        <div class="feature-card">
+                            <div class="feature-icon">
+                                <i class="fas fa-code"></i>
+                            </div>
+                            <h3>Code Display</h3>
+                            <p>Beautiful syntax highlighting with line numbers</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">
+                                <i class="fas fa-copy"></i>
+                            </div>
+                            <h3>Copy Code</h3>
+                            <p>One-click copying for code blocks</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">
+                                <i class="fas fa-bolt"></i>
+                            </div>
+                            <h3>Fast Responses</h3>
+                            <p>Streaming responses for real-time interaction</p>
+                        </div>
+                        <div class="feature-card">
+                            <div class="feature-icon">
+                                <i class="fas fa-history"></i>
+                            </div>
+                            <h3>Chat History</h3>
+                            <p>Save and revisit your conversations</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="typing-indicator" id="typingIndicator">
+                    <div class="typing-dots">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="input-container">
+                <div class="input-controls">
+                    <div class="control-group">
+                        <label>Max Tokens:</label>
+                        <input type="number" id="maxTokens" value="4000" min="100" max="32000">
+                    </div>
+                    <div class="control-group">
+                        <label>Temperature:</label>
+                        <input type="number" id="temperature" value="0.7" min="0" max="1" step="0.1">
+                    </div>
+                    <div class="control-group">
+                        <label>Response Strategy:</label>
+                        <select id="responseStrategy">
+                            <option value="streaming">Streaming (Real-time)</option>
+                            <option value="complete">Complete Response</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="input-area">
+                    <textarea class="message-input" id="messageInput" placeholder="Type your message... (Shift+Enter for new line)" rows="1"></textarea>
+                    <button class="send-btn" id="sendButton">
+                        <i class="fas fa-paper-plane"></i> Send
+                    </button>
+                </div>
+                <div class="input-hint">Shift+Enter for new line • Enter to send</div>
+            </div>
         </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // DOM Elements
             const messagesContainer = document.getElementById('messagesContainer');
             const messageInput = document.getElementById('messageInput');
             const sendButton = document.getElementById('sendButton');
             const typingIndicator = document.getElementById('typingIndicator');
+            const apiKeyInput = document.getElementById('apiKeyInput');
+            const connectButton = document.getElementById('connectButton');
+            const clearChatButton = document.getElementById('clearChatButton');
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            const toggleSidebar = document.getElementById('toggleSidebar');
+            const sidebar = document.getElementById('sidebar');
+            const menuButton = document.getElementById('menuButton');
+            const themeButton = document.getElementById('themeButton');
             const maxTokensInput = document.getElementById('maxTokens');
+            const temperatureInput = document.getElementById('temperature');
             const responseStrategySelect = document.getElementById('responseStrategy');
             
-            // Auto-resize textarea
-            messageInput.addEventListener('input', function() {
-                this.style.height = 'auto';
-                this.style.height = (this.scrollHeight) + 'px';
-            });
+            // App State
+            let isConnected = false;
+            let apiKey = '';
+            let chatHistory = [];
+            let currentChatId = generateChatId();
             
-            // Send message on button click
-            sendButton.addEventListener('click', sendMessage);
+            // Initialize the app
+            function init() {
+                loadApiKey();
+                setupEventListeners();
+                updateConnectionStatus();
+                scrollToBottom();
+            }
             
-            // Send message on Enter (but allow Shift+Enter for new line)
-            messageInput.addEventListener('keydown', function(e) {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
+            // Set up event listeners
+            function setupEventListeners() {
+                // Send message on button click
+                sendButton.addEventListener('click', sendMessage);
+                
+                // Send message on Enter (but allow Shift+Enter for new line)
+                messageInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                    }
+                });
+                
+                // Auto-resize textarea
+                messageInput.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = (this.scrollHeight) + 'px';
+                });
+                
+                // API connection
+                connectButton.addEventListener('click', toggleConnection);
+                
+                // Clear chat
+                clearChatButton.addEventListener('click', clearChat);
+                
+                // Sidebar toggle
+                toggleSidebar.addEventListener('click', toggleSidebarView);
+                menuButton.addEventListener('click', toggleSidebarView);
+                
+                // Theme toggle
+                themeButton.addEventListener('click', toggleTheme);
+            }
+            
+            // Load API key from localStorage
+            function loadApiKey() {
+                const savedApiKey = localStorage.getItem('deepseekApiKey');
+                if (savedApiKey) {
+                    apiKeyInput.value = savedApiKey;
+                    apiKey = savedApiKey;
+                    isConnected = true;
+                    updateConnectionStatus();
                 }
-            });
+            }
             
-            // Function to send message
+            // Toggle API connection
+            function toggleConnection() {
+                if (isConnected) {
+                    // Disconnect
+                    apiKey = '';
+                    isConnected = false;
+                    apiKeyInput.value = '';
+                    localStorage.removeItem('deepseekApiKey');
+                } else {
+                    // Connect
+                    apiKey = apiKeyInput.value.trim();
+                    if (!apiKey) {
+                        showMessage('Please enter a valid API key', 'error');
+                        return;
+                    }
+                    
+                    // Test the API key
+                    testApiKey(apiKey).then(valid => {
+                        if (valid) {
+                            isConnected = true;
+                            localStorage.setItem('deepseekApiKey', apiKey);
+                            showMessage('Successfully connected to DeepSeek API!', 'success');
+                        } else {
+                            showMessage('Invalid API key. Please check and try again.', 'error');
+                        }
+                        updateConnectionStatus();
+                    });
+                }
+                
+                updateConnectionStatus();
+            }
+            
+            // Test API key validity
+            async function testApiKey(key) {
+                // In a real implementation, this would make an actual API call
+                // For demo purposes, we'll simulate API validation
+                return new Promise(resolve => {
+                    setTimeout(() => {
+                        resolve(key.length > 10); // Simple validation for demo
+                    }, 1000);
+                });
+            }
+            
+            // Update connection status UI
+            function updateConnectionStatus() {
+                if (isConnected) {
+                    statusIndicator.classList.add('connected');
+                    statusText.textContent = 'Connected';
+                    connectButton.innerHTML = '<i class="fas fa-unlink"></i> Disconnect';
+                } else {
+                    statusIndicator.classList.remove('connected');
+                    statusText.textContent = 'Not Connected';
+                    connectButton.innerHTML = '<i class="fas fa-plug"></i> Connect to API';
+                }
+            }
+            
+            // Send message to API
             function sendMessage() {
                 const message = messageInput.value.trim();
                 if (!message) return;
@@ -421,21 +931,79 @@
                 typingIndicator.style.display = 'block';
                 scrollToBottom();
                 
-                // Simulate API response after a delay
-                setTimeout(() => {
-                    // Hide typing indicator
-                    typingIndicator.style.display = 'none';
-                    
-                    // Generate response based on user message
-                    const response = generateResponse(message);
-                    
-                    // Add assistant message to chat
-                    addMessage(response, 'assistant');
-                }, 1500);
+                // Prepare API request
+                const requestData = {
+                    model: 'deepseek-chat',
+                    messages: [
+                        ...chatHistory,
+                        { role: 'user', content: message }
+                    ],
+                    max_tokens: parseInt(maxTokensInput.value),
+                    temperature: parseFloat(temperatureInput.value),
+                    stream: responseStrategySelect.value === 'streaming'
+                };
+                
+                // Store in chat history
+                chatHistory.push({ role: 'user', content: message });
+                
+                // Send to API or use demo response
+                if (isConnected && apiKey) {
+                    // Real API call would go here
+                    // For now, we'll simulate it
+                    simulateApiCall(message, requestData);
+                } else {
+                    // Demo mode
+                    setTimeout(() => {
+                        typingIndicator.style.display = 'none';
+                        const response = generateDemoResponse(message);
+                        addMessage(response, 'assistant');
+                        chatHistory.push({ role: 'assistant', content: response });
+                    }, 1500);
+                }
             }
             
-            // Function to add message to chat
+            // Simulate API call (replace with real implementation)
+            function simulateApiCall(message, requestData) {
+                // In a real implementation, this would be:
+                /*
+                fetch('https://api.deepseek.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify(requestData)
+                })
+                .then(response => response.json())
+                .then(data => {
+                    typingIndicator.style.display = 'none';
+                    const response = data.choices[0].message.content;
+                    addMessage(response, 'assistant');
+                    chatHistory.push({ role: 'assistant', content: response });
+                })
+                .catch(error => {
+                    typingIndicator.style.display = 'none';
+                    showMessage('Error connecting to API: ' + error.message, 'error');
+                });
+                */
+                
+                // Simulated API response
+                setTimeout(() => {
+                    typingIndicator.style.display = 'none';
+                    const response = generateDemoResponse(message, true);
+                    addMessage(response, 'assistant');
+                    chatHistory.push({ role: 'assistant', content: response });
+                }, 2000);
+            }
+            
+            // Add message to chat UI
             function addMessage(content, sender) {
+                // Remove welcome message if it's the first user message
+                const welcomeMessage = messagesContainer.querySelector('.welcome-message');
+                if (welcomeMessage && sender === 'user') {
+                    welcomeMessage.remove();
+                }
+                
                 const messageDiv = document.createElement('div');
                 messageDiv.className = `message ${sender}-message`;
                 
@@ -447,6 +1015,8 @@
                 // If it's an assistant message with code, format it
                 if (sender === 'assistant' && content.includes('```')) {
                     messageContent = formatCodeBlocks(content);
+                } else {
+                    messageContent = `<p>${content}</p>`;
                 }
                 
                 messageDiv.innerHTML = `
@@ -455,10 +1025,47 @@
                         <span>${timeString}</span>
                     </div>
                     ${messageContent}
+                    <div class="message-actions">
+                        <button class="action-btn copy-message">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                        ${sender === 'assistant' ? `
+                        <button class="action-btn regenerate">
+                            <i class="fas fa-rotate"></i> Regenerate
+                        </button>
+                        ` : ''}
+                    </div>
                 `;
                 
                 messagesContainer.insertBefore(messageDiv, typingIndicator);
                 scrollToBottom();
+                
+                // Add event listeners to action buttons
+                const copyButton = messageDiv.querySelector('.copy-message');
+                copyButton.addEventListener('click', function() {
+                    navigator.clipboard.writeText(content).then(() => {
+                        const originalText = this.innerHTML;
+                        this.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                        setTimeout(() => {
+                            this.innerHTML = originalText;
+                        }, 2000);
+                    });
+                });
+                
+                if (sender === 'assistant') {
+                    const regenerateButton = messageDiv.querySelector('.regenerate');
+                    regenerateButton.addEventListener('click', function() {
+                        // Remove the current assistant message
+                        messageDiv.remove();
+                        
+                        // Resend the last user message
+                        const lastUserMessage = chatHistory[chatHistory.length - 2];
+                        if (lastUserMessage && lastUserMessage.role === 'user') {
+                            messageInput.value = lastUserMessage.content;
+                            sendMessage();
+                        }
+                    });
+                }
                 
                 // Add copy functionality to code blocks
                 if (sender === 'assistant') {
@@ -467,10 +1074,10 @@
                             button.addEventListener('click', function() {
                                 const codeContent = this.parentElement.nextElementSibling.textContent;
                                 navigator.clipboard.writeText(codeContent).then(() => {
-                                    const originalText = this.textContent;
-                                    this.textContent = 'Copied!';
+                                    const originalText = this.innerHTML;
+                                    this.innerHTML = '<i class="fas fa-check"></i> Copied!';
                                     setTimeout(() => {
-                                        this.textContent = originalText;
+                                        this.innerHTML = originalText;
                                     }, 2000);
                                 });
                             });
@@ -479,7 +1086,7 @@
                 }
             }
             
-            // Function to format code blocks in messages
+            // Format code blocks in messages
             function formatCodeBlocks(content) {
                 // Split content by code blocks
                 const parts = content.split('```');
@@ -507,7 +1114,9 @@
                             <div class="code-block">
                                 <div class="code-header">
                                     <span class="language-tag">${language}</span>
-                                    <button class="copy-btn">Copy Code</button>
+                                    <button class="copy-btn">
+                                        <i class="fas fa-copy"></i> Copy Code
+                                    </button>
                                 </div>
                                 <div class="code-content">${numberedCode}</div>
                             </div>
@@ -518,94 +1127,227 @@
                 return formattedContent;
             }
             
-            // Function to escape HTML
-            function escapeHtml(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
-            }
-            
-            // Function to scroll to bottom of messages
-            function scrollToBottom() {
-                messagesContainer.scrollTop = messagesContainer.scrollHeight;
-            }
-            
-            // Function to generate responses based on user input
-            function generateResponse(userMessage) {
+            // Generate demo responses
+            function generateDemoResponse(userMessage, isApiConnected = false) {
                 const lowerMessage = userMessage.toLowerCase();
                 
                 if (lowerMessage.includes('hello') || lowerMessage.includes('hi')) {
-                    return "Hello! How can I assist you with your coding or other questions today?";
+                    return `Hello! I'm your DeepSeek AI assistant. ${isApiConnected ? 'I\'m connected to the API and ready to help!' : 'I\'m currently in demo mode. Connect your API key for full functionality.'} How can I assist you today?`;
                 } else if (lowerMessage.includes('code') || lowerMessage.includes('example')) {
                     return `Here's an example of the enhanced code display feature:
 
 \`\`\`javascript
-// Fibonacci function with memoization
-function fibonacci(n, memo = {}) {
-  if (n in memo) return memo[n];
-  if (n <= 2) return 1;
+// React component example
+import React, { useState, useEffect } from 'react';
+
+function ChatInterface({ apiKey }) {
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
   
-  memo[n] = fibonacci(n - 1, memo) + fibonacci(n - 2, memo);
-  return memo[n];
+  const sendMessage = async () => {
+    if (!input.trim()) return;
+    
+    const newMessages = [...messages, { role: 'user', content: input }];
+    setMessages(newMessages);
+    setInput('');
+    
+    try {
+      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': \`Bearer \${apiKey}\`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: newMessages,
+          max_tokens: 4000,
+          stream: false
+        })
+      });
+      
+      const data = await response.json();
+      setMessages([...newMessages, data.choices[0].message]);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+  
+  return (
+    <div className="chat-container">
+      {/* Chat UI implementation */}
+    </div>
+  );
 }
 
-// Calculate the first 10 Fibonacci numbers
-for (let i = 1; i <= 10; i++) {
-  console.log(\`Fibonacci(\${i}) = \${fibonacci(i)}\`);
-}
+export default ChatInterface;
 \`\`\`
 
-This code calculates Fibonacci numbers efficiently using memoization. You can copy it using the "Copy Code" button!`;
+This React component demonstrates how to integrate with the DeepSeek API. You can copy the code using the "Copy Code" button!`;
                 } else if (lowerMessage.includes('api') || lowerMessage.includes('connect')) {
                     return `To connect to the DeepSeek API:
 
 1. Get your API key from the DeepSeek Platform
 2. Use the following code to make requests:
 
-\`\`\`javascript
-const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    'Authorization': 'Bearer YOUR_API_KEY'
-  },
-  body: JSON.stringify({
-    model: 'deepseek-chat',
-    messages: [
-      { role: 'user', content: 'Your message here' }
-    ],
-    max_tokens: ${maxTokensInput.value},
-    stream: ${responseStrategySelect.value === 'streaming'}
-  })
-});
+\`\`\`python
+import requests
+
+def query_deepseek(prompt, api_key, max_tokens=4000):
+    headers = {
+        'Content-Type': 'application/json',
+        'Authorization': f'Bearer {api_key}'
+    }
+    
+    data = {
+        'model': 'deepseek-chat',
+        'messages': [{'role': 'user', 'content': prompt}],
+        'max_tokens': max_tokens,
+        'temperature': 0.7
+    }
+    
+    response = requests.post(
+        'https://api.deepseek.com/v1/chat/completions',
+        headers=headers,
+        json=data
+    )
+    
+    if response.status_code == 200:
+        return response.json()['choices'][0]['message']['content']
+    else:
+        raise Exception(f"API error: {response.status_code}")
+
+# Example usage
+api_key = "your_api_key_here"
+response = query_deepseek("Hello, how are you?", api_key)
+print(response)
 \`\`\`
 
-Make sure to replace YOUR_API_KEY with your actual API key.`;
+Make sure to replace "your_api_key_here" with your actual API key.`;
                 } else if (lowerMessage.includes('help')) {
                     return `I can help you with:
 
-• Writing and explaining code
-• Debugging issues
-• API integration questions
+• Writing and explaining code in multiple languages
+• Debugging issues and optimizing performance
+• API integration and development questions
 • Best practices for software development
+• Conceptual explanations of programming topics
 • And much more!
 
-Just ask me anything related to programming or the DeepSeek API.`;
-                } else {
-                    return `I understand you're asking about "${userMessage}". This is a demonstration of the DeepSeek chat interface. In a real implementation, this would connect to the DeepSeek API to generate intelligent responses.
-
-You can try asking me about:
-- Code examples in any programming language
-- How to connect to the DeepSeek API
-- Help with programming concepts
-- Debugging assistance
+${isApiConnected ? 'I\'m currently using the real DeepSeek API to generate responses.' : 'I\'m currently in demo mode. Connect your API key to access the full power of DeepSeek!'}
 
 What specific topic would you like to explore?`;
+                } else {
+                    return `I understand you're asking about "${userMessage}". 
+
+${isApiConnected ? 'I\'m processing your request through the DeepSeek API.' : 'This is a demonstration response. When you connect your API key, I\'ll use the actual DeepSeek API to generate responses.'}
+
+You can ask me about:
+- Code examples in any programming language
+- How to connect to the DeepSeek API
+- Help with programming concepts and debugging
+- Best practices for software development
+
+What would you like to know more about?`;
                 }
             }
             
-            // Initialize with a scroll to bottom
-            scrollToBottom();
+            // Clear chat history
+            function clearChat() {
+                if (confirm('Are you sure you want to clear the chat history?')) {
+                    // Remove all messages except the welcome message
+                    const messages = messagesContainer.querySelectorAll('.message');
+                    messages.forEach(msg => msg.remove());
+                    
+                    // Reset chat history
+                    chatHistory = [];
+                    currentChatId = generateChatId();
+                    
+                    // Show welcome message again
+                    const welcomeMessage = document.createElement('div');
+                    welcomeMessage.className = 'welcome-message';
+                    welcomeMessage.innerHTML = `
+                        <h2>Chat Cleared</h2>
+                        <p>Start a new conversation with the DeepSeek AI assistant.</p>
+                    `;
+                    messagesContainer.prepend(welcomeMessage);
+                    
+                    scrollToBottom();
+                }
+            }
+            
+            // Toggle sidebar view
+            function toggleSidebarView() {
+                sidebar.classList.toggle('collapsed');
+                
+                // Update toggle icon
+                const icon = toggleSidebar.querySelector('i');
+                if (sidebar.classList.contains('collapsed')) {
+                    icon.className = 'fas fa-chevron-right';
+                } else {
+                    icon.className = 'fas fa-chevron-left';
+                }
+                
+                // For mobile, toggle the sidebar open/closed
+                if (window.innerWidth <= 768) {
+                    sidebar.classList.toggle('open');
+                }
+            }
+            
+            // Toggle theme
+            function toggleTheme() {
+                document.body.classList.toggle('dark-theme');
+                
+                // Update theme icon
+                const icon = themeButton.querySelector('i');
+                if (document.body.classList.contains('dark-theme')) {
+                    icon.className = 'fas fa-sun';
+                } else {
+                    icon.className = 'fas fa-moon';
+                }
+            }
+            
+            // Utility functions
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+            
+            function scrollToBottom() {
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            }
+            
+            function generateChatId() {
+                return 'chat_' + Date.now();
+            }
+            
+            function showMessage(text, type) {
+                // Create a toast notification
+                const toast = document.createElement('div');
+                toast.textContent = text;
+                toast.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 12px 20px;
+                    border-radius: 8px;
+                    color: white;
+                    font-weight: 500;
+                    z-index: 1000;
+                    animation: fadeIn 0.3s, fadeOut 0.3s 2.7s;
+                    background: ${type === 'error' ? 'var(--danger)' : 'var(--success)'};
+                `;
+                
+                document.body.appendChild(toast);
+                
+                setTimeout(() => {
+                    toast.remove();
+                }, 3000);
+            }
+            
+            // Initialize the app
+            init();
         });
     </script>
 </body>
