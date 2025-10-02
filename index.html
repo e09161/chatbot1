@@ -190,6 +190,14 @@
             border-bottom-left-radius: 5px;
         }
         
+        .image-file-message {
+            align-self: flex-start;
+            background-color: #fff3e0;
+            color: #e65100;
+            border: 1px dashed #ff9800;
+            border-bottom-left-radius: 5px;
+        }
+        
         .file-info {
             display: flex;
             align-items: center;
@@ -236,6 +244,14 @@
             font-family: 'Courier New', monospace;
             font-size: 14px;
             overflow-x: auto;
+        }
+        
+        .image-preview {
+            max-width: 100%;
+            max-height: 300px;
+            border-radius: 8px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
         }
         
         .code-block {
@@ -459,6 +475,21 @@
             50% { opacity: 0; }
         }
         
+        .retry-btn {
+            background: #ff9800;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        
+        .retry-btn:hover {
+            background: #f57c00;
+        }
+        
         @media (max-width: 900px) {
             .app-container {
                 flex-direction: column;
@@ -535,9 +566,9 @@
             
             <div class="drop-zone" id="dropZone">
                 <p>Drop files here to analyze</p>
-                <div class="file-types">Supports: .txt, .pdf, .doc, .docx, .jpg, .png, .py</div>
+                <div class="file-types">Supports: .txt, .py, .js, .html, .css, .json (text files only)</div>
                 <button class="upload-button" id="fileInputButton">Or click to select files</button>
-                <input type="file" id="fileInput" multiple style="display: none;">
+                <input type="file" id="fileInput" accept=".txt,.py,.js,.html,.css,.json,.md" multiple style="display: none;">
             </div>
             
             <div class="chat-messages" id="chatMessages">
@@ -547,8 +578,10 @@
                     You can:
                     - Type messages and press Enter to send
                     - Use Shift+Enter for a new line
-                    - Drag and drop files for analysis (including Python files)
+                    - Drag and drop text files for analysis (Python, JavaScript, etc.)
                     - View your chat history in the sidebar
+                    
+                    Note: Image files are displayed but cannot be analyzed by the API.
                 </div>
             </div>
             
@@ -648,7 +681,7 @@
             // Test API connection
             async function testApiConnection() {
                 try {
-                    const response = await callDeepSeekAPI('Hello! Please respond with a short greeting to confirm connection.');
+                    const response = await callDeepSeekAPI('Hello! Please respond with a short greeting to confirm connection.', null, false);
                     console.log('DeepSeek API connection successful');
                 } catch (error) {
                     console.error('DeepSeek API connection failed:', error);
@@ -670,10 +703,13 @@
                 messageDiv.className = 'message';
                 
                 if (fileData) {
-                    const isPythonFile = fileData.name.toLowerCase().endsWith('.py') || fileData.type === 'text/x-python';
+                    const isPythonFile = fileData.name.toLowerCase().endsWith('.py');
+                    const isImageFile = fileData.type.startsWith('image/');
                     
                     if (isPythonFile) {
                         messageDiv.classList.add('python-file-message');
+                    } else if (isImageFile) {
+                        messageDiv.classList.add('image-file-message');
                     } else {
                         messageDiv.classList.add('file-message');
                     }
@@ -704,7 +740,7 @@
                     
                     messageDiv.appendChild(fileInfo);
                     
-                    if (fileData.content) {
+                    if (fileData.content && !isImageFile) {
                         if (isPythonFile) {
                             const codeContent = document.createElement('div');
                             codeContent.classList.add('python-code');
@@ -716,6 +752,12 @@
                             fileContent.textContent = fileData.content;
                             messageDiv.appendChild(fileContent);
                         }
+                    } else if (isImageFile && fileData.url) {
+                        const imgPreview = document.createElement('img');
+                        imgPreview.src = fileData.url;
+                        imgPreview.alt = fileData.name;
+                        imgPreview.classList.add('image-preview');
+                        messageDiv.appendChild(imgPreview);
                     }
                     
                     if (text) {
@@ -763,6 +805,8 @@
             
             // Format message with code blocks and syntax highlighting
             function formatMessageWithCode(text) {
+                if (!text) return '';
+                
                 // Replace code blocks with formatted HTML
                 let formattedText = text.replace(/```(\w+)?\n([\s\S]*?)```/g, function(match, lang, code) {
                     const language = lang || 'text';
@@ -787,7 +831,7 @@
             
             // Get file icon based on file type
             function getFileIcon(fileType, fileName) {
-                if (fileName.toLowerCase().endsWith('.py') || fileType === 'text/x-python') {
+                if (fileName.toLowerCase().endsWith('.py')) {
                     return '🐍';
                 } else if (fileType.startsWith('image/')) {
                     return '🖼️';
@@ -795,8 +839,10 @@
                     return '📄';
                 } else if (fileType.includes('document') || fileType.includes('word')) {
                     return '📝';
-                } else if (fileType.includes('text')) {
+                } else if (fileType.includes('text') || fileName.toLowerCase().endsWith('.txt')) {
                     return '📃';
+                } else if (fileName.toLowerCase().endsWith('.js')) {
+                    return '📜';
                 } else {
                     return '📎';
                 }
@@ -828,7 +874,7 @@
                     throw new Error('API key not found. Please enter your DeepSeek API key.');
                 }
                 
-                if (isStreaming) {
+                if (isStreaming && currentStreamController) {
                     currentStreamController.abort();
                 }
                 
@@ -841,11 +887,14 @@
                     
                     // Add current user message
                     let messageContent = userMessage;
-                    if (fileData) {
+                    if (fileData && fileData.content) {
+                        // For text files, include the content in the message
                         messageContent += `\n\nI've uploaded a file: ${fileData.name} (${fileData.type}, ${formatFileSize(fileData.size)})`;
-                        if (fileData.content) {
-                            messageContent += `\n\nFile content:\n${fileData.content.substring(0, 2000)}`; // Limit content length
-                        }
+                        messageContent += `\n\nFile content:\n\`\`\`${getFileLanguage(fileData.name)}\n${fileData.content.substring(0, 3000)}\n\`\`\``;
+                    } else if (fileData) {
+                        // For non-text files (like images), just mention the file
+                        messageContent += `\n\nI've uploaded a file: ${fileData.name} (${fileData.type}, ${formatFileSize(fileData.size)})`;
+                        messageContent += `\n\nNote: This is a ${fileData.type} file. I can describe what I see in the filename and help with related questions.`;
                     }
                     
                     messages.push({ role: 'user', content: messageContent });
@@ -864,7 +913,7 @@
                                 model: DEEPSEEK_MODEL,
                                 messages: messages,
                                 stream: false,
-                                max_tokens: 2048
+                                max_tokens: 4000
                             })
                         });
                         
@@ -902,6 +951,21 @@
                 }
             }
             
+            // Get programming language from filename
+            function getFileLanguage(filename) {
+                const ext = filename.split('.').pop().toLowerCase();
+                const languageMap = {
+                    'py': 'python',
+                    'js': 'javascript',
+                    'html': 'html',
+                    'css': 'css',
+                    'json': 'json',
+                    'txt': 'text',
+                    'md': 'markdown'
+                };
+                return languageMap[ext] || 'text';
+            }
+            
             // Streaming API call
             async function callDeepSeekAPIStream(messages) {
                 return new Promise(async (resolve, reject) => {
@@ -919,7 +983,7 @@
                                 model: DEEPSEEK_MODEL,
                                 messages: messages,
                                 stream: true,
-                                max_tokens: 2048
+                                max_tokens: 4000
                             }),
                             signal: currentStreamController.signal
                         });
@@ -980,10 +1044,10 @@
                         
                         // Apply final syntax highlighting
                         setTimeout(() => {
-                                            contentElement.querySelectorAll('pre code').forEach((block) => {
-                                                hljs.highlightElement(block);
-                                            });
-                                        }, 0);
+                            contentElement.querySelectorAll('pre code').forEach((block) => {
+                                hljs.highlightElement(block);
+                            });
+                        }, 0);
                         
                         isStreaming = false;
                         resolve(fullResponse);
@@ -992,6 +1056,8 @@
                         isStreaming = false;
                         if (error.name !== 'AbortError') {
                             reject(error);
+                        } else {
+                            resolve(''); // Resolve with empty string if aborted
                         }
                     }
                 });
@@ -1022,6 +1088,11 @@
                     const errorDiv = document.createElement('div');
                     errorDiv.classList.add('error-message');
                     errorDiv.textContent = `Error continuing response: ${error.message}`;
+                    const retryBtn = document.createElement('button');
+                    retryBtn.className = 'retry-btn';
+                    retryBtn.textContent = 'Retry';
+                    retryBtn.onclick = () => continueResponse(messageId);
+                    errorDiv.appendChild(retryBtn);
                     chatMessages.appendChild(errorDiv);
                     chatMessages.scrollTop = chatMessages.scrollHeight;
                 }
@@ -1057,6 +1128,11 @@
                     const errorDiv = document.createElement('div');
                     errorDiv.classList.add('error-message');
                     errorDiv.textContent = `Error: ${error.message}`;
+                    const retryBtn = document.createElement('button');
+                    retryBtn.className = 'retry-btn';
+                    retryBtn.textContent = 'Retry';
+                    retryBtn.onclick = () => chatForm.dispatchEvent(new Event('submit'));
+                    errorDiv.appendChild(retryBtn);
                     chatMessages.appendChild(errorDiv);
                     chatMessages.scrollTop = chatMessages.scrollHeight;
                     
@@ -1139,78 +1215,115 @@
                 for (let i = 0; i < files.length; i++) {
                     const file = files[i];
                     
-                    // Check file type
-                    const allowedTypes = [
-                        'text/plain',
-                        'application/pdf',
-                        'application/msword',
-                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-                        'image/jpeg',
-                        'image/png',
-                        'image/gif',
-                        'text/x-python',
-                        'application/x-python-code',
-                        'text/x-script.python'
-                    ];
-                    
-                    const allowedExtensions = ['.txt', '.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png', '.gif', '.py'];
+                    // Check file type - only allow text-based files for analysis
+                    const allowedExtensions = ['.txt', '.py', '.js', '.html', '.css', '.json', '.md'];
                     const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+                    const isTextFile = allowedExtensions.includes(fileExtension);
+                    const isImageFile = file.type.startsWith('image/');
                     
-                    if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(fileExtension)) {
-                        alert(`File type not supported: ${file.name}`);
+                    if (!isTextFile && !isImageFile) {
+                        alert(`File type not supported for analysis: ${file.name}. Please upload text files (txt, py, js, etc.) or images.`);
                         continue;
                     }
                     
-                    // Read file content for text-based files
                     let fileContent = null;
-                    if (file.type.startsWith('text/') || 
-                        file.type.includes('python') || 
-                        fileExtension === '.py' ||
-                        file.type === 'application/x-python-code') {
+                    let fileUrl = null;
+                    
+                    if (isTextFile) {
+                        // Read text file content
                         fileContent = await readFileAsText(file);
+                    } else if (isImageFile) {
+                        // Create object URL for image preview
+                        fileUrl = URL.createObjectURL(file);
                     }
                     
                     // Add file message to chat
-                    addMessage(`Uploaded file: ${file.name}`, 'user', {
+                    const fileMessage = addMessage(`Uploaded file: ${file.name}`, 'user', {
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        content: fileContent,
+                        url: fileUrl
+                    });
+                    
+                    // Only analyze text files with the API
+                    if (isTextFile && fileContent) {
+                        conversationHistory.push({ 
+                            role: 'user', 
+                            content: `I've uploaded a file: ${file.name}. Please analyze it.`,
+                            fileData: {
+                                name: file.name,
+                                type: file.type,
+                                size: file.size
+                            }
+                        });
+                        
+                        try {
+                            // Get response from DeepSeek about the file
+                            const response = await callDeepSeekAPI(`Please analyze this ${getFileLanguage(file.name)} file: ${file.name}`, {
+                                name: file.name,
+                                type: file.type,
+                                size: file.size,
+                                content: fileContent
+                            }, true);
+                            
+                            // Add bot response to conversation history
+                            conversationHistory.push({ role: 'assistant', content: response });
+                            
+                            // Save chat session
+                            saveChatSession();
+                            
+                        } catch (error) {
+                            // Show error message with retry button
+                            const errorDiv = document.createElement('div');
+                            errorDiv.classList.add('error-message');
+                            errorDiv.textContent = `Error analyzing file: ${error.message}`;
+                            const retryBtn = document.createElement('button');
+                            retryBtn.className = 'retry-btn';
+                            retryBtn.textContent = 'Retry';
+                            retryBtn.onclick = () => {
+                                errorDiv.remove();
+                                analyzeFile(file, fileContent);
+                            };
+                            errorDiv.appendChild(retryBtn);
+                            chatMessages.appendChild(errorDiv);
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }
+                    } else if (isImageFile) {
+                        // For images, just add a message that we can't analyze them via API
+                        addMessage(`I can see you uploaded an image (${file.name}). While I can display it, I cannot analyze image content through the DeepSeek API. You can ask me questions about image processing or related topics.`, 'bot');
+                        conversationHistory.push({ 
+                            role: 'user', 
+                            content: `I uploaded an image: ${file.name}`
+                        });
+                        conversationHistory.push({ 
+                            role: 'assistant', 
+                            content: `I can see you uploaded an image (${file.name}). While I can display it, I cannot analyze image content through the DeepSeek API. You can ask me questions about image processing or related topics.`
+                        });
+                        saveChatSession();
+                    }
+                }
+            }
+            
+            // Separate function to analyze files with retry capability
+            async function analyzeFile(file, fileContent) {
+                try {
+                    const response = await callDeepSeekAPI(`Please analyze this ${getFileLanguage(file.name)} file: ${file.name}`, {
                         name: file.name,
                         type: file.type,
                         size: file.size,
                         content: fileContent
-                    });
+                    }, true);
                     
-                    conversationHistory.push({ 
-                        role: 'user', 
-                        content: `I've uploaded a file: ${file.name}. Please analyze it.`,
-                        fileData: {
-                            name: file.name,
-                            type: file.type,
-                            size: file.size
-                        }
-                    });
+                    conversationHistory.push({ role: 'assistant', content: response });
+                    saveChatSession();
                     
-                    try {
-                        // Get response from DeepSeek about the file
-                        const response = await callDeepSeekAPI(`Please analyze this file: ${file.name}`, {
-                            name: file.name,
-                            type: file.type,
-                            size: file.size,
-                            content: fileContent
-                        }, true);
-                        
-                        // Add bot response to conversation history
-                        conversationHistory.push({ role: 'assistant', content: response });
-                        
-                        // Save chat session
-                        saveChatSession();
-                        
-                    } catch (error) {
-                        // Show error message
-                        const errorDiv = document.createElement('div');
-                        errorDiv.classList.add('error-message');
-                        errorDiv.textContent = `Error analyzing file: ${error.message}`;
-                        chatMessages.appendChild(errorDiv);
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
-                    }
+                } catch (error) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.classList.add('error-message');
+                    errorDiv.textContent = `Error analyzing file: ${error.message}`;
+                    chatMessages.appendChild(errorDiv);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
                 }
             }
             
