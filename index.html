@@ -1045,15 +1045,10 @@
                 // API connection
                 saveApiKeyButton.addEventListener('click', toggleConnection);
                 
-                // Send message on button click
-                sendButton.addEventListener('click', sendMessage);
-                
-                // Send message on Enter (but allow Shift+Enter for new line)
-                userInput.addEventListener('keydown', function(e) {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        sendMessage();
-                    }
+                // Send message on form submit
+                chatForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    sendMessage();
                 });
                 
                 // Auto-resize textarea
@@ -1137,6 +1132,7 @@
                     apiKeyInput.value = '••••••••••••••••';
                     enableChat();
                     updateConnectionStatus();
+                    isConnected = true;
                 }
             }
             
@@ -1178,35 +1174,37 @@
                         return;
                     }
                     
-                    // Test the API key
-                    testApiKey(key).then(valid => {
-                        if (valid) {
-                            apiKey = key;
-                            isConnected = true;
-                            localStorage.setItem('deepseekApiKey', apiKey);
-                            apiKeyInput.type = 'password';
-                            apiKeyInput.value = '••••••••••••••••';
-                            enableChat();
-                            showMessage('Successfully connected to DeepSeek API!', 'success');
-                        } else {
-                            showMessage('Invalid API key. Please check and try again.', 'error');
-                        }
-                        updateConnectionStatus();
-                    });
+                    if (key.startsWith('sk-') || key.length > 20) {
+                        apiKey = key;
+                        isConnected = true;
+                        localStorage.setItem('deepseekApiKey', apiKey);
+                        apiKeyInput.value = '••••••••••••••••';
+                        enableChat();
+                        showMessage('Successfully connected to DeepSeek API!', 'success');
+                        
+                        // Test the API connection
+                        testApiConnection();
+                    } else {
+                        showMessage('Please enter a valid DeepSeek API key starting with "sk-"', 'error');
+                        return;
+                    }
                 }
                 
                 updateConnectionStatus();
             }
             
-            // Test API key validity
-            async function testApiKey(key) {
-                // In a real implementation, this would make an actual API call
-                // For demo purposes, we'll simulate API validation
-                return new Promise(resolve => {
-                    setTimeout(() => {
-                        resolve(key.length > 10); // Simple validation for demo
-                    }, 1000);
-                });
+            // Test API connection
+            async function testApiConnection() {
+                try {
+                    // Use a simple test message to verify the connection
+                    const testResponse = await callDeepSeekAPI('Hello! Please respond with a short greeting to confirm connection.', null, false);
+                    console.log('DeepSeek API connection successful');
+                } catch (error) {
+                    console.error('DeepSeek API connection failed:', error);
+                    addMessage(`API Connection Error: ${error.message}`, 'bot');
+                    updateConnectionStatus();
+                    isConnected = false;
+                }
             }
             
             // Enable chat input after API key is set
@@ -1355,17 +1353,10 @@
                                 sendMessage();
                             }
                         });
-                        
-                        // Add continue button for incomplete responses
-                        if (text.trim().endsWith('...') || text.length > 1900) {
-                            const continueBtn = document.createElement('button');
-                            continueBtn.className = 'continue-btn';
-                            continueBtn.textContent = 'Continue';
-                            continueBtn.onclick = () => continueResponse(messageId);
-                            messageDiv.appendChild(continueBtn);
-                        }
                     } else {
-                        messageDiv.textContent = text;
+                        const contentDiv = document.createElement('div');
+                        contentDiv.textContent = text;
+                        messageDiv.appendChild(contentDiv);
                         
                         // Add message actions for user messages
                         const messageActions = document.createElement('div');
@@ -1430,20 +1421,28 @@
                 
                 for (let i = 0; i < parts.length; i++) {
                     if (i % 2 === 0) {
-                        // Regular text
-                        formattedContent += `<p>${parts[i]}</p>`;
+                        // Regular text - replace line breaks with <br>
+                        formattedContent += parts[i].split('\n').map(line => {
+                            return line ? `<p>${line}</p>` : '';
+                        }).join('');
                     } else {
                         // Code block - extract language if specified
-                        const firstLine = parts[i].split('\n')[0];
-                        const language = /^[a-zA-Z]+$/.test(firstLine.trim()) ? firstLine.trim() : 'text';
-                        const codeContent = language !== 'text' ? parts[i].substring(firstLine.length + 1) : parts[i];
+                        const lines = parts[i].split('\n');
+                        let language = 'text';
+                        let codeContent = parts[i];
+                        
+                        // Check if first line is a language identifier
+                        if (lines.length > 0 && /^[a-zA-Z+]+$/.test(lines[0].trim())) {
+                            language = lines[0].trim();
+                            codeContent = lines.slice(1).join('\n');
+                        }
                         
                         // Create line numbers
-                        const lines = codeContent.split('\n');
+                        const codeLines = codeContent.split('\n');
                         let numberedCode = '';
                         
-                        for (let j = 0; j < lines.length; j++) {
-                            numberedCode += `<div><span class="line-number">${j + 1}</span>${escapeHtml(lines[j])}</div>`;
+                        for (let j = 0; j < codeLines.length; j++) {
+                            numberedCode += `<div><span class="line-number">${j + 1}</span>${escapeHtml(codeLines[j])}</div>`;
                         }
                         
                         formattedContent += `
@@ -1462,9 +1461,6 @@
                 
                 // Replace inline code
                 formattedContent = formattedContent.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
-                
-                // Replace line breaks
-                formattedContent = formattedContent.replace(/\n/g, '<br>');
                 
                 return formattedContent;
             }
@@ -1546,16 +1542,21 @@
                     
                     messages.push({ role: 'user', content: messageContent });
                     
+                    // Create headers with proper encoding
+                    const headers = new Headers();
+                    headers.append('Content-Type', 'application/json; charset=utf-8');
+                    
+                    // Ensure the API key is properly encoded
+                    const encodedApiKey = encodeURIComponent(apiKey);
+                    headers.append('Authorization', `Bearer ${apiKey}`);
+                    
                     if (stream) {
-                        return await callDeepSeekAPIStream(messages);
+                        return await callDeepSeekAPIStream(messages, headers);
                     } else {
                         // Make actual API call to DeepSeek (non-streaming)
                         const response = await fetch(DEEPSEEK_API_URL, {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${apiKey}`
-                            },
+                            headers: headers,
                             body: JSON.stringify({
                                 model: DEEPSEEK_MODEL,
                                 messages: messages,
@@ -1566,8 +1567,15 @@
                         });
                         
                         if (!response.ok) {
-                            const errorData = await response.json().catch(() => ({}));
-                            throw new Error(`API error: ${response.status} - ${errorData.error?.message || response.statusText}`);
+                            const errorText = await response.text();
+                            let errorMessage = `API error: ${response.status}`;
+                            try {
+                                const errorData = JSON.parse(errorText);
+                                errorMessage = `API error: ${response.status} - ${errorData.error?.message || errorText}`;
+                            } catch {
+                                errorMessage = `API error: ${response.status} - ${errorText}`;
+                            }
+                            throw new Error(errorMessage);
                         }
                         
                         const data = await response.json();
@@ -1615,7 +1623,7 @@
             }
             
             // Streaming API call
-            async function callDeepSeekAPIStream(messages) {
+            async function callDeepSeekAPIStream(messages, headers) {
                 return new Promise(async (resolve, reject) => {
                     isStreaming = true;
                     currentStreamController = new AbortController();
@@ -1623,10 +1631,7 @@
                     try {
                         const response = await fetch(DEEPSEEK_API_URL, {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                'Authorization': `Bearer ${apiKey}`
-                            },
+                            headers: headers,
                             body: JSON.stringify({
                                 model: DEEPSEEK_MODEL,
                                 messages: messages,
@@ -1638,8 +1643,15 @@
                         });
                         
                         if (!response.ok) {
-                            const errorData = await response.json().catch(() => ({}));
-                            throw new Error(`API error: ${response.status} - ${errorData.error?.message || response.statusText}`);
+                            const errorText = await response.text();
+                            let errorMessage = `API error: ${response.status}`;
+                            try {
+                                const errorData = JSON.parse(errorText);
+                                errorMessage = `API error: ${response.status} - ${errorData.error?.message || errorText}`;
+                            } catch {
+                                errorMessage = `API error: ${response.status} - ${errorText}`;
+                            }
+                            throw new Error(errorMessage);
                         }
                         
                         const reader = response.body.getReader();
@@ -1712,41 +1724,6 @@
                 });
             }
             
-            // Continue incomplete response
-            async function continueResponse(messageId) {
-                if (!apiKey) return;
-                
-                try {
-                    const lastMessage = conversationHistory[conversationHistory.length - 1];
-                    if (lastMessage && lastMessage.role === 'assistant') {
-                        const continuePrompt = "Please continue from where you left off.";
-                        
-                        // Add continue message to conversation
-                        conversationHistory.push({ role: 'user', content: continuePrompt });
-                        
-                        // Get continued response
-                        const response = await callDeepSeekAPI(continuePrompt, null, true);
-                        
-                        // Add to conversation history
-                        conversationHistory.push({ role: 'assistant', content: response });
-                        
-                        // Save chat session
-                        saveChatSession();
-                    }
-                } catch (error) {
-                    const errorDiv = document.createElement('div');
-                    errorDiv.classList.add('error-message');
-                    errorDiv.textContent = `Error continuing response: ${error.message}`;
-                    const retryBtn = document.createElement('button');
-                    retryBtn.className = 'retry-btn';
-                    retryBtn.textContent = 'Retry';
-                    retryBtn.onclick = () => continueResponse(messageId);
-                    errorDiv.appendChild(retryBtn);
-                    chatMessages.appendChild(errorDiv);
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }
-            }
-            
             // Send message to API
             function sendMessage() {
                 const message = userInput.value.trim();
@@ -1779,14 +1756,15 @@
                         const retryBtn = document.createElement('button');
                         retryBtn.className = 'retry-btn';
                         retryBtn.textContent = 'Retry';
-                        retryBtn.onclick = () => chatForm.dispatchEvent(new Event('submit'));
+                        retryBtn.onclick = () => sendMessage();
                         errorDiv.appendChild(retryBtn);
                         chatMessages.appendChild(errorDiv);
                         chatMessages.scrollTop = chatMessages.scrollHeight;
                         
                         // Update API status on error
                         if (error.message.includes('API key') || error.message.includes('401')) {
-                            updateApiStatus('disconnected');
+                            isConnected = false;
+                            updateConnectionStatus();
                         }
                     });
                     
@@ -1833,7 +1811,7 @@
                     }
                     
                     // Add file message to chat
-                    const fileMessage = addMessage(`Uploaded file: ${file.name}`, 'user', {
+                    addMessage(`Uploaded file: ${file.name}`, 'user', {
                         name: file.name,
                         type: file.type,
                         size: file.size,
@@ -1845,12 +1823,7 @@
                     if (isTextFile && fileContent) {
                         conversationHistory.push({ 
                             role: 'user', 
-                            content: `I've uploaded a file: ${file.name}. Please analyze it.`,
-                            fileData: {
-                                name: file.name,
-                                type: file.type,
-                                size: file.size
-                            }
+                            content: `I've uploaded a file: ${file.name}. Please analyze it.`
                         });
                         
                         try {
@@ -2011,11 +1984,6 @@
                     icon.className = 'fas fa-chevron-right';
                 } else {
                     icon.className = 'fas fa-chevron-left';
-                }
-                
-                // For mobile, toggle the sidebar open/closed
-                if (window.innerWidth <= 768) {
-                    sidebar.classList.toggle('open');
                 }
             }
             
