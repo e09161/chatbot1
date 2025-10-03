@@ -41,6 +41,12 @@
             justify-content: center;
             align-items: center;
             padding: 20px;
+            transition: background 0.3s, color 0.3s;
+        }
+        
+        body.dark-theme {
+            background: linear-gradient(135deg, #0f172a, #1e293b, #334155);
+            color: #e2e8f0;
         }
         
         .app-container {
@@ -61,6 +67,10 @@
             flex-direction: column;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
             transition: width 0.3s ease;
+        }
+        
+        .dark-theme .sidebar {
+            background: #0f172a;
         }
         
         .sidebar.collapsed {
@@ -261,6 +271,12 @@
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            transition: background-color 0.3s;
+        }
+        
+        .dark-theme .chat-container {
+            background-color: rgba(15, 23, 42, 0.95);
+            color: #e2e8f0;
         }
         
         .chat-header {
@@ -348,6 +364,12 @@
             border: 1px solid var(--gray-light);
         }
         
+        .dark-theme .bot-message {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            border-color: #334155;
+        }
+        
         .bot-message-content {
             width: 100%;
         }
@@ -389,6 +411,11 @@
             color: var(--dark);
         }
         
+        .dark-theme .bot-message .action-btn {
+            background: #334155;
+            color: #e2e8f0;
+        }
+        
         .action-btn:hover {
             background: rgba(0, 0, 0, 0.2);
         }
@@ -401,6 +428,12 @@
             border-bottom-left-radius: 5px;
         }
         
+        .dark-theme .file-message {
+            background-color: #1e3a5f;
+            color: #93c5fd;
+            border-color: #3b82f6;
+        }
+        
         .python-file-message {
             align-self: flex-start;
             background-color: #e8f5e9;
@@ -409,12 +442,10 @@
             border-bottom-left-radius: 5px;
         }
         
-        .image-file-message {
-            align-self: flex-start;
-            background-color: #fff3e0;
-            color: #e65100;
-            border: 1px dashed #ff9800;
-            border-bottom-left-radius: 5px;
+        .dark-theme .python-file-message {
+            background-color: #1b4332;
+            color: #86efac;
+            border-color: #16a34a;
         }
         
         .file-info {
@@ -442,6 +473,10 @@
             color: #666;
         }
         
+        .dark-theme .file-size {
+            color: #94a3b8;
+        }
+        
         .file-content {
             margin-top: 10px;
             padding: 10px;
@@ -452,6 +487,11 @@
             font-size: 14px;
             font-family: 'Courier New', monospace;
             white-space: pre-wrap;
+        }
+        
+        .dark-theme .file-content {
+            background: #0f172a;
+            color: #e2e8f0;
         }
         
         .python-code {
@@ -465,12 +505,10 @@
             overflow-x: auto;
         }
         
-        .image-preview {
-            max-width: 100%;
-            max-height: 300px;
-            border-radius: 8px;
-            margin-top: 10px;
-            border: 1px solid #ddd;
+        .dark-theme .python-code {
+            background: #0f172a;
+            border-left-color: #16a34a;
+            color: #e2e8f0;
         }
         
         .code-block {
@@ -481,6 +519,10 @@
             margin: 10px 0;
             overflow-x: auto;
             position: relative;
+        }
+        
+        .dark-theme .code-block {
+            background: #0f172a;
         }
         
         .code-header {
@@ -558,6 +600,12 @@
             padding: 15px;
             border-top: 1px solid #eee;
             background-color: white;
+            transition: background-color 0.3s, border-color 0.3s;
+        }
+        
+        .dark-theme .chat-input-container {
+            background-color: #1e293b;
+            border-color: #334155;
         }
         
         .model-controls {
@@ -580,6 +628,10 @@
             font-weight: 500;
         }
         
+        .dark-theme .model-control label {
+            color: #94a3b8;
+        }
+        
         .model-control select, .model-control input {
             padding: 6px 10px;
             border: 1px solid var(--gray-light);
@@ -587,6 +639,14 @@
             font-size: 0.85rem;
             background: white;
             min-width: 120px;
+            transition: background-color 0.3s, border-color 0.3s, color 0.3s;
+        }
+        
+        .dark-theme .model-control select, 
+        .dark-theme .model-control input {
+            background: #0f172a;
+            border-color: #334155;
+            color: #e2e8f0;
         }
         
         .chat-input-form {
@@ -607,11 +667,17 @@
             border-radius: 25px;
             outline: none;
             font-size: 16px;
-            transition: border-color 0.3s;
+            transition: border-color 0.3s, background-color 0.3s, color 0.3s;
             resize: none;
             min-height: 50px;
             max-height: 150px;
             line-height: 1.4;
+        }
+        
+        .dark-theme .chat-input {
+            background: #0f172a;
+            border-color: #334155;
+            color: #e2e8f0;
         }
         
         .chat-input:focus {
@@ -625,6 +691,10 @@
             font-size: 12px;
             color: #999;
             pointer-events: none;
+        }
+        
+        .dark-theme .input-hint {
+            color: #64748b;
         }
         
         .input-actions {
@@ -680,6 +750,12 @@
             border: 1px solid #bbdefb;
         }
         
+        .dark-theme .attached-file {
+            background: #1e3a5f;
+            border-color: #3b82f6;
+            color: #93c5fd;
+        }
+        
         .remove-file {
             background: none;
             border: none;
@@ -703,6 +779,11 @@
             border-bottom-left-radius: 5px;
             font-style: italic;
             display: none;
+        }
+        
+        .dark-theme .typing-indicator {
+            background-color: #334155;
+            color: #94a3b8;
         }
         
         .typing-dots {
@@ -736,15 +817,29 @@
             border: 1px solid #ffcdd2;
         }
         
+        .dark-theme .error-message {
+            background-color: #431418;
+            color: #fca5a5;
+            border-color: #7f1d1d;
+        }
+        
         .welcome-message {
             text-align: center;
             padding: 30px 20px;
             color: var(--gray);
         }
         
+        .dark-theme .welcome-message {
+            color: #94a3b8;
+        }
+        
         .welcome-message h2 {
             margin-bottom: 10px;
             color: var(--dark);
+        }
+        
+        .dark-theme .welcome-message h2 {
+            color: #e2e8f0;
         }
         
         .welcome-message p {
@@ -767,7 +862,12 @@
             border-radius: 10px;
             text-align: center;
             box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
-            transition: transform 0.2s;
+            transition: transform 0.2s, background-color 0.3s;
+        }
+        
+        .dark-theme .feature-card {
+            background: #1e293b;
+            color: #e2e8f0;
         }
         
         .feature-card:hover {
@@ -790,84 +890,8 @@
             color: var(--gray);
         }
         
-        .image-paste-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity 0.3s, visibility 0.3s;
-        }
-        
-        .image-paste-overlay.active {
-            opacity: 1;
-            visibility: visible;
-        }
-        
-        .image-paste-container {
-            background: white;
-            border-radius: 15px;
-            padding: 30px;
-            max-width: 500px;
-            width: 90%;
-            text-align: center;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        }
-        
-        .image-paste-container h3 {
-            margin-bottom: 15px;
-            color: var(--dark);
-        }
-        
-        .image-paste-container p {
-            margin-bottom: 20px;
-            color: var(--gray);
-        }
-        
-        .image-paste-area {
-            border: 2px dashed var(--primary);
-            border-radius: 10px;
-            padding: 40px 20px;
-            margin-bottom: 20px;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        
-        .image-paste-area:hover {
-            background: #f0f7ff;
-        }
-        
-        .image-paste-icon {
-            font-size: 3rem;
-            color: var(--primary);
-            margin-bottom: 15px;
-        }
-        
-        .image-paste-buttons {
-            display: flex;
-            gap: 10px;
-            justify-content: center;
-        }
-        
-        .paste-cancel-btn {
-            background: var(--gray-light);
-            color: var(--dark);
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-        
-        .paste-cancel-btn:hover {
-            background: #d1d5db;
+        .dark-theme .feature-card p {
+            color: #94a3b8;
         }
         
         @media (max-width: 900px) {
@@ -970,7 +994,7 @@
             <div class="chat-header">
                 <div class="chat-header-content">
                     <h1>DeepSeek Chatbot</h1>
-                    <p>Powered by DeepSeek API | Attach files or paste images to your prompts</p>
+                    <p>Powered by DeepSeek API | Attach files to your prompts</p>
                 </div>
                 <div class="chat-controls">
                     <button class="control-btn" id="menuButton">
@@ -1011,10 +1035,10 @@
                         </div>
                         <div class="feature-card">
                             <div class="feature-icon">
-                                <i class="fas fa-image"></i>
+                                <i class="fas fa-file"></i>
                             </div>
-                            <h3>Image Analysis</h3>
-                            <p>Paste images directly for analysis</p>
+                            <h3>File Analysis</h3>
+                            <p>Upload text files for analysis</p>
                         </div>
                     </div>
                 </div>
@@ -1034,7 +1058,6 @@
                         <label>Model:</label>
                         <select id="modelSelect">
                             <option value="deepseek-chat">DeepSeek Chat</option>
-                            <option value="deepseek-vision">DeepSeek Vision</option>
                         </select>
                     </div>
                     <div class="model-control">
@@ -1058,36 +1081,20 @@
                 
                 <form class="chat-input-form" id="chatForm">
                     <div class="chat-input-wrapper">
-                        <textarea class="chat-input" id="userInput" placeholder="Type your message... (Shift+Enter for new line, Ctrl+V to paste images)" disabled></textarea>
-                        <div class="input-hint">Shift+Enter for new line, Ctrl+V to paste images</div>
+                        <textarea class="chat-input" id="userInput" placeholder="Type your message... (Enter to send, Shift+Enter for new line)" disabled></textarea>
+                        <div class="input-hint">Enter to send, Shift+Enter for new line</div>
                     </div>
                     
                     <div class="input-actions">
                         <button type="button" class="file-attach-btn" id="fileAttachBtn" disabled>
                             <i class="fas fa-paperclip"></i>
                         </button>
-                        <input type="file" id="fileInput" accept=".txt,.py,.js,.html,.css,.json,.md,image/*" multiple style="display: none;">
+                        <input type="file" id="fileInput" accept=".txt,.py,.js,.html,.css,.json,.md" multiple style="display: none;">
                         <button type="submit" class="send-button" id="sendButton" disabled>
                             <i class="fas fa-paper-plane"></i>
                         </button>
                     </div>
                 </form>
-            </div>
-        </div>
-    </div>
-
-    <div class="image-paste-overlay" id="imagePasteOverlay">
-        <div class="image-paste-container">
-            <h3>Paste Image</h3>
-            <p>Paste an image from your clipboard or drag and drop an image file</p>
-            <div class="image-paste-area" id="imagePasteArea">
-                <div class="image-paste-icon">
-                    <i class="fas fa-image"></i>
-                </div>
-                <p>Paste image (Ctrl+V) or click to select file</p>
-            </div>
-            <div class="image-paste-buttons">
-                <button class="paste-cancel-btn" id="pasteCancelBtn">Cancel</button>
             </div>
         </div>
     </div>
@@ -1116,11 +1123,6 @@
             const temperatureInput = document.getElementById('temperature');
             const responseStrategySelect = document.getElementById('responseStrategy');
             const modelSelect = document.getElementById('modelSelect');
-            
-            // Image paste elements
-            const imagePasteOverlay = document.getElementById('imagePasteOverlay');
-            const imagePasteArea = document.getElementById('imagePasteArea');
-            const pasteCancelBtn = document.getElementById('pasteCancelBtn');
             
             let apiKey = localStorage.getItem('deepseekApiKey');
             let currentChatId = generateChatId();
@@ -1154,6 +1156,14 @@
                 chatForm.addEventListener('submit', function(e) {
                     e.preventDefault();
                     sendMessage();
+                });
+                
+                // Handle Enter key for sending message
+                userInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                    }
                 });
                 
                 // Auto-resize textarea
@@ -1199,98 +1209,6 @@
                     // Update chat history
                     loadChatSessions();
                 });
-                
-                // Image paste functionality
-                userInput.addEventListener('paste', handlePaste);
-                imagePasteArea.addEventListener('click', function() {
-                    fileInput.click();
-                });
-                pasteCancelBtn.addEventListener('click', function() {
-                    imagePasteOverlay.classList.remove('active');
-                });
-                
-                // Close image paste overlay when clicking outside
-                imagePasteOverlay.addEventListener('click', function(e) {
-                    if (e.target === imagePasteOverlay) {
-                        imagePasteOverlay.classList.remove('active');
-                    }
-                });
-            }
-            
-            // Handle paste event for images
-            function handlePaste(e) {
-                const items = e.clipboardData?.items;
-                if (!items) return;
-                
-                for (let i = 0; i < items.length; i++) {
-                    const item = items[i];
-                    if (item.type.indexOf('image') !== -1) {
-                        e.preventDefault();
-                        const file = item.getAsFile();
-                        if (file) {
-                            showImagePasteOverlay(file);
-                        }
-                        break;
-                    }
-                }
-            }
-            
-            // Show image paste overlay with preview
-            function showImagePasteOverlay(file) {
-                imagePasteOverlay.classList.add('active');
-                
-                // Create preview
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    const preview = document.createElement('img');
-                    preview.src = e.target.result;
-                    preview.style.maxWidth = '100%';
-                    preview.style.maxHeight = '300px';
-                    preview.style.borderRadius = '8px';
-                    
-                    // Clear previous content and add preview
-                    imagePasteArea.innerHTML = '';
-                    imagePasteArea.appendChild(preview);
-                    
-                    // Add confirm button
-                    const confirmBtn = document.createElement('button');
-                    confirmBtn.className = 'btn btn-primary';
-                    confirmBtn.innerHTML = '<i class="fas fa-check"></i> Use this image';
-                    confirmBtn.style.marginTop = '15px';
-                    confirmBtn.onclick = function() {
-                        handleImageFile(file);
-                        imagePasteOverlay.classList.remove('active');
-                    };
-                    imagePasteArea.appendChild(confirmBtn);
-                };
-                reader.readAsDataURL(file);
-            }
-            
-            // Handle image file
-            function handleImageFile(file) {
-                if (!apiKey) {
-                    alert('Please enter your API key first');
-                    return;
-                }
-                
-                // Create object URL for image preview
-                const fileUrl = URL.createObjectURL(file);
-                
-                // Add file to attached files list
-                attachedFilesList.push({
-                    name: file.name || 'pasted-image.png',
-                    type: file.type,
-                    size: file.size,
-                    content: null,
-                    url: fileUrl,
-                    file: file // Store the actual file object for API calls
-                });
-                
-                // Update the attached files display
-                updateAttachedFilesDisplay();
-                
-                // Focus the input field
-                userInput.focus();
             }
             
             // Check if API key is already saved
@@ -1402,22 +1320,17 @@
                     const allowedExtensions = ['.txt', '.py', '.js', '.html', '.css', '.json', '.md'];
                     const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
                     const isTextFile = allowedExtensions.includes(fileExtension);
-                    const isImageFile = file.type.startsWith('image/');
                     
-                    if (!isTextFile && !isImageFile) {
-                        alert(`File type not supported for analysis: ${file.name}. Please upload text files (txt, py, js, etc.) or images.`);
+                    if (!isTextFile) {
+                        alert(`File type not supported for analysis: ${file.name}. Please upload text files (txt, py, js, etc.).`);
                         continue;
                     }
                     
                     let fileContent = null;
-                    let fileUrl = null;
                     
                     if (isTextFile) {
                         // Read text file content
                         fileContent = await readFileAsText(file);
-                    } else if (isImageFile) {
-                        // Create object URL for image preview
-                        fileUrl = URL.createObjectURL(file);
                     }
                     
                     // Add file to attached files list
@@ -1426,7 +1339,6 @@
                         type: file.type,
                         size: file.size,
                         content: fileContent,
-                        url: fileUrl,
                         file: file // Store the actual file object for API calls
                     });
                 }
@@ -1470,14 +1382,12 @@
             function getFileIconClass(fileType, fileName) {
                 if (fileName.toLowerCase().endsWith('.py')) {
                     return 'fa-file-code';
-                } else if (fileType.startsWith('image/')) {
-                    return 'fa-file-image';
+                } else if (fileName.toLowerCase().endsWith('.js')) {
+                    return 'fa-file-code';
                 } else if (fileType === 'application/pdf') {
                     return 'fa-file-pdf';
                 } else if (fileType.includes('document') || fileType.includes('word')) {
                     return 'fa-file-word';
-                } else if (fileName.toLowerCase().endsWith('.js')) {
-                    return 'fa-file-code';
                 } else {
                     return 'fa-file';
                 }
@@ -1499,12 +1409,9 @@
                 
                 if (fileData) {
                     const isPythonFile = fileData.name.toLowerCase().endsWith('.py');
-                    const isImageFile = fileData.type.startsWith('image/');
                     
                     if (isPythonFile) {
                         messageDiv.classList.add('python-file-message');
-                    } else if (isImageFile) {
-                        messageDiv.classList.add('image-file-message');
                     } else {
                         messageDiv.classList.add('file-message');
                     }
@@ -1535,7 +1442,7 @@
                     
                     messageDiv.appendChild(fileInfo);
                     
-                    if (fileData.content && !isImageFile) {
+                    if (fileData.content) {
                         if (isPythonFile) {
                             const codeContent = document.createElement('div');
                             codeContent.classList.add('python-code');
@@ -1547,12 +1454,6 @@
                             fileContent.textContent = fileData.content;
                             messageDiv.appendChild(fileContent);
                         }
-                    } else if (isImageFile && fileData.url) {
-                        const imgPreview = document.createElement('img');
-                        imgPreview.src = fileData.url;
-                        imgPreview.alt = fileData.name;
-                        imgPreview.classList.add('image-preview');
-                        messageDiv.appendChild(imgPreview);
                     }
                     
                     if (text) {
@@ -1800,16 +1701,14 @@
             function getFileIcon(fileType, fileName) {
                 if (fileName.toLowerCase().endsWith('.py')) {
                     return '🐍';
-                } else if (fileType.startsWith('image/')) {
-                    return '🖼️';
+                } else if (fileName.toLowerCase().endsWith('.js')) {
+                    return '📜';
                 } else if (fileType === 'application/pdf') {
                     return '📄';
                 } else if (fileType.includes('document') || fileType.includes('word')) {
                     return '📝';
                 } else if (fileType.includes('text') || fileName.toLowerCase().endsWith('.txt')) {
                     return '📃';
-                } else if (fileName.toLowerCase().endsWith('.js')) {
-                    return '📜';
                 } else {
                     return '📎';
                 }
@@ -1835,21 +1734,7 @@
                 typingIndicator.style.display = 'none';
             }
             
-            // Convert file to base64
-            function fileToBase64(file) {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        // Remove the data:image/...;base64, prefix
-                        const base64 = reader.result.split(',')[1];
-                        resolve(base64);
-                    };
-                    reader.onerror = error => reject(error);
-                    reader.readAsDataURL(file);
-                });
-            }
-            
-            // REAL DeepSeek API call with image support
+            // REAL DeepSeek API call
             async function callDeepSeekAPI(userMessage, attachedFiles = [], stream = true) {
                 if (!apiKey) {
                     throw new Error('API key not found. Please enter your DeepSeek API key.');
@@ -1869,92 +1754,39 @@
                     // Get selected model
                     const selectedModel = modelSelect.value;
                     
-                    // Check if we have images and need to use vision model
-                    const hasImages = attachedFiles.some(file => file.type.startsWith('image/'));
-                    const model = hasImages ? 'deepseek-vision' : selectedModel;
-
-                    // Build the message content for vision model
-                    if (hasImages && model === 'deepseek-vision') {
-                        // For vision model, we need to convert images to base64 and use the proper message format
-                        const visionMessages = [];
+                    // Regular text-based message
+                    let messageContent = userMessage || '';
+                    
+                    // Add attached files to the message for text-only models
+                    if (attachedFiles.length > 0) {
+                        messageContent += `\n\nI've attached ${attachedFiles.length} file(s):`;
                         
-                        // Add text content if provided
-                        if (userMessage) {
-                            visionMessages.push({
-                                type: "text",
-                                text: userMessage
-                            });
-                        }
-                        
-                        // Add images
                         for (const file of attachedFiles) {
-                            if (file.type.startsWith('image/')) {
-                                try {
-                                    const base64Image = await fileToBase64(file.file);
-                                    visionMessages.push({
-                                        type: "image_url",
-                                        image_url: {
-                                            url: `data:${file.type};base64,${base64Image}`
-                                        }
-                                    });
-                                } catch (error) {
-                                    console.error('Error converting image to base64:', error);
-                                    // Fallback: just mention the image in text
-                                    visionMessages.push({
-                                        type: "text",
-                                        text: `[Image: ${file.name}]`
-                                    });
-                                }
-                            } else if (file.content) {
-                                // For text files, include as text
-                                visionMessages.push({
-                                    type: "text",
-                                    text: `File: ${file.name}\nContent:\n${file.content.substring(0, 3000)}`
-                                });
+                            if (file.content) {
+                                messageContent += `\n\nFile: ${file.name} (${file.type}, ${formatFileSize(file.size)})`;
+                                messageContent += `\nContent:\n\`\`\`${getFileLanguage(file.name)}\n${file.content.substring(0, 3000)}\n\`\`\``;
+                            } else {
+                                messageContent += `\n\nFile: ${file.name} (${file.type}, ${formatFileSize(file.size)}) - [Binary file, content not displayed]`;
                             }
                         }
-                        
-                        // Add the vision message to conversation
-                        messages.push({
-                            role: 'user',
-                            content: visionMessages
-                        });
-                        
-                    } else {
-                        // Regular text-based message
-                        let messageContent = userMessage || '';
-                        
-                        // Add attached files to the message for text-only models
-                        if (attachedFiles.length > 0) {
-                            messageContent += `\n\nI've attached ${attachedFiles.length} file(s):`;
-                            
-                            for (const file of attachedFiles) {
-                                if (file.content) {
-                                    messageContent += `\n\nFile: ${file.name} (${file.type}, ${formatFileSize(file.size)})`;
-                                    messageContent += `\nContent:\n\`\`\`${getFileLanguage(file.name)}\n${file.content.substring(0, 3000)}\n\`\`\``;
-                                } else {
-                                    messageContent += `\n\nFile: ${file.name} (${file.type}, ${formatFileSize(file.size)}) - [Binary file, content not displayed]`;
-                                }
-                            }
-                        }
-                        
-                        messages.push({ role: 'user', content: messageContent });
                     }
+                    
+                    messages.push({ role: 'user', content: messageContent });
 
                     // Create headers with proper encoding
                     const headers = new Headers();
-                    headers.append('Content-Type', 'application/json; charset=utf-8');
+                    headers.append('Content-Type', 'application/json');
                     headers.append('Authorization', `Bearer ${apiKey}`);
 
                     if (stream) {
-                        return await callDeepSeekAPIStream(messages, headers, model);
+                        return await callDeepSeekAPIStream(messages, headers, selectedModel);
                     } else {
                         // Make actual API call to DeepSeek (non-streaming)
                         const response = await fetch(DEEPSEEK_API_URL, {
                             method: 'POST',
                             headers: headers,
                             body: JSON.stringify({
-                                model: model,
+                                model: selectedModel,
                                 messages: messages,
                                 stream: false,
                                 max_tokens: parseInt(maxTokensInput.value),
