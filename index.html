@@ -1036,6 +1036,13 @@
                 <!-- COMPACT MODEL CONTROLS -->
                 <div class="model-controls">
                     <div class="model-control">
+                        <label>Model:</label>
+                        <select id="modelSelect">
+                            <option value="deepseek-chat">DeepSeek Chat</option>
+                            <option value="deepseek-vision">DeepSeek Vision</option>
+                        </select>
+                    </div>
+                    <div class="model-control">
                         <label>Max Tokens:</label>
                         <input type="number" id="maxTokens" value="4000" min="100" max="32000">
                     </div>
@@ -1115,6 +1122,7 @@
             const maxTokensInput = document.getElementById('maxTokens');
             const temperatureInput = document.getElementById('temperature');
             const responseStrategySelect = document.getElementById('responseStrategy');
+            const modelSelect = document.getElementById('modelSelect');
             
             // Image paste elements
             const imagePasteOverlay = document.getElementById('imagePasteOverlay');
@@ -1135,7 +1143,6 @@
             
             // DeepSeek API configuration
             const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
-            const DEEPSEEK_MODEL = 'deepseek-chat';
             
             // Initialize the app
             function init() {
@@ -1282,7 +1289,8 @@
                     type: file.type,
                     size: file.size,
                     content: null,
-                    url: fileUrl
+                    url: fileUrl,
+                    file: file // Store the actual file object for API calls
                 });
                 
                 // Update the attached files display
@@ -1425,7 +1433,8 @@
                         type: file.type,
                         size: file.size,
                         content: fileContent,
-                        url: fileUrl
+                        url: fileUrl,
+                        file: file // Store the actual file object for API calls
                     });
                 }
                 
@@ -1833,7 +1842,17 @@
                 typingIndicator.style.display = 'none';
             }
             
-            // REAL DeepSeek API call with streaming
+            // Convert file to base64
+            function fileToBase64(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = error => reject(error);
+                    reader.readAsDataURL(file);
+                });
+            }
+            
+            // REAL DeepSeek API call with image support
             async function callDeepSeekAPI(userMessage, attachedFiles = [], stream = true) {
                 if (!apiKey) {
                     throw new Error('API key not found. Please enter your DeepSeek API key.');
@@ -1850,45 +1869,65 @@
                     // Prepare messages for the API
                     const messages = [...conversationHistory];
                     
-                    // Add current user message
-                    let messageContent = userMessage;
+                    // Get selected model
+                    const selectedModel = modelSelect.value;
                     
-                    // Add attached files to the message
-                    if (attachedFiles.length > 0) {
-                        messageContent += `\n\nI've attached ${attachedFiles.length} file(s):`;
-                        
-                        attachedFiles.forEach(file => {
-                            if (file.content) {
-                                // For text files, include the content in the message
-                                messageContent += `\n\nFile: ${file.name} (${file.type}, ${formatFileSize(file.size)})`;
-                                messageContent += `\nContent:\n\`\`\`${getFileLanguage(file.name)}\n${file.content.substring(0, 3000)}\n\`\`\``;
-                            } else {
-                                // For non-text files (like images), just mention the file
-                                messageContent += `\n\nFile: ${file.name} (${file.type}, ${formatFileSize(file.size)})`;
-                                messageContent += `\nNote: This is a ${file.type} file. I can describe what I see in the filename and help with related questions.`;
-                            }
+                    // Check if we have images and need to use vision model
+                    const hasImages = attachedFiles.some(file => file.type.startsWith('image/'));
+                    const model = hasImages ? 'deepseek-vision' : selectedModel;
+                    
+                    // Add current user message
+                    let messageContent = [];
+                    
+                    // Add text content
+                    if (userMessage) {
+                        messageContent.push({
+                            type: "text",
+                            text: userMessage
                         });
                     }
                     
-                    messages.push({ role: 'user', content: messageContent });
+                    // Add attached files to the message
+                    if (attachedFiles.length > 0) {
+                        for (const file of attachedFiles) {
+                            if (file.type.startsWith('image/')) {
+                                // Convert image to base64
+                                const base64Image = await fileToBase64(file.file);
+                                messageContent.push({
+                                    type: "image_url",
+                                    image_url: {
+                                        url: `data:${file.type};base64,${base64Image}`
+                                    }
+                                });
+                            } else if (file.content) {
+                                // For text files, include the content as text
+                                messageContent.push({
+                                    type: "text",
+                                    text: `File: ${file.name}\nContent:\n${file.content.substring(0, 3000)}`
+                                });
+                            }
+                        }
+                    }
+                    
+                    messages.push({ 
+                        role: "user", 
+                        content: messageContent 
+                    });
                     
                     // Create headers with proper encoding
                     const headers = new Headers();
                     headers.append('Content-Type', 'application/json; charset=utf-8');
-                    
-                    // Ensure the API key is properly encoded
-                    const encodedApiKey = encodeURIComponent(apiKey);
                     headers.append('Authorization', `Bearer ${apiKey}`);
                     
                     if (stream) {
-                        return await callDeepSeekAPIStream(messages, headers);
+                        return await callDeepSeekAPIStream(messages, headers, model);
                     } else {
                         // Make actual API call to DeepSeek (non-streaming)
                         const response = await fetch(DEEPSEEK_API_URL, {
                             method: 'POST',
                             headers: headers,
                             body: JSON.stringify({
-                                model: DEEPSEEK_MODEL,
+                                model: model,
                                 messages: messages,
                                 stream: false,
                                 max_tokens: parseInt(maxTokensInput.value),
@@ -1953,7 +1992,7 @@
             }
             
             // Streaming API call
-            async function callDeepSeekAPIStream(messages, headers) {
+            async function callDeepSeekAPIStream(messages, headers, model) {
                 return new Promise(async (resolve, reject) => {
                     isStreaming = true;
                     currentStreamController = new AbortController();
@@ -1963,7 +2002,7 @@
                             method: 'POST',
                             headers: headers,
                             body: JSON.stringify({
-                                model: DEEPSEEK_MODEL,
+                                model: model,
                                 messages: messages,
                                 stream: true,
                                 max_tokens: parseInt(maxTokensInput.value),
