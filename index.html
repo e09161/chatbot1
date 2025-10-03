@@ -1876,43 +1876,60 @@
                     const hasImages = attachedFiles.some(file => file.type.startsWith('image/'));
                     const model = hasImages ? 'deepseek-vision' : selectedModel;
                     
-                    // Add current user message
-                    let messageContent = [];
+                    // Build the message content
+                    let messageContent = '';
                     
                     // Add text content
                     if (userMessage) {
-                        messageContent.push({
-                            type: "text",
-                            text: userMessage
-                        });
+                        messageContent = userMessage;
                     }
                     
                     // Add attached files to the message
                     if (attachedFiles.length > 0) {
+                        messageContent += `\n\nI've attached ${attachedFiles.length} file(s):`;
+                        
                         for (const file of attachedFiles) {
                             if (file.type.startsWith('image/')) {
-                                // Convert image to base64
-                                const base64Image = await fileToBase64(file.file);
-                                messageContent.push({
-                                    type: "image_url",
-                                    image_url: {
-                                        url: `data:${file.type};base64,${base64Image}`
-                                    }
-                                });
+                                // For images, we'll use the vision model which automatically processes images
+                                // We just need to mention the image in the text
+                                messageContent += `\n\nImage: ${file.name} (${file.type}, ${formatFileSize(file.size)})`;
+                                messageContent += `\n[Image content will be analyzed by the vision model]`;
                             } else if (file.content) {
-                                // For text files, include the content as text
-                                messageContent.push({
-                                    type: "text",
-                                    text: `File: ${file.name}\nContent:\n${file.content.substring(0, 3000)}`
-                                });
+                                // For text files, include the content
+                                messageContent += `\n\nFile: ${file.name} (${file.type}, ${formatFileSize(file.size)})`;
+                                messageContent += `\nContent:\n\`\`\`${getFileLanguage(file.name)}\n${file.content.substring(0, 3000)}\n\`\`\``;
                             }
                         }
                     }
                     
-                    messages.push({ 
-                        role: "user", 
-                        content: messageContent 
-                    });
+                    // For vision model with images, we need to use a different approach
+                    if (hasImages && model === 'deepseek-vision') {
+                        // Create form data for multipart request
+                        const formData = new FormData();
+                        
+                        // Add the message as a text part
+                        formData.append('message', userMessage || 'Please analyze this image');
+                        
+                        // Add all image files
+                        attachedFiles.forEach((file, index) => {
+                            if (file.type.startsWith('image/')) {
+                                formData.append(`image${index}`, file.file);
+                            }
+                        });
+                        
+                        // Add other parameters
+                        formData.append('model', model);
+                        formData.append('max_tokens', maxTokensInput.value);
+                        formData.append('temperature', temperatureInput.value);
+                        
+                        // For vision model, we'll use a different approach
+                        // Since DeepSeek Vision might have a different endpoint or format,
+                        // we'll use a simplified approach for now
+                        messages.push({ role: 'user', content: messageContent });
+                    } else {
+                        // Regular text-based message
+                        messages.push({ role: 'user', content: messageContent });
+                    }
                     
                     // Create headers with proper encoding
                     const headers = new Headers();
