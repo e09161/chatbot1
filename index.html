@@ -1058,6 +1058,11 @@
                         <label>Model:</label>
                         <select id="modelSelect">
                             <option value="deepseek-chat">DeepSeek Chat</option>
+                            <option value="deepseek-coder">DeepSeek Coder</option>
+                            <option value="deepseek-reasoner">DeepSeek Reasoner</option>
+                            <option value="deepseek-math">DeepSeek Math</option>
+                            <option value="deepseek-v2">DeepSeek V2</option>
+                            <option value="deepseek-v2-lite">DeepSeek V2 Lite</option>
                         </select>
                     </div>
                     <div class="model-control">
@@ -1776,7 +1781,10 @@
                     // Create headers with proper encoding
                     const headers = new Headers();
                     headers.append('Content-Type', 'application/json');
-                    headers.append('Authorization', `Bearer ${apiKey}`);
+                    
+                    // Encode the API key to ensure it only contains ISO-8859-1 characters
+                    const encodedApiKey = encodeURIComponent(apiKey);
+                    headers.append('Authorization', `Bearer ${encodedApiKey}`);
 
                     if (stream) {
                         return await callDeepSeekAPIStream(messages, headers, selectedModel);
