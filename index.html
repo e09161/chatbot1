@@ -1059,10 +1059,6 @@
                         <select id="modelSelect">
                             <option value="deepseek-chat">DeepSeek Chat</option>
                             <option value="deepseek-coder">DeepSeek Coder</option>
-                            <option value="deepseek-reasoner">DeepSeek Reasoner</option>
-                            <option value="deepseek-math">DeepSeek Math</option>
-                            <option value="deepseek-v2">DeepSeek V2</option>
-                            <option value="deepseek-v2-lite">DeepSeek V2 Lite</option>
                         </select>
                     </div>
                     <div class="model-control">
@@ -1129,6 +1125,9 @@
             const responseStrategySelect = document.getElementById('responseStrategy');
             const modelSelect = document.getElementById('modelSelect');
             
+            // FIXED: Updated API URL to the correct endpoint
+            const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+            
             let apiKey = localStorage.getItem('deepseekApiKey');
             let currentChatId = generateChatId();
             let conversationHistory = [];
@@ -1140,9 +1139,6 @@
             
             // Initialize highlight.js
             hljs.highlightAll();
-            
-            // DeepSeek API configuration
-            const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
             
             // Initialize the app
             function init() {
@@ -1247,6 +1243,14 @@
                 }
             }
             
+            // FIXED: Improved API key validation
+            function validateApiKey(key) {
+                if (!key) return false;
+                if (!key.startsWith('sk-')) return false;
+                if (key.length < 20) return false;
+                return true;
+            }
+            
             // Toggle API connection
             function toggleConnection() {
                 if (isConnected) {
@@ -1259,31 +1263,26 @@
                 } else {
                     // Connect
                     const key = apiKeyInput.value.trim();
-                    if (!key) {
-                        showMessage('Please enter a valid API key', 'error');
+                    if (!validateApiKey(key)) {
+                        showMessage('Please enter a valid DeepSeek API key starting with "sk-" and at least 20 characters long', 'error');
                         return;
                     }
                     
-                    if (key.startsWith('sk-') || key.length > 20) {
-                        apiKey = key;
-                        isConnected = true;
-                        localStorage.setItem('deepseekApiKey', apiKey);
-                        apiKeyInput.value = '••••••••••••••••';
-                        enableChat();
-                        showMessage('Successfully connected to DeepSeek API!', 'success');
-                        
-                        // Test the API connection
-                        testApiConnection();
-                    } else {
-                        showMessage('Please enter a valid DeepSeek API key starting with "sk-"', 'error');
-                        return;
-                    }
+                    apiKey = key;
+                    isConnected = true;
+                    localStorage.setItem('deepseekApiKey', apiKey);
+                    apiKeyInput.value = '••••••••••••••••';
+                    enableChat();
+                    showMessage('Successfully connected to DeepSeek API!', 'success');
+                    
+                    // Test the API connection
+                    testApiConnection();
                 }
                 
                 updateConnectionStatus();
             }
             
-            // Test API connection
+            // FIXED: Test API connection
             async function testApiConnection() {
                 try {
                     // Use a simple test message to verify the connection
@@ -1739,10 +1738,14 @@
                 typingIndicator.style.display = 'none';
             }
             
-            // REAL DeepSeek API call
+            // FIXED: REAL DeepSeek API call with proper implementation
             async function callDeepSeekAPI(userMessage, attachedFiles = [], stream = true) {
                 if (!apiKey) {
                     throw new Error('API key not found. Please enter your DeepSeek API key.');
+                }
+
+                if (!validateApiKey(apiKey)) {
+                    throw new Error('Invalid API key format. DeepSeek API keys should start with "sk-" and be at least 20 characters long.');
                 }
 
                 if (isStreaming && currentStreamController) {
@@ -1782,24 +1785,35 @@
                     const headers = new Headers();
                     headers.append('Content-Type', 'application/json');
                     
-                    // Encode the API key to ensure it only contains ISO-8859-1 characters
-                    const encodedApiKey = encodeURIComponent(apiKey);
-                    headers.append('Authorization', `Bearer ${encodedApiKey}`);
+                    // FIXED: Remove API key encoding - use it directly
+                    headers.append('Authorization', `Bearer ${apiKey}`);
+
+                    // FIXED: Add proper request body structure
+                    const requestBody = {
+                        model: selectedModel,
+                        messages: messages,
+                        stream: stream,
+                        max_tokens: parseInt(maxTokensInput.value),
+                        temperature: parseFloat(temperatureInput.value),
+                        top_p: 0.9,
+                        frequency_penalty: 0,
+                        presence_penalty: 0
+                    };
+
+                    console.log('API Request:', {
+                        url: DEEPSEEK_API_URL,
+                        model: selectedModel,
+                        messageCount: messages.length
+                    });
 
                     if (stream) {
-                        return await callDeepSeekAPIStream(messages, headers, selectedModel);
+                        return await callDeepSeekAPIStream(messages, headers, selectedModel, requestBody);
                     } else {
                         // Make actual API call to DeepSeek (non-streaming)
                         const response = await fetch(DEEPSEEK_API_URL, {
                             method: 'POST',
                             headers: headers,
-                            body: JSON.stringify({
-                                model: selectedModel,
-                                messages: messages,
-                                stream: false,
-                                max_tokens: parseInt(maxTokensInput.value),
-                                temperature: parseFloat(temperatureInput.value)
-                            })
+                            body: JSON.stringify(requestBody)
                         });
 
                         if (!response.ok) {
@@ -1860,8 +1874,8 @@
                 return languageMap[ext] || 'text';
             }
             
-            // Streaming API call
-            async function callDeepSeekAPIStream(messages, headers, model) {
+            // FIXED: Streaming API call with proper implementation
+            async function callDeepSeekAPIStream(messages, headers, model, requestBody) {
                 return new Promise(async (resolve, reject) => {
                     isStreaming = true;
                     currentStreamController = new AbortController();
@@ -1870,13 +1884,7 @@
                         const response = await fetch(DEEPSEEK_API_URL, {
                             method: 'POST',
                             headers: headers,
-                            body: JSON.stringify({
-                                model: model,
-                                messages: messages,
-                                stream: true,
-                                max_tokens: parseInt(maxTokensInput.value),
-                                temperature: parseFloat(temperatureInput.value)
-                            }),
+                            body: JSON.stringify(requestBody),
                             signal: currentStreamController.signal
                         });
 
