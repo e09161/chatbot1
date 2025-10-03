@@ -263,7 +263,6 @@
             overflow: hidden;
         }
         
-        /* COMPACT HEADER */
         .chat-header {
             background: linear-gradient(90deg, var(--primary), var(--primary-dark));
             color: white;
@@ -385,7 +384,7 @@
             color: white;
         }
         
-        .assistant-message .action-btn {
+        .bot-message .action-btn {
             background: var(--gray-light);
             color: var(--dark);
         }
@@ -561,7 +560,6 @@
             background-color: white;
         }
         
-        /* COMPACT MODEL CONTROLS */
         .model-controls {
             display: flex;
             gap: 10px;
@@ -792,7 +790,6 @@
             color: var(--gray);
         }
         
-        /* Image paste overlay */
         .image-paste-overlay {
             position: fixed;
             top: 0;
@@ -970,7 +967,6 @@
         </div>
         
         <div class="chat-container">
-            <!-- COMPACT HEADER -->
             <div class="chat-header">
                 <div class="chat-header-content">
                     <h1>DeepSeek Chatbot</h1>
@@ -1033,7 +1029,6 @@
             </div>
             
             <div class="chat-input-container">
-                <!-- COMPACT MODEL CONTROLS -->
                 <div class="model-controls">
                     <div class="model-control">
                         <label>Model:</label>
@@ -1059,7 +1054,6 @@
                     </div>
                 </div>
                 
-                <!-- ATTACHED FILES DISPLAY -->
                 <div class="attached-files" id="attachedFiles"></div>
                 
                 <form class="chat-input-form" id="chatForm">
@@ -1082,7 +1076,6 @@
         </div>
     </div>
 
-    <!-- Image Paste Overlay -->
     <div class="image-paste-overlay" id="imagePasteOverlay">
         <div class="image-paste-container">
             <h3>Paste Image</h3>
@@ -1846,7 +1839,11 @@
             function fileToBase64(file) {
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
-                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onload = () => {
+                        // Remove the data:image/...;base64, prefix
+                        const base64 = reader.result.split(',')[1];
+                        resolve(base64);
+                    };
                     reader.onerror = error => reject(error);
                     reader.readAsDataURL(file);
                 });
@@ -1857,14 +1854,14 @@
                 if (!apiKey) {
                     throw new Error('API key not found. Please enter your DeepSeek API key.');
                 }
-                
+
                 if (isStreaming && currentStreamController) {
                     currentStreamController.abort();
                 }
-                
+
                 // Show typing indicator
                 showTypingIndicator();
-                
+
                 try {
                     // Prepare messages for the API
                     const messages = [...conversationHistory];
@@ -1875,67 +1872,80 @@
                     // Check if we have images and need to use vision model
                     const hasImages = attachedFiles.some(file => file.type.startsWith('image/'));
                     const model = hasImages ? 'deepseek-vision' : selectedModel;
-                    
-                    // Build the message content
-                    let messageContent = '';
-                    
-                    // Add text content
-                    if (userMessage) {
-                        messageContent = userMessage;
-                    }
-                    
-                    // Add attached files to the message
-                    if (attachedFiles.length > 0) {
-                        messageContent += `\n\nI've attached ${attachedFiles.length} file(s):`;
+
+                    // Build the message content for vision model
+                    if (hasImages && model === 'deepseek-vision') {
+                        // For vision model, we need to convert images to base64 and use the proper message format
+                        const visionMessages = [];
                         
+                        // Add text content if provided
+                        if (userMessage) {
+                            visionMessages.push({
+                                type: "text",
+                                text: userMessage
+                            });
+                        }
+                        
+                        // Add images
                         for (const file of attachedFiles) {
                             if (file.type.startsWith('image/')) {
-                                // For images, we'll use the vision model which automatically processes images
-                                // We just need to mention the image in the text
-                                messageContent += `\n\nImage: ${file.name} (${file.type}, ${formatFileSize(file.size)})`;
-                                messageContent += `\n[Image content will be analyzed by the vision model]`;
+                                try {
+                                    const base64Image = await fileToBase64(file.file);
+                                    visionMessages.push({
+                                        type: "image_url",
+                                        image_url: {
+                                            url: `data:${file.type};base64,${base64Image}`
+                                        }
+                                    });
+                                } catch (error) {
+                                    console.error('Error converting image to base64:', error);
+                                    // Fallback: just mention the image in text
+                                    visionMessages.push({
+                                        type: "text",
+                                        text: `[Image: ${file.name}]`
+                                    });
+                                }
                             } else if (file.content) {
-                                // For text files, include the content
-                                messageContent += `\n\nFile: ${file.name} (${file.type}, ${formatFileSize(file.size)})`;
-                                messageContent += `\nContent:\n\`\`\`${getFileLanguage(file.name)}\n${file.content.substring(0, 3000)}\n\`\`\``;
+                                // For text files, include as text
+                                visionMessages.push({
+                                    type: "text",
+                                    text: `File: ${file.name}\nContent:\n${file.content.substring(0, 3000)}`
+                                });
                             }
                         }
-                    }
-                    
-                    // For vision model with images, we need to use a different approach
-                    if (hasImages && model === 'deepseek-vision') {
-                        // Create form data for multipart request
-                        const formData = new FormData();
                         
-                        // Add the message as a text part
-                        formData.append('message', userMessage || 'Please analyze this image');
-                        
-                        // Add all image files
-                        attachedFiles.forEach((file, index) => {
-                            if (file.type.startsWith('image/')) {
-                                formData.append(`image${index}`, file.file);
-                            }
+                        // Add the vision message to conversation
+                        messages.push({
+                            role: 'user',
+                            content: visionMessages
                         });
                         
-                        // Add other parameters
-                        formData.append('model', model);
-                        formData.append('max_tokens', maxTokensInput.value);
-                        formData.append('temperature', temperatureInput.value);
-                        
-                        // For vision model, we'll use a different approach
-                        // Since DeepSeek Vision might have a different endpoint or format,
-                        // we'll use a simplified approach for now
-                        messages.push({ role: 'user', content: messageContent });
                     } else {
                         // Regular text-based message
+                        let messageContent = userMessage || '';
+                        
+                        // Add attached files to the message for text-only models
+                        if (attachedFiles.length > 0) {
+                            messageContent += `\n\nI've attached ${attachedFiles.length} file(s):`;
+                            
+                            for (const file of attachedFiles) {
+                                if (file.content) {
+                                    messageContent += `\n\nFile: ${file.name} (${file.type}, ${formatFileSize(file.size)})`;
+                                    messageContent += `\nContent:\n\`\`\`${getFileLanguage(file.name)}\n${file.content.substring(0, 3000)}\n\`\`\``;
+                                } else {
+                                    messageContent += `\n\nFile: ${file.name} (${file.type}, ${formatFileSize(file.size)}) - [Binary file, content not displayed]`;
+                                }
+                            }
+                        }
+                        
                         messages.push({ role: 'user', content: messageContent });
                     }
-                    
+
                     // Create headers with proper encoding
                     const headers = new Headers();
                     headers.append('Content-Type', 'application/json; charset=utf-8');
                     headers.append('Authorization', `Bearer ${apiKey}`);
-                    
+
                     if (stream) {
                         return await callDeepSeekAPIStream(messages, headers, model);
                     } else {
@@ -1951,7 +1961,7 @@
                                 temperature: parseFloat(temperatureInput.value)
                             })
                         });
-                        
+
                         if (!response.ok) {
                             const errorText = await response.text();
                             let errorMessage = `API error: ${response.status}`;
@@ -1963,13 +1973,13 @@
                             }
                             throw new Error(errorMessage);
                         }
-                        
+
                         const data = await response.json();
-                        
+
                         if (!data.choices || !data.choices[0] || !data.choices[0].message) {
                             throw new Error('Invalid response format from DeepSeek API');
                         }
-                        
+
                         return data.choices[0].message.content;
                     }
                     
@@ -1985,6 +1995,8 @@
                         throw new Error('DeepSeek API server error. Please try again later.');
                     } else if (error.message.includes('Network Error')) {
                         throw new Error('Network connection failed. Please check your internet connection.');
+                    } else if (error.message.includes('Model Not Exist')) {
+                        throw new Error('The selected model is not available. Please check your API plan or try a different model.');
                     } else {
                         throw error;
                     }
@@ -2013,7 +2025,7 @@
                 return new Promise(async (resolve, reject) => {
                     isStreaming = true;
                     currentStreamController = new AbortController();
-                    
+
                     try {
                         const response = await fetch(DEEPSEEK_API_URL, {
                             method: 'POST',
@@ -2027,7 +2039,7 @@
                             }),
                             signal: currentStreamController.signal
                         });
-                        
+
                         if (!response.ok) {
                             const errorText = await response.text();
                             let errorMessage = `API error: ${response.status}`;
@@ -2039,25 +2051,25 @@
                             }
                             throw new Error(errorMessage);
                         }
-                        
+
                         const reader = response.body.getReader();
                         const decoder = new TextDecoder();
                         let fullResponse = '';
                         let buffer = '';
-                        
+
                         // Create streaming message element
                         const messageElement = addMessage('', 'bot');
                         const contentElement = messageElement.querySelector('.bot-message-content');
-                        
+
                         while (true) {
                             const { done, value } = await reader.read();
-                            
+
                             if (done) break;
-                            
+
                             buffer += decoder.decode(value, { stream: true });
                             const lines = buffer.split('\n');
                             buffer = lines.pop() || '';
-                            
+
                             for (const line of lines) {
                                 if (line.startsWith('data: ') && line !== 'data: [DONE]') {
                                     try {
@@ -2065,17 +2077,17 @@
                                         if (data.choices && data.choices[0] && data.choices[0].delta && data.choices[0].delta.content) {
                                             const content = data.choices[0].delta.content;
                                             fullResponse += content;
-                                            
+
                                             // Update the message with formatted content
-                                            contentElement.innerHTML = formatMessageWithCode(fullResponse) + '<span class="streaming-cursor"></span>';
-                                            
+                                            contentElement.innerHTML = formatMessageWithCode(fullResponse) + '<span class="streaming-cursor">|</span>';
+
                                             // Apply syntax highlighting
                                             setTimeout(() => {
                                                 contentElement.querySelectorAll('pre code').forEach((block) => {
                                                     hljs.highlightElement(block);
                                                 });
                                             }, 0);
-                                            
+
                                             // Scroll to bottom
                                             chatMessages.scrollTop = chatMessages.scrollHeight;
                                         }
@@ -2085,20 +2097,20 @@
                                 }
                             }
                         }
-                        
+
                         // Remove streaming cursor
                         contentElement.innerHTML = formatMessageWithCode(fullResponse);
-                        
+
                         // Apply final syntax highlighting
                         setTimeout(() => {
                             contentElement.querySelectorAll('pre code').forEach((block) => {
                                 hljs.highlightElement(block);
                             });
                         }, 0);
-                        
+
                         isStreaming = false;
                         resolve(fullResponse);
-                        
+
                     } catch (error) {
                         isStreaming = false;
                         if (error.name !== 'AbortError') {
