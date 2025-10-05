@@ -1227,7 +1227,7 @@
             
             // Generate unique chat ID
             function generateChatId() {
-                return 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                return `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             }
             
             // Update API connection status
@@ -1322,7 +1322,7 @@
                     
                     // Check file type - only allow text-based files for analysis
                     const allowedExtensions = ['.txt', '.py', '.js', '.html', '.css', '.json', '.md'];
-                    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+                    const fileExtension = `.${file.name.split('.').pop().toLowerCase()}`;
                     const isTextFile = allowedExtensions.includes(fileExtension);
                     
                     if (!isTextFile) {
@@ -1601,7 +1601,7 @@
                 lines.forEach(line => {
                     // Skip the line number and get the actual code
                     const codeLine = line.textContent.replace(/^\s*\d+\s*/, '');
-                    cleanCode += codeLine + '\n';
+                    cleanCode += `${codeLine}\n`;
                 });
                 
                 return cleanCode.trim();
@@ -1724,7 +1724,7 @@
                 const k = 1024;
                 const sizes = ['Bytes', 'KB', 'MB', 'GB'];
                 const i = Math.floor(Math.log(bytes) / Math.log(k));
-                return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
             }
             
             // Show typing indicator
@@ -1927,7 +1927,7 @@
                                             fullResponse += content;
 
                                             // Update the message with formatted content
-                                            contentElement.innerHTML = formatMessageWithCode(fullResponse) + '<span class="streaming-cursor">|</span>';
+                                            contentElement.innerHTML = `${formatMessageWithCode(fullResponse)}<span class="streaming-cursor">|</span>`;
 
                                             // Apply syntax highlighting
                                             setTimeout(() => {
