@@ -331,6 +331,7 @@
             display: flex;
             flex-direction: column;
             gap: 15px;
+            overflow-anchor: none;
         }
         
         .message {
@@ -894,6 +895,41 @@
             color: #94a3b8;
         }
         
+        .chat-messages::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .chat-messages::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .dark-theme .chat-messages::-webkit-scrollbar-track {
+            background: #334155;
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        
+        .dark-theme .chat-messages::-webkit-scrollbar-thumb {
+            background: #64748b;
+        }
+        
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+        
+        .dark-theme .chat-messages::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        .scroll-anchor {
+            overflow-anchor: auto;
+            height: 1px;
+        }
+        
         @media (max-width: 900px) {
             .app-container {
                 flex-direction: column;
@@ -1102,6 +1138,7 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
+            // DOM elements
             const chatMessages = document.getElementById('chatMessages');
             const userInput = document.getElementById('userInput');
             const chatForm = document.getElementById('chatForm');
@@ -1128,6 +1165,7 @@
             // FIXED: Updated API URL to the correct endpoint
             const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
             
+            // Application state
             let apiKey = localStorage.getItem('deepseekApiKey');
             let currentChatId = generateChatId();
             let conversationHistory = [];
@@ -1136,12 +1174,16 @@
             let currentStreamController = null;
             let isConnected = false;
             let attachedFilesList = [];
+            let currentStreamingMessage = null;
+            let currentStreamingContent = null;
+            let autoScrollEnabled = true;
             
             // Initialize highlight.js
             hljs.highlightAll();
             
             // Initialize the app
             function init() {
+                console.log('Initializing DeepSeek Chatbot...');
                 loadApiKey();
                 setupEventListeners();
                 updateConnectionStatus();
@@ -1170,7 +1212,7 @@
                 // Auto-resize textarea
                 userInput.addEventListener('input', function() {
                     this.style.height = 'auto';
-                    this.style.height = (this.scrollHeight) + 'px';
+                    this.style.height = `${this.scrollHeight}px`;
                 });
                 
                 // Sidebar toggle
@@ -1210,6 +1252,46 @@
                     // Update chat history
                     loadChatSessions();
                 });
+                
+                // Enable scrolling during streaming
+                chatMessages.addEventListener('scroll', handleChatScroll);
+                chatMessages.addEventListener('wheel', handleChatWheel);
+                chatMessages.addEventListener('touchstart', handleChatTouch);
+            }
+            
+            // Handle chat scroll events
+            function handleChatScroll() {
+                // If user scrolls up during streaming, disable auto-scroll
+                if (isStreaming) {
+                    const isAtBottom = isChatAtBottom();
+                    autoScrollEnabled = isAtBottom;
+                }
+            }
+            
+            // Handle mouse wheel events
+            function handleChatWheel() {
+                if (isStreaming) {
+                    const isAtBottom = isChatAtBottom();
+                    autoScrollEnabled = isAtBottom;
+                }
+            }
+            
+            // Handle touch events
+            function handleChatTouch() {
+                if (isStreaming) {
+                    const isAtBottom = isChatAtBottom();
+                    autoScrollEnabled = isAtBottom;
+                }
+            }
+            
+            // Check if chat is scrolled to bottom
+            function isChatAtBottom() {
+                const threshold = 50; // pixels from bottom
+                const scrollTop = chatMessages.scrollTop;
+                const scrollHeight = chatMessages.scrollHeight;
+                const clientHeight = chatMessages.clientHeight;
+                
+                return (scrollHeight - scrollTop - clientHeight) <= threshold;
             }
             
             // Check if API key is already saved
@@ -1243,12 +1325,17 @@
                 }
             }
             
-            // FIXED: Improved API key validation
+            // FIXED: Enhanced API key validation
             function validateApiKey(key) {
-                if (!key) return false;
-                if (!key.startsWith('sk-')) return false;
-                if (key.length < 20) return false;
-                return true;
+                if (!key || typeof key !== 'string') return false;
+                
+                const trimmedKey = key.trim();
+                if (!trimmedKey.startsWith('sk-')) return false;
+                if (trimmedKey.length < 20) return false;
+                
+                // Additional validation for proper format
+                const keyPattern = /^sk-[a-zA-Z0-9]{20,}$/;
+                return keyPattern.test(trimmedKey);
             }
             
             // Toggle API connection
@@ -1352,6 +1439,21 @@
                 
                 // Clear the file input
                 fileInput.value = '';
+            }
+            
+            // FIXED: Improved file reading with encoding
+            function readFileAsText(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = e => resolve(e.target.result);
+                    reader.onerror = e => reject(e);
+                    
+                    try {
+                        reader.readAsText(file, 'UTF-8');
+                    } catch (error) {
+                        reader.readAsText(file);
+                    }
+                });
             }
             
             // Update attached files display
@@ -1550,7 +1652,16 @@
                 }
                 
                 chatMessages.appendChild(messageDiv);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                // Add scroll anchor for better scrolling behavior
+                const scrollAnchor = document.createElement('div');
+                scrollAnchor.className = 'scroll-anchor';
+                chatMessages.appendChild(scrollAnchor);
+                
+                // Only auto-scroll if enabled
+                if (autoScrollEnabled) {
+                    scrollToBottom();
+                }
                 
                 // Apply syntax highlighting
                 if (sender === 'bot') {
@@ -1730,7 +1841,9 @@
             // Show typing indicator
             function showTypingIndicator() {
                 typingIndicator.style.display = 'block';
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                if (autoScrollEnabled) {
+                    scrollToBottom();
+                }
             }
             
             // Hide typing indicator
@@ -1879,6 +1992,7 @@
                 return new Promise(async (resolve, reject) => {
                     isStreaming = true;
                     currentStreamController = new AbortController();
+                    autoScrollEnabled = true; // Reset auto-scroll when starting new stream
 
                     try {
                         const response = await fetch(DEEPSEEK_API_URL, {
@@ -1906,8 +2020,8 @@
                         let buffer = '';
 
                         // Create streaming message element
-                        const messageElement = addMessage('', 'bot');
-                        const contentElement = messageElement.querySelector('.bot-message-content');
+                        currentStreamingMessage = addMessage('', 'bot');
+                        currentStreamingContent = currentStreamingMessage.querySelector('.bot-message-content');
 
                         while (true) {
                             const { done, value } = await reader.read();
@@ -1927,17 +2041,19 @@
                                             fullResponse += content;
 
                                             // Update the message with formatted content
-                                            contentElement.innerHTML = `${formatMessageWithCode(fullResponse)}<span class="streaming-cursor">|</span>`;
+                                            currentStreamingContent.innerHTML = `${formatMessageWithCode(fullResponse)}<span class="streaming-cursor">|</span>`;
 
                                             // Apply syntax highlighting
                                             setTimeout(() => {
-                                                contentElement.querySelectorAll('pre code').forEach((block) => {
+                                                currentStreamingContent.querySelectorAll('pre code').forEach((block) => {
                                                     hljs.highlightElement(block);
                                                 });
                                             }, 0);
 
-                                            // Scroll to bottom
-                                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                                            // Only scroll if auto-scroll is enabled
+                                            if (autoScrollEnabled) {
+                                                scrollToBottom();
+                                            }
                                         }
                                     } catch (e) {
                                         console.warn('Failed to parse stream data:', e);
@@ -1947,20 +2063,24 @@
                         }
 
                         // Remove streaming cursor
-                        contentElement.innerHTML = formatMessageWithCode(fullResponse);
+                        currentStreamingContent.innerHTML = formatMessageWithCode(fullResponse);
 
                         // Apply final syntax highlighting
                         setTimeout(() => {
-                            contentElement.querySelectorAll('pre code').forEach((block) => {
+                            currentStreamingContent.querySelectorAll('pre code').forEach((block) => {
                                 hljs.highlightElement(block);
                             });
                         }, 0);
 
                         isStreaming = false;
+                        currentStreamingMessage = null;
+                        currentStreamingContent = null;
                         resolve(fullResponse);
 
                     } catch (error) {
                         isStreaming = false;
+                        currentStreamingMessage = null;
+                        currentStreamingContent = null;
                         if (error.name !== 'AbortError') {
                             reject(error);
                         } else {
@@ -2018,7 +2138,9 @@
                         retryBtn.onclick = () => sendMessage();
                         errorDiv.appendChild(retryBtn);
                         chatMessages.appendChild(errorDiv);
-                        chatMessages.scrollTop = chatMessages.scrollHeight;
+                        if (autoScrollEnabled) {
+                            scrollToBottom();
+                        }
                         
                         // Update API status on error
                         if (error.message.includes('API key') || error.message.includes('401')) {
@@ -2033,18 +2155,10 @@
                     errorDiv.classList.add('error-message');
                     errorDiv.textContent = `Error: ${error.message}`;
                     chatMessages.appendChild(errorDiv);
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    if (autoScrollEnabled) {
+                        scrollToBottom();
+                    }
                 }
-            }
-            
-            // Read file as text
-            function readFileAsText(file) {
-                return new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = e => resolve(e.target.result);
-                    reader.onerror = e => reject(e);
-                    reader.readAsText(file);
-                });
             }
             
             // Save chat session
@@ -2111,7 +2225,7 @@
                 loadChatSessions();
                 
                 // Scroll to bottom
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                scrollToBottom();
             }
             
             // Toggle sidebar view
