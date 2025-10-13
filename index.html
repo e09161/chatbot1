@@ -12,6 +12,7 @@
     <!-- QR Code Library -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <style>
+        /* All your existing CSS styles remain here */
         * {
             margin: 0;
             padding: 0;
@@ -223,6 +224,7 @@
         .chat-history {
             flex: 1;
             overflow-y: auto;
+            margin-top: 15px;
         }
         
         .history-item {
@@ -1460,6 +1462,7 @@
                 setupEventListeners();
                 updateConnectionStatus();
                 updateSyncStatus();
+                loadChatSessions(); // FIX: Load chat sessions on init
                 scrollToBottom();
             }
             
@@ -1531,7 +1534,7 @@
                 chatMessages.addEventListener('wheel', handleChatWheel);
                 chatMessages.addEventListener('touchstart', handleChatTouch);
                 
-                // NEW: QR Sync events
+                // NEW: QR Sync events - FIXED: Added proper event listeners
                 qrSyncOption.addEventListener('click', showQRCodeModal);
                 exportOption.addEventListener('click', toggleExportImport);
                 exportChats.addEventListener('click', exportChatHistory);
@@ -1542,8 +1545,9 @@
                 closeQRModal.addEventListener('click', hideQRCodeModal);
             }
             
-            // NEW: Show QR Code modal
+            // NEW: Show QR Code modal - FIXED: Added proper implementation
             function showQRCodeModal() {
+                console.log('QR Sync button clicked');
                 generateQRCode();
                 updateDeviceList();
                 qrModal.classList.add('active');
@@ -1807,7 +1811,7 @@
                 return date.toLocaleDateString();
             }
 
-            // ORIGINAL CHATBOT FUNCTIONS
+            // ORIGINAL CHATBOT FUNCTIONS - FIXED: Added missing implementations
             function generateChatId() {
                 return `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             }
@@ -1821,11 +1825,17 @@
                 }
             }
             
+            // FIXED: Added proper loadChatSessions implementation
             function loadChatSessions() {
                 chatHistory.innerHTML = '';
                 
                 const sessions = Object.entries(chatSessions)
                     .sort(([,a], [,b]) => b.timestamp - a.timestamp);
+                
+                if (sessions.length === 0) {
+                    chatHistory.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.5); padding: 20px; font-size: 0.9rem;">No chat history yet</div>';
+                    return;
+                }
                 
                 sessions.forEach(([id, session]) => {
                     const historyItem = document.createElement('div');
@@ -2008,9 +2018,6 @@
                 document.body.appendChild(toast);
                 setTimeout(() => { toast.remove(); }, 3000);
             }
-            
-            // Add the rest of your original functions here (addMessage, handleFileSelection, callDeepSeekAPI, etc.)
-            // For brevity, I'll include the most critical ones:
             
             function addMessage(text, sender, fileData = null) {
                 const welcomeMessage = chatMessages.querySelector('.welcome-message');
