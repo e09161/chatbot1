@@ -3,16 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeepSeek Chatbot - QR Sync</title>
+    <title>DeepSeek Chatbot</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
-    <!-- QR Code Library -->
-    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
     <style>
-        /* All your existing CSS styles remain here */
         * {
             margin: 0;
             padding: 0;
@@ -58,7 +55,7 @@
         }
         
         .sidebar {
-            width: 280px;
+            width: 320px; /* Increased width for more chat history space */
             background: var(--dark);
             color: white;
             border-radius: 15px;
@@ -224,7 +221,23 @@
         .chat-history {
             flex: 1;
             overflow-y: auto;
-            margin-top: 15px;
+            margin: 15px 0;
+        }
+        
+        .chat-history-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .chat-history-header h3 {
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
         .history-item {
@@ -254,6 +267,47 @@
         
         .history-icon {
             font-size: 1rem;
+        }
+        
+        .history-content {
+            flex: 1;
+            min-width: 0; /* Allow text truncation */
+        }
+        
+        .history-title {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+        
+        .history-time {
+            font-size: 0.75rem;
+            opacity: 0.7;
+        }
+        
+        .export-import {
+            padding: 15px 0;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .export-import h3 {
+            font-size: 1rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .export-import-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .export-import-buttons button {
+            flex: 1;
+            padding: 10px;
+            font-size: 0.8rem;
         }
         
         .sidebar-footer {
@@ -986,193 +1040,6 @@
                 order: 2;
             }
         }
-
-        /* QR Sync Styles */
-        .sync-section {
-            padding: 15px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            margin-bottom: 15px;
-        }
-        
-        .sync-section h3 {
-            font-size: 1rem;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .sync-options {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        
-        .sync-option {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px;
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        
-        .sync-option:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-        
-        .sync-option i {
-            font-size: 1.2rem;
-            width: 20px;
-        }
-        
-        .sync-option span {
-            flex: 1;
-        }
-        
-        .sync-status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-top: 15px;
-            font-size: 0.9rem;
-        }
-        
-        .sync-indicator {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: var(--warning);
-        }
-        
-        .sync-indicator.synced {
-            background: var(--success);
-        }
-        
-        .sync-indicator.syncing {
-            background: var(--warning);
-            animation: pulse 1s infinite;
-        }
-        
-        .sync-indicator.error {
-            background: var(--danger);
-        }
-        
-        /* QR Code Modal */
-        .qr-modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 1000;
-            justify-content: center;
-            align-items: center;
-        }
-        
-        .qr-modal.active {
-            display: flex;
-        }
-        
-        .qr-container {
-            background: var(--dark);
-            padding: 30px;
-            border-radius: 15px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-            text-align: center;
-        }
-        
-        .dark-theme .qr-container {
-            background: #0f172a;
-        }
-        
-        .qr-container h2 {
-            margin-bottom: 20px;
-        }
-        
-        .qr-code {
-            margin: 20px auto;
-            padding: 20px;
-            background: white;
-            border-radius: 10px;
-            display: inline-block;
-        }
-        
-        .qr-instructions {
-            margin: 20px 0;
-            font-size: 0.9rem;
-            line-height: 1.4;
-        }
-        
-        .device-list {
-            margin-top: 20px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        
-        .device-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px;
-            margin-bottom: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            font-size: 0.9rem;
-        }
-        
-        .device-icon {
-            font-size: 1.2rem;
-        }
-        
-        .device-info {
-            flex: 1;
-            text-align: left;
-        }
-        
-        .device-name {
-            font-weight: 600;
-        }
-        
-        .device-time {
-            font-size: 0.8rem;
-            opacity: 0.8;
-        }
-        
-        .sync-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-        }
-        
-        .sync-actions button {
-            flex: 1;
-        }
-        
-        .export-import {
-            margin-top: 15px;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-        }
-        
-        .export-import-buttons {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-        }
-        
-        .export-import-buttons button {
-            flex: 1;
-            padding: 8px;
-            font-size: 0.8rem;
-        }
     </style>
 </head>
 <body>
@@ -1205,45 +1072,30 @@
                 </div>
             </div>
             
-            <!-- Sync Section -->
-            <div class="sync-section">
-                <h3><i class="fas fa-sync-alt"></i> Cross-Device Sync</h3>
-                <div class="sync-options">
-                    <div class="sync-option" id="qrSyncOption">
-                        <i class="fas fa-qrcode"></i>
-                        <span>QR Code Sync</span>
-                    </div>
-                    <div class="sync-option" id="exportOption">
-                        <i class="fas fa-file-export"></i>
-                        <span>Export/Import</span>
-                    </div>
+            <!-- Chat History Section - Now with more space -->
+            <div class="chat-history" id="chatHistory">
+                <div class="chat-history-header">
+                    <h3><i class="fas fa-history"></i> Chat History</h3>
                 </div>
-                
-                <div class="sync-status">
-                    <div class="sync-indicator" id="syncIndicator"></div>
-                    <span id="syncStatusText">Ready to sync</span>
-                </div>
-                
-                <div class="export-import" id="exportImportSection" style="display: none;">
-                    <p style="font-size: 0.8rem; margin-bottom: 10px;">Backup your chat history:</p>
-                    <div class="export-import-buttons">
-                        <button class="btn btn-secondary" id="exportChats">
-                            <i class="fas fa-download"></i> Export
-                        </button>
-                        <button class="btn btn-secondary" id="importChats">
-                            <i class="fas fa-upload"></i> Import
-                        </button>
-                    </div>
-                    <input type="file" id="importFile" accept=".json" style="display: none;">
-                </div>
+                <!-- Chat history items will be populated here -->
             </div>
             
-            <div class="chat-history" id="chatHistory">
-                <!-- Chat history will be populated here -->
+            <!-- Export/Import Section -->
+            <div class="export-import">
+                <h3><i class="fas fa-file-export"></i> Backup & Restore</h3>
+                <div class="export-import-buttons">
+                    <button class="btn btn-secondary" id="exportChats">
+                        <i class="fas fa-download"></i> Export
+                    </button>
+                    <button class="btn btn-secondary" id="importChats">
+                        <i class="fas fa-upload"></i> Import
+                    </button>
+                </div>
+                <input type="file" id="importFile" accept=".json" style="display: none;">
             </div>
             
             <div class="sidebar-footer">
-                Powered by DeepSeek API | QR Sync Enabled
+                Powered by DeepSeek API
             </div>
         </div>
         
@@ -1251,7 +1103,7 @@
             <div class="chat-header">
                 <div class="chat-header-content">
                     <h1>DeepSeek Chatbot</h1>
-                    <p>Powered by DeepSeek API | QR Code Sync Enabled</p>
+                    <p>Powered by DeepSeek API | File Export/Import Enabled</p>
                 </div>
                 <div class="chat-controls">
                     <button class="control-btn" id="menuButton">
@@ -1260,16 +1112,13 @@
                     <button class="control-btn" id="themeButton">
                         <i class="fas fa-moon"></i>
                     </button>
-                    <button class="control-btn" id="syncButton">
-                        <i class="fas fa-sync-alt"></i>
-                    </button>
                 </div>
             </div>
             
             <div class="chat-messages" id="chatMessages">
                 <div class="welcome-message">
                     <h2>Welcome to DeepSeek Chat</h2>
-                    <p>I'm your AI assistant with QR code sync. Scan the QR code to transfer your chat history between devices.</p>
+                    <p>I'm your AI assistant with file export/import functionality. Use the sidebar to manage your chat history.</p>
                     
                     <div class="features-grid">
                         <div class="feature-card">
@@ -1281,10 +1130,10 @@
                         </div>
                         <div class="feature-card">
                             <div class="feature-icon">
-                                <i class="fas fa-qrcode"></i>
+                                <i class="fas fa-history"></i>
                             </div>
-                            <h3>QR Sync</h3>
-                            <p>Transfer chats between devices with QR codes</p>
+                            <h3>Chat History</h3>
+                            <p>Access all your previous conversations</p>
                         </div>
                         <div class="feature-card">
                             <div class="feature-icon">
@@ -1360,36 +1209,6 @@
         </div>
     </div>
 
-    <!-- QR Code Modal -->
-    <div class="qr-modal" id="qrModal">
-        <div class="qr-container">
-            <h2>Sync Chat History</h2>
-            <div class="qr-instructions">
-                <p><strong>To sync to another device:</strong></p>
-                <p>1. Open this page on the target device</p>
-                <p>2. Click "Scan QR Code" and scan this code</p>
-                <p><strong>To sync from another device:</strong></p>
-                <p>1. On the source device, generate a QR code</p>
-                <p>2. Click "Scan QR Code" below and scan it</p>
-            </div>
-            
-            <div id="qrCode"></div>
-            
-            <div class="device-list" id="deviceList">
-                <!-- Recent sync devices will appear here -->
-            </div>
-            
-            <div class="sync-actions">
-                <button class="btn btn-secondary" id="scanQRCode">
-                    <i class="fas fa-camera"></i> Scan QR Code
-                </button>
-                <button class="btn btn-primary" id="closeQRModal">
-                    <i class="fas fa-times"></i> Close
-                </button>
-            </div>
-        </div>
-    </div>
-
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // DOM elements
@@ -1416,21 +1235,10 @@
             const responseStrategySelect = document.getElementById('responseStrategy');
             const modelSelect = document.getElementById('modelSelect');
             
-            // NEW: QR Sync elements
-            const qrSyncOption = document.getElementById('qrSyncOption');
-            const exportOption = document.getElementById('exportOption');
-            const exportImportSection = document.getElementById('exportImportSection');
+            // Export/Import elements
             const exportChats = document.getElementById('exportChats');
             const importChats = document.getElementById('importChats');
             const importFile = document.getElementById('importFile');
-            const syncIndicator = document.getElementById('syncIndicator');
-            const syncStatusText = document.getElementById('syncStatusText');
-            const syncButton = document.getElementById('syncButton');
-            const qrModal = document.getElementById('qrModal');
-            const qrCodeElement = document.getElementById('qrCode');
-            const deviceList = document.getElementById('deviceList');
-            const scanQRCode = document.getElementById('scanQRCode');
-            const closeQRModal = document.getElementById('closeQRModal');
             
             // FIXED: Updated API URL to the correct endpoint
             const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
@@ -1448,21 +1256,16 @@
             let currentStreamingContent = null;
             let autoScrollEnabled = true;
             
-            // NEW: QR Sync state
-            let syncDevices = JSON.parse(localStorage.getItem('deepseekSyncDevices')) || [];
-            let currentQRCode = null;
-            
             // Initialize highlight.js
             hljs.highlightAll();
             
             // Initialize the app
             function init() {
-                console.log('Initializing DeepSeek Chatbot with QR Sync...');
+                console.log('Initializing DeepSeek Chatbot...');
                 loadApiKey();
                 setupEventListeners();
                 updateConnectionStatus();
-                updateSyncStatus();
-                loadChatSessions(); // FIX: Load chat sessions on init
+                loadChatSessions();
                 scrollToBottom();
             }
             
@@ -1534,184 +1337,13 @@
                 chatMessages.addEventListener('wheel', handleChatWheel);
                 chatMessages.addEventListener('touchstart', handleChatTouch);
                 
-                // NEW: QR Sync events - FIXED: Added proper event listeners
-                qrSyncOption.addEventListener('click', showQRCodeModal);
-                exportOption.addEventListener('click', toggleExportImport);
+                // Export/Import events
                 exportChats.addEventListener('click', exportChatHistory);
                 importChats.addEventListener('click', () => importFile.click());
                 importFile.addEventListener('change', importChatHistory);
-                syncButton.addEventListener('click', showQRCodeModal);
-                scanQRCode.addEventListener('click', startQRScan);
-                closeQRModal.addEventListener('click', hideQRCodeModal);
             }
             
-            // NEW: Show QR Code modal - FIXED: Added proper implementation
-            function showQRCodeModal() {
-                console.log('QR Sync button clicked');
-                generateQRCode();
-                updateDeviceList();
-                qrModal.classList.add('active');
-            }
-            
-            // NEW: Hide QR Code modal
-            function hideQRCodeModal() {
-                qrModal.classList.remove('active');
-            }
-            
-            // NEW: Generate QR code with chat data
-            function generateQRCode() {
-                // Prepare data for QR code
-                const syncData = {
-                    type: 'deepseek_chat_sync',
-                    version: '1.0',
-                    timestamp: Date.now(),
-                    device: getDeviceInfo(),
-                    chatCount: Object.keys(chatSessions).length,
-                    data: btoa(JSON.stringify(chatSessions)) // Encode to base64
-                };
-                
-                const qrData = JSON.stringify(syncData);
-                
-                // Clear previous QR code
-                qrCodeElement.innerHTML = '';
-                
-                // Generate new QR code
-                QRCode.toCanvas(qrData, { 
-                    width: 200, 
-                    height: 200,
-                    margin: 1,
-                    color: {
-                        dark: '#000000',
-                        light: '#FFFFFF'
-                    }
-                }, function(err, canvas) {
-                    if (err) {
-                        console.error('QR Code generation error:', err);
-                        showMessage('Failed to generate QR code', 'error');
-                        return;
-                    }
-                    
-                    qrCodeElement.appendChild(canvas);
-                    currentQRCode = qrData;
-                });
-            }
-            
-            // NEW: Get device information
-            function getDeviceInfo() {
-                return {
-                    name: navigator.userAgentData?.brands?.[0]?.brand || navigator.platform || 'Unknown Device',
-                    platform: navigator.platform,
-                    userAgent: navigator.userAgent.substring(0, 50),
-                    timestamp: Date.now()
-                };
-            }
-            
-            // NEW: Start QR code scanning
-            function startQRScan() {
-                // For a static page, we'll simulate QR scanning
-                // In a real app, you would use a library like Instascan or QuaggaJS
-                
-                const scannedData = prompt('Paste the QR code data here (in a real app, this would use camera scanning):');
-                
-                if (scannedData) {
-                    processScannedQRCode(scannedData);
-                }
-            }
-            
-            // NEW: Process scanned QR code data
-            function processScannedQRCode(data) {
-                try {
-                    const syncData = JSON.parse(data);
-                    
-                    if (syncData.type !== 'deepseek_chat_sync') {
-                        throw new Error('Invalid QR code format');
-                    }
-                    
-                    // Decode the chat data
-                    const chatData = JSON.parse(atob(syncData.data));
-                    
-                    // Merge with existing chats
-                    chatSessions = { ...chatSessions, ...chatData };
-                    localStorage.setItem('deepseekChatSessions', JSON.stringify(chatSessions));
-                    
-                    // Record sync device
-                    syncDevices.push({
-                        device: syncData.device,
-                        timestamp: Date.now(),
-                        direction: 'import'
-                    });
-                    
-                    // Keep only last 5 devices
-                    if (syncDevices.length > 5) {
-                        syncDevices = syncDevices.slice(-5);
-                    }
-                    
-                    localStorage.setItem('deepseekSyncDevices', JSON.stringify(syncDevices));
-                    
-                    // Reload chat sessions
-                    loadChatSessions();
-                    
-                    // Update UI
-                    updateSyncStatus();
-                    updateDeviceList();
-                    
-                    showMessage(`Successfully imported ${Object.keys(chatData).length} chat sessions from ${syncData.device.name}`, 'success');
-                    hideQRCodeModal();
-                    
-                } catch (error) {
-                    console.error('QR code processing error:', error);
-                    showMessage('Failed to process QR code: ' + error.message, 'error');
-                }
-            }
-            
-            // NEW: Update device list in modal
-            function updateDeviceList() {
-                deviceList.innerHTML = '';
-                
-                if (syncDevices.length === 0) {
-                    deviceList.innerHTML = '<p style="text-align: center; opacity: 0.7; font-size: 0.9rem;">No recent sync activity</p>';
-                    return;
-                }
-                
-                syncDevices.slice().reverse().forEach(device => {
-                    const deviceItem = document.createElement('div');
-                    deviceItem.className = 'device-item';
-                    
-                    const deviceIcon = document.createElement('div');
-                    deviceIcon.className = 'device-icon';
-                    deviceIcon.innerHTML = device.direction === 'import' ? '📥' : '📤';
-                    
-                    const deviceInfo = document.createElement('div');
-                    deviceInfo.className = 'device-info';
-                    
-                    const deviceName = document.createElement('div');
-                    deviceName.className = 'device-name';
-                    deviceName.textContent = device.device.name;
-                    
-                    const deviceTime = document.createElement('div');
-                    deviceTime.className = 'device-time';
-                    deviceTime.textContent = `${device.direction === 'import' ? 'Imported from' : 'Exported to'} • ${formatRelativeTime(device.timestamp)}`;
-                    
-                    deviceInfo.appendChild(deviceName);
-                    deviceInfo.appendChild(deviceTime);
-                    
-                    deviceItem.appendChild(deviceIcon);
-                    deviceItem.appendChild(deviceInfo);
-                    
-                    deviceList.appendChild(deviceItem);
-                });
-            }
-            
-            // NEW: Toggle export/import section
-            function toggleExportImport() {
-                if (exportImportSection.style.display === 'none') {
-                    exportImportSection.style.display = 'block';
-                } else {
-                    exportImportSection.style.display = 'none';
-                }
-            }
-            
-            // NEW: Export chat history
+            // Export chat history
             function exportChatHistory() {
                 const dataStr = JSON.stringify(chatSessions, null, 2);
                 const dataBlob = new Blob([dataStr], { type: 'application/json' });
@@ -1725,20 +1357,10 @@
                 document.body.removeChild(link);
                 URL.revokeObjectURL(url);
                 
-                // Record export
-                syncDevices.push({
-                    device: getDeviceInfo(),
-                    timestamp: Date.now(),
-                    direction: 'export'
-                });
-                
-                localStorage.setItem('deepseekSyncDevices', JSON.stringify(syncDevices));
-                updateSyncStatus();
-                
                 showMessage('Chat history exported successfully', 'success');
             }
             
-            // NEW: Import chat history
+            // Import chat history
             function importChatHistory(event) {
                 const file = event.target.files[0];
                 if (!file) return;
@@ -1752,18 +1374,8 @@
                         chatSessions = { ...chatSessions, ...importedChats };
                         localStorage.setItem('deepseekChatSessions', JSON.stringify(chatSessions));
                         
-                        // Record import
-                        syncDevices.push({
-                            device: { name: 'File Import', platform: 'file' },
-                            timestamp: Date.now(),
-                            direction: 'import'
-                        });
-                        
-                        localStorage.setItem('deepseekSyncDevices', JSON.stringify(syncDevices));
-                        
                         // Reload chat sessions
                         loadChatSessions();
-                        updateSyncStatus();
                         
                         showMessage(`Successfully imported ${Object.keys(importedChats).length} chat sessions`, 'success');
                         
@@ -1776,42 +1388,8 @@
                 reader.readAsText(file);
                 event.target.value = ''; // Reset file input
             }
-            
-            // NEW: Update sync status
-            function updateSyncStatus() {
-                const chatCount = Object.keys(chatSessions).length;
-                const lastSync = syncDevices.length > 0 ? syncDevices[syncDevices.length - 1].timestamp : null;
-                
-                if (chatCount === 0) {
-                    syncIndicator.className = 'sync-indicator';
-                    syncStatusText.textContent = 'No chats to sync';
-                } else if (lastSync) {
-                    syncIndicator.className = 'sync-indicator synced';
-                    syncStatusText.textContent = `${chatCount} chats • Last sync ${formatRelativeTime(lastSync)}`;
-                } else {
-                    syncIndicator.className = 'sync-indicator';
-                    syncStatusText.textContent = `${chatCount} chats ready to sync`;
-                }
-            }
-            
-            // NEW: Format relative time
-            function formatRelativeTime(timestamp) {
-                const date = new Date(timestamp);
-                const now = new Date();
-                const diffMs = now - date;
-                const diffMins = Math.floor(diffMs / 60000);
-                const diffHours = Math.floor(diffMs / 3600000);
-                const diffDays = Math.floor(diffMs / 86400000);
-                
-                if (diffMins < 1) return 'just now';
-                if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
-                if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
-                if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
-                
-                return date.toLocaleDateString();
-            }
 
-            // ORIGINAL CHATBOT FUNCTIONS - FIXED: Added missing implementations
+            // ORIGINAL CHATBOT FUNCTIONS
             function generateChatId() {
                 return `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
             }
@@ -1825,15 +1403,28 @@
                 }
             }
             
-            // FIXED: Added proper loadChatSessions implementation
             function loadChatSessions() {
+                // Clear existing content but keep the header
+                const header = chatHistory.querySelector('.chat-history-header');
                 chatHistory.innerHTML = '';
+                if (header) {
+                    chatHistory.appendChild(header);
+                } else {
+                    // Create header if it doesn't exist
+                    const headerDiv = document.createElement('div');
+                    headerDiv.className = 'chat-history-header';
+                    headerDiv.innerHTML = '<h3><i class="fas fa-history"></i> Chat History</h3>';
+                    chatHistory.appendChild(headerDiv);
+                }
                 
                 const sessions = Object.entries(chatSessions)
                     .sort(([,a], [,b]) => b.timestamp - a.timestamp);
                 
                 if (sessions.length === 0) {
-                    chatHistory.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.5); padding: 20px; font-size: 0.9rem;">No chat history yet</div>';
+                    const emptyMessage = document.createElement('div');
+                    emptyMessage.style.cssText = 'text-align: center; color: rgba(255,255,255,0.5); padding: 40px 20px; font-size: 0.9rem;';
+                    emptyMessage.innerHTML = '<i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>No chat history yet<br><span style="font-size: 0.8rem;">Start a conversation to see it here</span>';
+                    chatHistory.appendChild(emptyMessage);
                     return;
                 }
                 
@@ -1844,14 +1435,35 @@
                         historyItem.classList.add('active');
                     }
                     
+                    const timeAgo = formatRelativeTime(session.timestamp);
+                    
                     historyItem.innerHTML = `
                         <i class="fas fa-message history-icon"></i>
-                        <span>${session.title}</span>
+                        <div class="history-content">
+                            <div class="history-title">${session.title}</div>
+                            <div class="history-time">${timeAgo}</div>
+                        </div>
                     `;
                     
                     historyItem.onclick = () => loadChatSession(id);
                     chatHistory.appendChild(historyItem);
                 });
+            }
+            
+            function formatRelativeTime(timestamp) {
+                const date = new Date(timestamp);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
+                
+                if (diffMins < 1) return 'just now';
+                if (diffMins < 60) return `${diffMins}m ago`;
+                if (diffHours < 24) return `${diffHours}h ago`;
+                if (diffDays < 7) return `${diffDays}d ago`;
+                
+                return date.toLocaleDateString();
             }
             
             function loadChatSession(chatId) {
@@ -2153,7 +1765,6 @@
                     
                     localStorage.setItem('deepseekChatSessions', JSON.stringify(chatSessions));
                     loadChatSessions();
-                    updateSyncStatus();
                 }
             }
             
