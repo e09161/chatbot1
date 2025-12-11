@@ -1163,13 +1163,13 @@
                     <div class="model-control">
                         <label>Model:</label>
                         <select id="modelSelect">
-                            <option value="deepseek-chat">DeepSeek Chat</option>
-                            <option value="deepseek-coder">DeepSeek Coder</option>
+                            <option value="deepseek-chat">deepseek-chat</option>
+                            <option value="deepseek-coder">deepseek-coder</option>
                         </select>
                     </div>
                     <div class="model-control">
                         <label>Max Tokens:</label>
-                        <input type="number" id="maxTokens" value="4000" min="100" max="32000">
+                        <input type="number" id="maxTokens" value="2000" min="100" max="32000">
                     </div>
                     <div class="model-control">
                         <label>Temperature:</label>
@@ -1207,4 +1207,1034 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // DOM elements
+            const chatMessages = document.getElementById('chatMessages');
+            const userInput = document.getElementById('userInput');
+            const chatForm = document.getElementById('chatForm');
+            const typingIndicator = document.getElementById('typingIndicator');
+            const apiKeyInput = document.getElementById('apiKey');
+            const saveApiKeyButton = document.getElementById('saveApiKey');
+            const sendButton = document.getElementById('sendButton');
+            const fileInput = document.getElementById('fileInput');
+            const fileAttachBtn = document.getElementById('fileAttachBtn');
+            const attachedFiles = document.getElementById('attachedFiles');
+            const statusIndicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            const newChatBtn = document.getElementById('newChatBtn');
+            const chatHistory = document.getElementById('chatHistory');
+            const toggleSidebar = document.getElementById('toggleSidebar');
+            const sidebar = document.getElementById('sidebar');
+            const menuButton = document.getElementById('menuButton');
+            const themeButton = document.getElementById('themeButton');
+            const maxTokensInput = document.getElementById('maxTokens');
+            const temperatureInput = document.getElementById('temperature');
+            const responseStrategySelect = document.getElementById('responseStrategy');
+            const modelSelect = document.getElementById('modelSelect');
+            
+            // Export/Import elements
+            const exportChats = document.getElementById('exportChats');
+            const importChats = document.getElementById('importChats');
+            const importFile = document.getElementById('importFile');
+            
+            // DeepSeek API Configuration
+            const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
+            const DEFAULT_MODELS = ['deepseek-chat', 'deepseek-coder'];
+            
+            // Application state
+            let apiKey = localStorage.getItem('deepseekApiKey') || '';
+            let currentChatId = generateChatId();
+            let conversationHistory = [];
+            let chatSessions = JSON.parse(localStorage.getItem('deepseekChatSessions')) || {};
+            let isStreaming = false;
+            let currentStreamController = null;
+            let isConnected = false;
+            let attachedFilesList = [];
+            let currentStreamingMessage = null;
+            let currentStreamingContent = null;
+            let autoScrollEnabled = true;
+            
+            // Initialize highlight.js
+            hljs.highlightAll();
+            
+            // Initialize the app
+            function init() {
+                console.log('Initializing DeepSeek Chatbot...');
+                loadApiKey();
+                setupEventListeners();
+                updateConnectionStatus();
+                loadChatSessions();
+                scrollToBottom();
+                
+                // Add initial welcome message if no chat history
+                if (conversationHistory.length === 0) {
+                    conversationHistory.push({ 
+                        role: 'assistant', 
+                        content: 'Hello! I\'m DeepSeek AI assistant. How can I help you today? You can ask questions, upload files for analysis, or request code explanations.' 
+                    });
+                    addMessage('Hello! I\'m DeepSeek AI assistant. How can I help you today? You can ask questions, upload files for analysis, or request code explanations.', 'bot');
+                }
+            }
+            
+            // Set up event listeners
+            function setupEventListeners() {
+                // API connection
+                saveApiKeyButton.addEventListener('click', toggleConnection);
+                
+                // API key input - allow showing/hiding
+                apiKeyInput.addEventListener('focus', function() {
+                    if (this.value === '••••••••••••••••') {
+                        this.value = apiKey || '';
+                        this.type = 'text';
+                    }
+                });
+                
+                apiKeyInput.addEventListener('blur', function() {
+                    if (isConnected && this.value === apiKey) {
+                        this.value = '••••••••••••••••';
+                        this.type = 'password';
+                    }
+                });
+                
+                // Send message on form submit
+                chatForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    sendMessage();
+                });
+                
+                // Handle Enter key for sending message
+                userInput.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        sendMessage();
+                    }
+                });
+                
+                // Auto-resize textarea
+                userInput.addEventListener('input', function() {
+                    this.style.height = 'auto';
+                    this.style.height = `${this.scrollHeight}px`;
+                });
+                
+                // Sidebar toggle
+                toggleSidebar.addEventListener('click', toggleSidebarView);
+                menuButton.addEventListener('click', toggleSidebarView);
+                
+                // Theme toggle
+                themeButton.addEventListener('click', toggleTheme);
+                
+                // File attachment button click
+                fileAttachBtn.addEventListener('click', function() {
+                    fileInput.click();
+                });
+                
+                // File input change
+                fileInput.addEventListener('change', function(e) {
+                    handleFileSelection(e.target.files);
+                });
+                
+                // New Chat functionality
+                newChatBtn.addEventListener('click', function() {
+                    // Save current chat if it has messages
+                    if (conversationHistory.length > 0) {
+                        saveChatSession();
+                    }
+                    
+                    // Create new chat
+                    currentChatId = generateChatId();
+                    conversationHistory = [];
+                    chatMessages.innerHTML = '';
+                    attachedFilesList = [];
+                    updateAttachedFilesDisplay();
+                    
+                    // Add welcome message
+                    addMessage('Hello! Start a new conversation with DeepSeek AI. You can ask questions, attach files, or request code analysis.', 'bot');
+                    conversationHistory.push({ 
+                        role: 'assistant', 
+                        content: 'Hello! Start a new conversation with DeepSeek AI. You can ask questions, attach files, or request code analysis.' 
+                    });
+                    
+                    // Update chat history
+                    loadChatSessions();
+                });
+                
+                // Enable scrolling during streaming
+                chatMessages.addEventListener('scroll', handleChatScroll);
+                chatMessages.addEventListener('wheel', handleChatWheel);
+                chatMessages.addEventListener('touchstart', handleChatTouch);
+                
+                // Export/Import events
+                exportChats.addEventListener('click', exportChatHistory);
+                importChats.addEventListener('click', () => importFile.click());
+                importFile.addEventListener('change', importChatHistory);
+                
+                // Test connection when model changes
+                modelSelect.addEventListener('change', function() {
+                    if (isConnected) {
+                        testApiConnection();
+                    }
+                });
+            }
+            
+            // Export chat history
+            function exportChatHistory() {
+                const dataStr = JSON.stringify(chatSessions, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                
+                const url = URL.createObjectURL(dataBlob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `deepseek-chats-${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                showMessage('Chat history exported successfully', 'success');
+            }
+            
+            // Import chat history
+            function importChatHistory(event) {
+                const file = event.target.files[0];
+                if (!file) return;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const importedChats = JSON.parse(e.target.result);
+                        
+                        // Merge with existing chats
+                        chatSessions = { ...chatSessions, ...importedChats };
+                        localStorage.setItem('deepseekChatSessions', JSON.stringify(chatSessions));
+                        
+                        // Reload chat sessions
+                        loadChatSessions();
+                        
+                        showMessage(`Successfully imported ${Object.keys(importedChats).length} chat sessions`, 'success');
+                        
+                    } catch (error) {
+                        console.error('Import error:', error);
+                        showMessage('Failed to import chat history: Invalid file format', 'error');
+                    }
+                };
+                
+                reader.readAsText(file);
+                event.target.value = '';
+            }
+            
+            // Helper functions
+            function generateChatId() {
+                return `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            }
+            
+            function loadApiKey() {
+                if (apiKey) {
+                    apiKeyInput.value = '••••••••••••••••';
+                    enableChat();
+                    isConnected = true;
+                    updateConnectionStatus();
+                    testApiConnection();
+                }
+            }
+            
+            function loadChatSessions() {
+                // Clear existing content but keep the header
+                const header = chatHistory.querySelector('.chat-history-header');
+                chatHistory.innerHTML = '';
+                if (header) {
+                    chatHistory.appendChild(header);
+                } else {
+                    // Create header if it doesn't exist
+                    const headerDiv = document.createElement('div');
+                    headerDiv.className = 'chat-history-header';
+                    headerDiv.innerHTML = '<h3><i class="fas fa-history"></i> Chat History</h3>';
+                    chatHistory.appendChild(headerDiv);
+                }
+                
+                const sessions = Object.entries(chatSessions)
+                    .sort(([,a], [,b]) => b.timestamp - a.timestamp);
+                
+                if (sessions.length === 0) {
+                    const emptyMessage = document.createElement('div');
+                    emptyMessage.style.cssText = 'text-align: center; color: rgba(255,255,255,0.5); padding: 40px 20px; font-size: 0.9rem;';
+                    emptyMessage.innerHTML = '<i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 10px; display: block;"></i>No chat history yet<br><span style="font-size: 0.8rem;">Start a conversation to see it here</span>';
+                    chatHistory.appendChild(emptyMessage);
+                    return;
+                }
+                
+                sessions.forEach(([id, session]) => {
+                    const historyItem = document.createElement('div');
+                    historyItem.className = 'history-item';
+                    if (id === currentChatId) {
+                        historyItem.classList.add('active');
+                    }
+                    
+                    const timeAgo = formatRelativeTime(session.timestamp);
+                    
+                    historyItem.innerHTML = `
+                        <i class="fas fa-message history-icon"></i>
+                        <div class="history-content">
+                            <div class="history-title">${session.title}</div>
+                            <div class="history-time">${timeAgo}</div>
+                        </div>
+                    `;
+                    
+                    historyItem.onclick = () => loadChatSession(id);
+                    chatHistory.appendChild(historyItem);
+                });
+            }
+            
+            function formatRelativeTime(timestamp) {
+                const date = new Date(timestamp);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
+                
+                if (diffMins < 1) return 'just now';
+                if (diffMins < 60) return `${diffMins}m ago`;
+                if (diffHours < 24) return `${diffHours}h ago`;
+                if (diffDays < 7) return `${diffDays}d ago`;
+                
+                return date.toLocaleDateString();
+            }
+            
+            function loadChatSession(chatId) {
+                if (conversationHistory.length > 0 && chatId !== currentChatId) {
+                    saveChatSession();
+                }
+                
+                currentChatId = chatId;
+                conversationHistory = [...chatSessions[chatId].history];
+                
+                chatMessages.innerHTML = '';
+                conversationHistory.forEach(msg => {
+                    if (msg.role === 'user') {
+                        addMessage(msg.content, 'user');
+                    } else if (msg.role === 'assistant') {
+                        addMessage(msg.content, 'bot');
+                    }
+                });
+                
+                loadChatSessions();
+                scrollToBottom();
+            }
+            
+            async function toggleConnection() {
+                if (isConnected) {
+                    // Disconnect
+                    apiKey = '';
+                    isConnected = false;
+                    apiKeyInput.value = '';
+                    apiKeyInput.type = 'password';
+                    localStorage.removeItem('deepseekApiKey');
+                    disableChat();
+                    showMessage('Disconnected from DeepSeek API', 'success');
+                } else {
+                    // Connect
+                    const key = apiKeyInput.value.trim();
+                    if (!validateApiKey(key)) {
+                        showMessage('Please enter a valid DeepSeek API key starting with "sk-" and at least 20 characters long', 'error');
+                        return;
+                    }
+                    
+                    apiKey = key;
+                    isConnected = true;
+                    localStorage.setItem('deepseekApiKey', apiKey);
+                    apiKeyInput.value = '••••••••••••••••';
+                    apiKeyInput.type = 'password';
+                    enableChat();
+                    showMessage('Connecting to DeepSeek API...', 'success');
+                    
+                    // Test the connection
+                    await testApiConnection();
+                }
+                
+                updateConnectionStatus();
+            }
+            
+            function validateApiKey(key) {
+                if (!key || typeof key !== 'string') return false;
+                const trimmedKey = key.trim();
+                if (!trimmedKey.startsWith('sk-')) return false;
+                if (trimmedKey.length < 20) return false;
+                const keyPattern = /^sk-[a-zA-Z0-9]{20,}$/;
+                return keyPattern.test(trimmedKey);
+            }
+            
+            function updateConnectionStatus() {
+                if (isConnected) {
+                    statusIndicator.classList.add('connected');
+                    statusText.textContent = 'Connected';
+                    saveApiKeyButton.innerHTML = '<i class="fas fa-unlink"></i> Disconnect';
+                } else {
+                    statusIndicator.classList.remove('connected');
+                    statusText.textContent = 'Not Connected';
+                    saveApiKeyButton.innerHTML = '<i class="fas fa-plug"></i> Connect to API';
+                }
+            }
+            
+            function enableChat() {
+                userInput.disabled = false;
+                sendButton.disabled = false;
+                fileAttachBtn.disabled = false;
+                userInput.placeholder = "Type your message... (Enter to send, Shift+Enter for new line)";
+            }
+            
+            function disableChat() {
+                userInput.disabled = true;
+                sendButton.disabled = true;
+                fileAttachBtn.disabled = true;
+                userInput.placeholder = "Please connect to API first...";
+            }
+            
+            async function testApiConnection() {
+                if (!apiKey) return;
+                
+                try {
+                    const testMessages = [
+                        { role: 'user', content: 'Hello! Please respond with a short greeting to confirm connection.' }
+                    ];
+                    
+                    const testResponse = await fetch(DEEPSEEK_API_URL, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`,
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            model: modelSelect.value,
+                            messages: testMessages,
+                            max_tokens: 50,
+                            temperature: 0.7,
+                            stream: false
+                        })
+                    });
+                    
+                    if (!testResponse.ok) {
+                        const errorText = await testResponse.text();
+                        console.error('API Test Error:', testResponse.status, errorText);
+                        
+                        if (testResponse.status === 401) {
+                            showMessage('Invalid API key. Please check your API key and try again.', 'error');
+                            isConnected = false;
+                            updateConnectionStatus();
+                        } else {
+                            showMessage(`Connection test failed (${testResponse.status}). Please try again.`, 'error');
+                        }
+                        return;
+                    }
+                    
+                    const data = await testResponse.json();
+                    console.log('DeepSeek API connection successful:', data);
+                    
+                    showMessage('Successfully connected to DeepSeek API!', 'success');
+                    isConnected = true;
+                    updateConnectionStatus();
+                    
+                } catch (error) {
+                    console.error('Connection test error:', error);
+                    showMessage(`Connection error: ${error.message}. Check your internet connection.`, 'error');
+                    isConnected = false;
+                    updateConnectionStatus();
+                }
+            }
+            
+            function handleChatScroll() {
+                if (isStreaming) {
+                    const isAtBottom = isChatAtBottom();
+                    autoScrollEnabled = isAtBottom;
+                }
+            }
+            
+            function handleChatWheel() {
+                if (isStreaming) {
+                    const isAtBottom = isChatAtBottom();
+                    autoScrollEnabled = isAtBottom;
+                }
+            }
+            
+            function handleChatTouch() {
+                if (isStreaming) {
+                    const isAtBottom = isChatAtBottom();
+                    autoScrollEnabled = isAtBottom;
+                }
+            }
+            
+            function isChatAtBottom() {
+                const threshold = 50;
+                const scrollTop = chatMessages.scrollTop;
+                const scrollHeight = chatMessages.scrollHeight;
+                const clientHeight = chatMessages.clientHeight;
+                return (scrollHeight - scrollTop - clientHeight) <= threshold;
+            }
+            
+            function toggleSidebarView() {
+                sidebar.classList.toggle('collapsed');
+                const icon = toggleSidebar.querySelector('i');
+                if (sidebar.classList.contains('collapsed')) {
+                    icon.className = 'fas fa-chevron-right';
+                } else {
+                    icon.className = 'fas fa-chevron-left';
+                }
+            }
+            
+            function toggleTheme() {
+                document.body.classList.toggle('dark-theme');
+                const icon = themeButton.querySelector('i');
+                if (document.body.classList.contains('dark-theme')) {
+                    icon.className = 'fas fa-sun';
+                } else {
+                    icon.className = 'fas fa-moon';
+                }
+            }
+            
+            function scrollToBottom() {
+                setTimeout(() => {
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }, 100);
+            }
+            
+            function showMessage(text, type) {
+                const toast = document.createElement('div');
+                toast.textContent = text;
+                toast.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    padding: 12px 20px;
+                    border-radius: 8px;
+                    color: white;
+                    font-weight: 500;
+                    z-index: 1000;
+                    animation: fadeIn 0.3s, fadeOut 0.3s 2.7s;
+                    background: ${type === 'error' ? 'var(--danger)' : 
+                                 type === 'warning' ? 'var(--warning)' : 'var(--success)'};
+                `;
+                
+                document.body.appendChild(toast);
+                setTimeout(() => { toast.remove(); }, 3000);
+            }
+            
+            function addMessage(text, sender, fileData = null) {
+                const welcomeMessage = chatMessages.querySelector('.welcome-message');
+                if (welcomeMessage && sender === 'user') {
+                    welcomeMessage.remove();
+                }
+                
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message';
+                
+                const now = new Date();
+                const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                if (fileData) {
+                    // Handle file messages
+                    const isPythonFile = fileData.name.toLowerCase().endsWith('.py');
+                    if (isPythonFile) {
+                        messageDiv.classList.add('python-file-message');
+                    } else {
+                        messageDiv.classList.add('file-message');
+                    }
+                    
+                    messageDiv.innerHTML = `
+                        <div class="file-info">
+                            <i class="fas fa-file-alt file-icon"></i>
+                            <div class="file-details">
+                                <div class="file-name">${fileData.name}</div>
+                                <div class="file-size">${fileData.size}</div>
+                            </div>
+                        </div>
+                        <div class="file-content">${escapeHtml(fileData.content.substring(0, 500))}${fileData.content.length > 500 ? '...' : ''}</div>
+                    `;
+                } else {
+                    messageDiv.classList.add(sender === 'user' ? 'user-message' : 'bot-message');
+                    
+                    const messageHeader = document.createElement('div');
+                    messageHeader.className = 'message-header';
+                    messageHeader.innerHTML = `
+                        <span>${sender === 'user' ? 'You' : 'DeepSeek Assistant'}</span>
+                        <span>${timeString}</span>
+                    `;
+                    messageDiv.appendChild(messageHeader);
+                    
+                    if (sender === 'bot') {
+                        const contentDiv = document.createElement('div');
+                        contentDiv.className = 'bot-message-content';
+                        contentDiv.innerHTML = formatMessageWithCode(text);
+                        messageDiv.appendChild(contentDiv);
+                    } else {
+                        const contentDiv = document.createElement('div');
+                        contentDiv.textContent = text;
+                        messageDiv.appendChild(contentDiv);
+                    }
+                }
+                
+                chatMessages.appendChild(messageDiv);
+                const scrollAnchor = document.createElement('div');
+                scrollAnchor.className = 'scroll-anchor';
+                chatMessages.appendChild(scrollAnchor);
+                
+                if (autoScrollEnabled) {
+                    scrollToBottom();
+                }
+                
+                if (sender === 'bot') {
+                    setTimeout(() => {
+                        messageDiv.querySelectorAll('pre code').forEach((block) => {
+                            hljs.highlightElement(block);
+                        });
+                    }, 0);
+                }
+                
+                return messageDiv;
+            }
+            
+            function formatMessageWithCode(text) {
+                if (!text) return '';
+                
+                // Handle code blocks with backticks
+                let formattedText = '';
+                let inCodeBlock = false;
+                let codeBlockContent = '';
+                let codeLanguage = '';
+                
+                const lines = text.split('\n');
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i];
+                    
+                    if (line.startsWith('```')) {
+                        if (inCodeBlock) {
+                            // End of code block
+                            formattedText += `<div class="code-block">
+                                <div class="code-header">
+                                    <span class="language-tag">${codeLanguage || 'code'}</span>
+                                    <div class="code-actions">
+                                        <button class="copy-btn" onclick="copyCode(this)"><i class="fas fa-copy"></i> Copy</button>
+                                    </div>
+                                </div>
+                                <pre><code class="${codeLanguage || ''}">${escapeHtml(codeBlockContent)}</code></pre>
+                            </div>`;
+                            inCodeBlock = false;
+                            codeBlockContent = '';
+                            codeLanguage = '';
+                        } else {
+                            // Start of code block
+                            inCodeBlock = true;
+                            codeLanguage = line.substring(3).trim() || '';
+                        }
+                    } else if (inCodeBlock) {
+                        codeBlockContent += line + '\n';
+                    } else {
+                        // Regular text
+                        formattedText += `<p>${escapeHtml(line)}</p>`;
+                    }
+                }
+                
+                // If we're still in a code block at the end, close it
+                if (inCodeBlock) {
+                    formattedText += `<div class="code-block">
+                        <div class="code-header">
+                            <span class="language-tag">${codeLanguage || 'code'}</span>
+                            <div class="code-actions">
+                                <button class="copy-btn" onclick="copyCode(this)"><i class="fas fa-copy"></i> Copy</button>
+                            </div>
+                        </div>
+                        <pre><code class="${codeLanguage || ''}">${escapeHtml(codeBlockContent)}</code></pre>
+                    </div>`;
+                }
+                
+                return formattedText;
+            }
+            
+            // Make copyCode available globally
+            window.copyCode = function(button) {
+                const codeBlock = button.closest('.code-block');
+                const codeElement = codeBlock.querySelector('code');
+                const textToCopy = codeElement.textContent;
+                
+                navigator.clipboard.writeText(textToCopy).then(() => {
+                    const originalText = button.innerHTML;
+                    button.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                    setTimeout(() => {
+                        button.innerHTML = originalText;
+                    }, 2000);
+                }).catch(err => {
+                    console.error('Failed to copy: ', err);
+                    button.innerHTML = '<i class="fas fa-times"></i> Failed';
+                    setTimeout(() => {
+                        button.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                    }, 2000);
+                });
+            };
+            
+            function escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+            
+            async function handleFileSelection(files) {
+                if (!apiKey) {
+                    alert('Please enter your API key first');
+                    return;
+                }
+                
+                if (!files || files.length === 0) return;
+                
+                for (const file of files) {
+                    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                        showMessage(`File ${file.name} is too large (max 5MB)`, 'error');
+                        continue;
+                    }
+                    
+                    const allowedTypes = ['.txt', '.py', '.js', '.html', '.css', '.json', '.md'];
+                    const fileExt = '.' + file.name.split('.').pop().toLowerCase();
+                    
+                    if (!allowedTypes.includes(fileExt)) {
+                        showMessage(`File type ${fileExt} not supported`, 'error');
+                        continue;
+                    }
+                    
+                    try {
+                        const content = await readFileAsText(file);
+                        const fileData = {
+                            name: file.name,
+                            size: formatFileSize(file.size),
+                            content: content,
+                            type: file.type || 'text/plain'
+                        };
+                        
+                        attachedFilesList.push(fileData);
+                        
+                        // Add file preview to chat
+                        addMessage('', 'user', fileData);
+                        
+                        updateAttachedFilesDisplay();
+                        
+                    } catch (error) {
+                        console.error('Error reading file:', error);
+                        showMessage(`Error reading file ${file.name}`, 'error');
+                    }
+                }
+                
+                fileInput.value = '';
+            }
+            
+            function readFileAsText(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = (e) => reject(new Error('Failed to read file'));
+                    reader.readAsText(file);
+                });
+            }
+            
+            function formatFileSize(bytes) {
+                if (bytes < 1024) return bytes + ' bytes';
+                if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+                return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+            }
+            
+            function updateAttachedFilesDisplay() {
+                attachedFiles.innerHTML = '';
+                
+                if (attachedFilesList.length === 0) {
+                    return;
+                }
+                
+                attachedFilesList.forEach((file, index) => {
+                    const fileElement = document.createElement('div');
+                    fileElement.className = 'attached-file';
+                    fileElement.innerHTML = `
+                        <i class="fas fa-file-alt"></i>
+                        <span>${file.name}</span>
+                        <button class="remove-file" data-index="${index}">×</button>
+                    `;
+                    attachedFiles.appendChild(fileElement);
+                });
+                
+                // Add event listeners to remove buttons
+                attachedFiles.querySelectorAll('.remove-file').forEach(button => {
+                    button.addEventListener('click', function() {
+                        const index = parseInt(this.getAttribute('data-index'));
+                        attachedFilesList.splice(index, 1);
+                        updateAttachedFilesDisplay();
+                    });
+                });
+            }
+            
+            async function sendMessage() {
+                const message = userInput.value.trim();
+                
+                // Don't send if there's no message AND no files
+                if (!message && attachedFilesList.length === 0) {
+                    showMessage('Please enter a message or attach a file', 'warning');
+                    return;
+                }
+                
+                // Add user message to chat if there is one
+                if (message) {
+                    addMessage(message, 'user');
+                    conversationHistory.push({ role: 'user', content: message });
+                }
+                
+                // Add file attachments to conversation history
+                if (attachedFilesList.length > 0) {
+                    for (const file of attachedFilesList) {
+                        conversationHistory.push({ 
+                            role: 'user', 
+                            content: `File: ${file.name}\nContent:\n${file.content.substring(0, 2000)}${file.content.length > 2000 ? '...' : ''}`
+                        });
+                    }
+                }
+                
+                userInput.value = '';
+                userInput.style.height = 'auto';
+                
+                try {
+                    const useStreaming = responseStrategySelect.value === 'streaming';
+                    const apiResponse = await callDeepSeekAPI(message, attachedFilesList, useStreaming);
+                    
+                    conversationHistory.push({ role: 'assistant', content: apiResponse });
+                    saveChatSession();
+                    attachedFilesList = [];
+                    updateAttachedFilesDisplay();
+                    
+                } catch (error) {
+                    const errorDiv = document.createElement('div');
+                    errorDiv.classList.add('error-message');
+                    errorDiv.textContent = `Error: ${error.message}`;
+                    chatMessages.appendChild(errorDiv);
+                    if (autoScrollEnabled) { scrollToBottom(); }
+                    
+                    if (error.message.includes('API key') || error.message.includes('401')) {
+                        isConnected = false;
+                        updateConnectionStatus();
+                    }
+                }
+            }
+            
+            function saveChatSession() {
+                if (conversationHistory.length > 0) {
+                    const firstUserMessage = conversationHistory.find(msg => msg.role === 'user');
+                    const chatTitle = firstUserMessage 
+                        ? firstUserMessage.content.substring(0, 30) + (firstUserMessage.content.length > 30 ? '...' : '')
+                        : 'New Chat';
+                    
+                    chatSessions[currentChatId] = {
+                        title: chatTitle,
+                        history: [...conversationHistory],
+                        timestamp: Date.now()
+                    };
+                    
+                    localStorage.setItem('deepseekChatSessions', JSON.stringify(chatSessions));
+                    loadChatSessions();
+                }
+            }
+            
+            async function callDeepSeekAPI(userMessage, attachedFiles = [], stream = true) {
+                if (!apiKey) {
+                    throw new Error('API key not configured. Please connect to the API first.');
+                }
+
+                // Show typing indicator
+                typingIndicator.style.display = 'flex';
+                isStreaming = stream;
+
+                try {
+                    const messages = [...conversationHistory];
+                    
+                    // Add file content if files are attached
+                    if (attachedFiles && attachedFiles.length > 0) {
+                        for (const file of attachedFiles) {
+                            if (file.content) {
+                                messages.push({
+                                    role: 'user',
+                                    content: `File: ${file.name}\nContent:\n${file.content.substring(0, 4000)}${file.content.length > 4000 ? '...' : ''}`
+                                });
+                            }
+                        }
+                    }
+
+                    const requestBody = {
+                        model: modelSelect.value,
+                        messages: messages,
+                        max_tokens: parseInt(maxTokensInput.value) || 2000,
+                        temperature: parseFloat(temperatureInput.value) || 0.7,
+                        stream: stream
+                    };
+
+                    console.log('Sending request to DeepSeek API:', {
+                        model: requestBody.model,
+                        messageCount: messages.length,
+                        max_tokens: requestBody.max_tokens,
+                        stream: stream
+                    });
+
+                    const headers = {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Accept': 'application/json'
+                    };
+
+                    if (!stream) {
+                        // Non-streaming response
+                        const response = await fetch(DEEPSEEK_API_URL, {
+                            method: 'POST',
+                            headers: headers,
+                            body: JSON.stringify(requestBody)
+                        });
+
+                        if (!response.ok) {
+                            let errorMessage = `API Error ${response.status}`;
+                            try {
+                                const errorData = await response.json();
+                                errorMessage = errorData.error?.message || errorMessage;
+                            } catch (e) {
+                                // If we can't parse JSON, use status text
+                                errorMessage = `${errorMessage}: ${response.statusText}`;
+                            }
+                            throw new Error(errorMessage);
+                        }
+
+                        const data = await response.json();
+                        const botMessage = data.choices[0]?.message?.content || 'No response received';
+                        
+                        typingIndicator.style.display = 'none';
+                        addMessage(botMessage, 'bot');
+                        return botMessage;
+                        
+                    } else {
+                        // Streaming response
+                        const response = await fetch(DEEPSEEK_API_URL, {
+                            method: 'POST',
+                            headers: headers,
+                            body: JSON.stringify(requestBody)
+                        });
+
+                        if (!response.ok) {
+                            let errorMessage = `API Error ${response.status}`;
+                            try {
+                                const errorText = await response.text();
+                                errorMessage = `${errorMessage}: ${errorText}`;
+                            } catch (e) {
+                                errorMessage = `${errorMessage}: ${response.statusText}`;
+                            }
+                            throw new Error(errorMessage);
+                        }
+
+                        const reader = response.body.getReader();
+                        const decoder = new TextDecoder();
+                        let fullResponse = '';
+                        
+                        // Create a message element for streaming
+                        currentStreamingMessage = addMessage('', 'bot');
+                        currentStreamingContent = '';
+                        
+                        // Store the controller for potential cancellation
+                        currentStreamController = {
+                            abort: () => reader.cancel(),
+                            isActive: true
+                        };
+
+                        try {
+                            while (true) {
+                                const { done, value } = await reader.read();
+                                if (done) break;
+
+                                const chunk = decoder.decode(value, { stream: true });
+                                const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
+                                for (const line of lines) {
+                                    if (line.startsWith('data: ')) {
+                                        const data = line.slice(6);
+                                        
+                                        if (data === '[DONE]') {
+                                            break;
+                                        }
+
+                                        try {
+                                            const parsed = JSON.parse(data);
+                                            const content = parsed.choices[0]?.delta?.content || '';
+                                            
+                                            if (content) {
+                                                currentStreamingContent += content;
+                                                fullResponse += content;
+                                                
+                                                // Update the message content
+                                                const contentDiv = currentStreamingMessage.querySelector('.bot-message-content');
+                                                if (contentDiv) {
+                                                    contentDiv.innerHTML = formatMessageWithCode(currentStreamingContent);
+                                                    
+                                                    // Highlight code blocks
+                                                    setTimeout(() => {
+                                                        currentStreamingMessage.querySelectorAll('pre code').forEach((block) => {
+                                                            hljs.highlightElement(block);
+                                                        });
+                                                    }, 0);
+                                                }
+                                                
+                                                if (autoScrollEnabled) {
+                                                    scrollToBottom();
+                                                }
+                                            }
+                                        } catch (e) {
+                                            console.warn('Failed to parse streaming chunk:', e, data);
+                                        }
+                                    }
+                                }
+                            }
+                        } finally {
+                            currentStreamController.isActive = false;
+                            typingIndicator.style.display = 'none';
+                            
+                            // Ensure final formatting
+                            if (currentStreamingMessage) {
+                                const contentDiv = currentStreamingMessage.querySelector('.bot-message-content');
+                                if (contentDiv) {
+                                    contentDiv.innerHTML = formatMessageWithCode(fullResponse);
+                                    setTimeout(() => {
+                                        currentStreamingMessage.querySelectorAll('pre code').forEach((block) => {
+                                            hljs.highlightElement(block);
+                                        });
+                                    }, 0);
+                                }
+                            }
+                        }
+
+                        return fullResponse;
+                    }
+
+                } catch (error) {
+                    console.error('API Call Error:', error);
+                    typingIndicator.style.display = 'none';
+                    isStreaming = false;
+                    
+                    // Provide more user-friendly error messages
+                    let errorMessage = error.message;
+                    if (error.message.includes('401')) {
+                        errorMessage = 'Invalid API key. Please check your API key and try again.';
+                        isConnected = false;
+                        updateConnectionStatus();
+                    } else if (error.message.includes('network') || error.message.includes('Failed to fetch')) {
+                        errorMessage = 'Network error. Please check your internet connection.';
+                    } else if (error.message.includes('429')) {
+                        errorMessage = 'Rate limit exceeded. Please wait a moment before trying again.';
+                    } else if (error.message.includes('model')) {
+                        errorMessage = 'Model error. Please try selecting a different model.';
+                    }
+                    
+                    throw new Error(errorMessage);
+                }
+            }
+            
+            // Initialize the app
+            init();
+        });
+    </script>
+</body>
+</html>
