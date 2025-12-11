@@ -6,10 +6,8 @@
     <title>DeepSeek Chatbot</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/javascript.min.js"></script>
     <style>
+        /* ALL CSS STYLES FROM BEFORE - THEY ARE THE SAME */
         * {
             margin: 0;
             padding: 0;
@@ -1237,9 +1235,13 @@
             const importChats = document.getElementById('importChats');
             const importFile = document.getElementById('importFile');
             
-            // DeepSeek API Configuration
-            const DEEPSEEK_API_URL = 'https://api.deepseek.com/chat/completions';
-            const DEFAULT_MODELS = ['deepseek-chat', 'deepseek-coder'];
+            // DeepSeek API Configuration - Try different endpoints
+            const API_ENDPOINTS = [
+                'https://api.deepseek.com/chat/completions',
+                'https://api.deepseek.com/v1/chat/completions'
+            ];
+            
+            let currentApiEndpoint = API_ENDPOINTS[0];
             
             // Application state
             let apiKey = localStorage.getItem('deepseekApiKey') || '';
@@ -1253,9 +1255,6 @@
             let currentStreamingMessage = null;
             let currentStreamingContent = null;
             let autoScrollEnabled = true;
-            
-            // Initialize highlight.js
-            hljs.highlightAll();
             
             // Initialize the app
             function init() {
@@ -1433,7 +1432,7 @@
                     enableChat();
                     isConnected = true;
                     updateConnectionStatus();
-                    testApiConnection();
+                    // Don't auto-test on load to avoid errors
                 }
             }
             
@@ -1539,16 +1538,51 @@
                         return;
                     }
                     
-                    apiKey = key;
-                    isConnected = true;
-                    localStorage.setItem('deepseekApiKey', apiKey);
-                    apiKeyInput.value = '••••••••••••••••';
-                    apiKeyInput.type = 'password';
-                    enableChat();
-                    showMessage('Connecting to DeepSeek API...', 'success');
+                    // Test different endpoints
+                    showMessage('Testing connection...', 'success');
                     
-                    // Test the connection
-                    await testApiConnection();
+                    // Try each endpoint
+                    let connected = false;
+                    for (let endpoint of API_ENDPOINTS) {
+                        try {
+                            currentApiEndpoint = endpoint;
+                            console.log(`Trying endpoint: ${endpoint}`);
+                            
+                            const testResponse = await fetch(endpoint, {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'Authorization': `Bearer ${key}`
+                                },
+                                body: JSON.stringify({
+                                    model: modelSelect.value,
+                                    messages: [{ role: 'user', content: 'Hello' }],
+                                    max_tokens: 10,
+                                    stream: false
+                                })
+                            });
+                            
+                            if (testResponse.ok) {
+                                apiKey = key;
+                                isConnected = true;
+                                localStorage.setItem('deepseekApiKey', apiKey);
+                                apiKeyInput.value = '••••••••••••••••';
+                                apiKeyInput.type = 'password';
+                                enableChat();
+                                showMessage(`Connected to DeepSeek API using ${endpoint}`, 'success');
+                                connected = true;
+                                break;
+                            }
+                        } catch (error) {
+                            console.log(`Endpoint ${endpoint} failed:`, error.message);
+                            continue;
+                        }
+                    }
+                    
+                    if (!connected) {
+                        showMessage('Failed to connect to any DeepSeek API endpoint. Please check your API key and try again.', 'error');
+                        return;
+                    }
                 }
                 
                 updateConnectionStatus();
@@ -1597,12 +1631,11 @@
                         { role: 'user', content: 'Hello! Please respond with a short greeting to confirm connection.' }
                     ];
                     
-                    const testResponse = await fetch(DEEPSEEK_API_URL, {
+                    const testResponse = await fetch(currentApiEndpoint, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${apiKey}`,
-                            'Accept': 'application/json'
+                            'Authorization': `Bearer ${apiKey}`
                         },
                         body: JSON.stringify({
                             model: modelSelect.value,
@@ -1743,8 +1776,8 @@
                         <div class="file-info">
                             <i class="fas fa-file-alt file-icon"></i>
                             <div class="file-details">
-                                <div class="file-name">${fileData.name}</div>
-                                <div class="file-size">${fileData.size}</div>
+                                <div class="file-name">${escapeHtml(fileData.name)}</div>
+                                <div class="file-size">${escapeHtml(fileData.size)}</div>
                             </div>
                         </div>
                         <div class="file-content">${escapeHtml(fileData.content.substring(0, 500))}${fileData.content.length > 500 ? '...' : ''}</div>
@@ -1783,9 +1816,12 @@
                 
                 if (sender === 'bot') {
                     setTimeout(() => {
-                        messageDiv.querySelectorAll('pre code').forEach((block) => {
-                            hljs.highlightElement(block);
-                        });
+                        // Load highlight.js dynamically
+                        if (typeof hljs !== 'undefined') {
+                            messageDiv.querySelectorAll('pre code').forEach((block) => {
+                                hljs.highlightElement(block);
+                            });
+                        }
                     }, 0);
                 }
                 
@@ -1811,12 +1847,12 @@
                             // End of code block
                             formattedText += `<div class="code-block">
                                 <div class="code-header">
-                                    <span class="language-tag">${codeLanguage || 'code'}</span>
+                                    <span class="language-tag">${escapeHtml(codeLanguage || 'code')}</span>
                                     <div class="code-actions">
                                         <button class="copy-btn" onclick="copyCode(this)"><i class="fas fa-copy"></i> Copy</button>
                                     </div>
                                 </div>
-                                <pre><code class="${codeLanguage || ''}">${escapeHtml(codeBlockContent)}</code></pre>
+                                <pre><code class="${escapeHtml(codeLanguage || '')}">${escapeHtml(codeBlockContent)}</code></pre>
                             </div>`;
                             inCodeBlock = false;
                             codeBlockContent = '';
@@ -1838,12 +1874,12 @@
                 if (inCodeBlock) {
                     formattedText += `<div class="code-block">
                         <div class="code-header">
-                            <span class="language-tag">${codeLanguage || 'code'}</span>
+                            <span class="language-tag">${escapeHtml(codeLanguage || 'code')}</span>
                             <div class="code-actions">
                                 <button class="copy-btn" onclick="copyCode(this)"><i class="fas fa-copy"></i> Copy</button>
                             </div>
                         </div>
-                        <pre><code class="${codeLanguage || ''}">${escapeHtml(codeBlockContent)}</code></pre>
+                        <pre><code class="${escapeHtml(codeLanguage || '')}">${escapeHtml(codeBlockContent)}</code></pre>
                     </div>`;
                 }
                 
@@ -1872,6 +1908,7 @@
             };
             
             function escapeHtml(text) {
+                if (!text) return '';
                 const div = document.createElement('div');
                 div.textContent = text;
                 return div.innerHTML;
@@ -1951,7 +1988,7 @@
                     fileElement.className = 'attached-file';
                     fileElement.innerHTML = `
                         <i class="fas fa-file-alt"></i>
-                        <span>${file.name}</span>
+                        <span>${escapeHtml(file.name)}</span>
                         <button class="remove-file" data-index="${index}">×</button>
                     `;
                     attachedFiles.appendChild(fileElement);
@@ -2068,39 +2105,37 @@
                         stream: stream
                     };
 
-                    console.log('Sending request to DeepSeek API:', {
+                    console.log('Sending request to DeepSeek API endpoint:', currentApiEndpoint);
+                    console.log('Request body:', {
                         model: requestBody.model,
                         messageCount: messages.length,
                         max_tokens: requestBody.max_tokens,
                         stream: stream
                     });
 
-                    const headers = {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey}`,
-                        'Accept': 'application/json'
-                    };
+                    const response = await fetch(currentApiEndpoint, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${apiKey}`
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
+
+                    if (!response.ok) {
+                        let errorMessage = `API Error ${response.status}`;
+                        try {
+                            const errorData = await response.json();
+                            errorMessage = errorData.error?.message || errorMessage;
+                        } catch (e) {
+                            const errorText = await response.text();
+                            errorMessage = `${errorMessage}: ${errorText || response.statusText}`;
+                        }
+                        throw new Error(errorMessage);
+                    }
 
                     if (!stream) {
                         // Non-streaming response
-                        const response = await fetch(DEEPSEEK_API_URL, {
-                            method: 'POST',
-                            headers: headers,
-                            body: JSON.stringify(requestBody)
-                        });
-
-                        if (!response.ok) {
-                            let errorMessage = `API Error ${response.status}`;
-                            try {
-                                const errorData = await response.json();
-                                errorMessage = errorData.error?.message || errorMessage;
-                            } catch (e) {
-                                // If we can't parse JSON, use status text
-                                errorMessage = `${errorMessage}: ${response.statusText}`;
-                            }
-                            throw new Error(errorMessage);
-                        }
-
                         const data = await response.json();
                         const botMessage = data.choices[0]?.message?.content || 'No response received';
                         
@@ -2110,23 +2145,6 @@
                         
                     } else {
                         // Streaming response
-                        const response = await fetch(DEEPSEEK_API_URL, {
-                            method: 'POST',
-                            headers: headers,
-                            body: JSON.stringify(requestBody)
-                        });
-
-                        if (!response.ok) {
-                            let errorMessage = `API Error ${response.status}`;
-                            try {
-                                const errorText = await response.text();
-                                errorMessage = `${errorMessage}: ${errorText}`;
-                            } catch (e) {
-                                errorMessage = `${errorMessage}: ${response.statusText}`;
-                            }
-                            throw new Error(errorMessage);
-                        }
-
                         const reader = response.body.getReader();
                         const decoder = new TextDecoder();
                         let fullResponse = '';
@@ -2146,7 +2164,7 @@
                                 const { done, value } = await reader.read();
                                 if (done) break;
 
-                                const chunk = decoder.decode(value, { stream: true });
+                                const chunk = decoder.decode(value);
                                 const lines = chunk.split('\n').filter(line => line.trim() !== '');
 
                                 for (const line of lines) {
@@ -2169,13 +2187,6 @@
                                                 const contentDiv = currentStreamingMessage.querySelector('.bot-message-content');
                                                 if (contentDiv) {
                                                     contentDiv.innerHTML = formatMessageWithCode(currentStreamingContent);
-                                                    
-                                                    // Highlight code blocks
-                                                    setTimeout(() => {
-                                                        currentStreamingMessage.querySelectorAll('pre code').forEach((block) => {
-                                                            hljs.highlightElement(block);
-                                                        });
-                                                    }, 0);
                                                 }
                                                 
                                                 if (autoScrollEnabled) {
@@ -2197,11 +2208,6 @@
                                 const contentDiv = currentStreamingMessage.querySelector('.bot-message-content');
                                 if (contentDiv) {
                                     contentDiv.innerHTML = formatMessageWithCode(fullResponse);
-                                    setTimeout(() => {
-                                        currentStreamingMessage.querySelectorAll('pre code').forEach((block) => {
-                                            hljs.highlightElement(block);
-                                        });
-                                    }, 0);
                                 }
                             }
                         }
@@ -2216,12 +2222,12 @@
                     
                     // Provide more user-friendly error messages
                     let errorMessage = error.message;
-                    if (error.message.includes('401')) {
+                    if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                        errorMessage = 'Network error. Please check your internet connection and try again.';
+                    } else if (error.message.includes('401')) {
                         errorMessage = 'Invalid API key. Please check your API key and try again.';
                         isConnected = false;
                         updateConnectionStatus();
-                    } else if (error.message.includes('network') || error.message.includes('Failed to fetch')) {
-                        errorMessage = 'Network error. Please check your internet connection.';
                     } else if (error.message.includes('429')) {
                         errorMessage = 'Rate limit exceeded. Please wait a moment before trying again.';
                     } else if (error.message.includes('model')) {
