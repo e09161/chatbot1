@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="initial-scale=1.0,maximum-scale=1,minimum-scale=1.0,user-scalable=no,width=device-width,viewport-fit=cover">
-    <title>DeepSeek Chat - Customizable Controls</title>
+    <title>DeepSeek Chat - With Stop Button</title>
     <style>
         * {
             margin: 0;
@@ -31,6 +31,10 @@
             --accent-primary: #4f6af5;
             --accent-secondary: #6d8cff;
             --accent-gradient: linear-gradient(135deg, #4f6af5 0%, #6d8cff 100%);
+            
+            /* Stop button colors */
+            --stop-color: #f85149;
+            --stop-hover: #f97066;
             
             /* Gauge colors */
             --gauge-low: #2ea043;
@@ -463,6 +467,7 @@
             overflow-y: auto;
             padding: 24px;
             background: var(--bg-primary);
+            position: relative;
         }
 
         .messages-container::-webkit-scrollbar {
@@ -848,6 +853,46 @@
             fill: white;
         }
 
+        /* Stop button */
+        .stop-btn {
+            background: var(--stop-color);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 46px;
+            height: 46px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            flex-shrink: 0;
+            animation: pulse 2s infinite;
+        }
+
+        .stop-btn:hover {
+            background: var(--stop-hover);
+            transform: scale(1.05);
+        }
+
+        .stop-btn svg {
+            width: 20px;
+            height: 20px;
+            fill: white;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(248, 81, 73, 0.4);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(248, 81, 73, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(248, 81, 73, 0);
+            }
+        }
+
         .usage-info {
             font-size: 12px;
             color: var(--text-muted);
@@ -877,6 +922,27 @@
             color: var(--accent-primary);
             margin-left: 4px;
             font-weight: 600;
+        }
+
+        .generation-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--warning);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--warning);
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
         }
 
         /* Modal */
@@ -973,7 +1039,7 @@
                                 </span>
                             </div>
                             <div class="gauge-track" id="tempTrack" onclick="setTemperatureFromClick(event)">
-                                <div class="gauge-fill temperature" id="tempFill" style="width: 70%">
+                                <div class="gauge-fill temperature" id="tempFill" style="width: 35%">
                                     <div class="gauge-handle" id="tempHandle" 
                                          onmousedown="startDragTemp(event)"></div>
                                 </div>
@@ -1034,6 +1100,10 @@
                     <span class="setting-badge">🌡️ <span id="currentTemp">0.7</span></span>
                     <span class="setting-badge">📦 <span id="currentTokens">4000</span></span>
                 </div>
+                <div class="generation-status" id="generationStatus" style="display: none;">
+                    <span class="status-dot"></span>
+                    <span>Generating... <span id="generationTime">0</span>s</span>
+                </div>
             </div>
             
             <div class="input-area">
@@ -1062,6 +1132,11 @@
                             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
                         </svg>
                     </button>
+                    <button onclick="stopGeneration()" id="stopBtn" class="stop-btn" style="display: none;">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M6 6h12v12H6z"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
         </div>
@@ -1079,6 +1154,9 @@
         let apiKey = '';
         let isProcessing = false;
         let attachedFiles = [];
+        let abortController = null;
+        let generationStartTime = null;
+        let generationTimer = null;
         
         // Default settings
         let temperature = 0.7;
@@ -1368,14 +1446,14 @@
         function addWelcomeMessage() {
             const welcomeMessage = {
                 role: 'assistant',
-                content: `🌙 **Customizable Controls Enabled!**
+                content: `🌙 **Stop Button Enabled!**
 
-👋 Hello! I'm your DeepSeek AI assistant with customizable temperature and token limits.
+👋 Hello! I'm your DeepSeek AI assistant with a STOP button!
 
-**🎮 New Controls:**
-• 🌡️ **Temperature Gauge** - Control creativity (0.1 = precise, 2.0 = creative)
-• 📦 **Token Limit** - Control response length (1K to 8K tokens)
-• 🎯 **Preset Buttons** - Quick settings for different needs
+**🛑 New Feature: Stop Button**
+• Click the red stop button to cancel ongoing generations
+• Perfect for long code generation
+• Saves your tokens when you change your mind
 
 **Current Settings:**
 • Temperature: ${temperature.toFixed(1)} - ${getTemperatureDescription()}
@@ -1386,7 +1464,7 @@
 • 📄 Text files (.txt)
 • 🐍 Python files (.py)
 • 💻 Complete code blocks
-• 📦 Download code as files
+• 🛑 Stop/Cancel button
 
 Enter your API key above to start chatting!`,
                 timestamp: new Date().toLocaleTimeString()
@@ -1717,6 +1795,59 @@ Enter your API key above to start chatting!`,
             return fixedLines.join('\n');
         }
 
+        // Start generation timer
+        function startGenerationTimer() {
+            generationStartTime = Date.now();
+            const statusEl = document.getElementById('generationStatus');
+            const timeEl = document.getElementById('generationTime');
+            statusEl.style.display = 'flex';
+            
+            if (generationTimer) clearInterval(generationTimer);
+            
+            generationTimer = setInterval(() => {
+                if (generationStartTime) {
+                    const elapsed = Math.floor((Date.now() - generationStartTime) / 1000);
+                    timeEl.textContent = elapsed;
+                }
+            }, 100);
+        }
+
+        // Stop generation timer
+        function stopGenerationTimer() {
+            if (generationTimer) {
+                clearInterval(generationTimer);
+                generationTimer = null;
+            }
+            document.getElementById('generationStatus').style.display = 'none';
+        }
+
+        // Stop generation function
+        function stopGeneration() {
+            if (abortController) {
+                abortController.abort();
+                abortController = null;
+                
+                removeTypingIndicator();
+                stopGenerationTimer();
+                
+                // Add cancellation message
+                const cancelMessage = {
+                    role: 'assistant',
+                    content: '⏹️ Generation stopped by user.',
+                    timestamp: new Date().toLocaleTimeString()
+                };
+                
+                addMessageToCurrentConversation(cancelMessage);
+                displayMessage(cancelMessage);
+                
+                // Re-enable input
+                isProcessing = false;
+                document.getElementById('userInput').disabled = false;
+                document.getElementById('sendBtn').style.display = 'flex';
+                document.getElementById('stopBtn').style.display = 'none';
+            }
+        }
+
         async function sendMessage() {
             if (isProcessing) return;
             
@@ -1769,10 +1900,17 @@ Enter your API key above to start chatting!`,
             // Show typing indicator
             showTypingIndicator();
             
-            // Disable input
+            // Disable input and show stop button
             isProcessing = true;
             document.getElementById('userInput').disabled = true;
-            document.getElementById('sendBtn').disabled = true;
+            document.getElementById('sendBtn').style.display = 'none';
+            document.getElementById('stopBtn').style.display = 'flex';
+            
+            // Start timer
+            startGenerationTimer();
+            
+            // Create new AbortController for this request
+            abortController = new AbortController();
             
             try {
                 const conversation = conversations.find(c => c.id === currentConversationId);
@@ -1801,7 +1939,8 @@ Enter your API key above to start chatting!`,
                         temperature: temperature,
                         max_tokens: maxTokens,
                         stream: false
-                    })
+                    }),
+                    signal: abortController.signal
                 });
                 
                 if (!response.ok) {
@@ -1816,6 +1955,7 @@ Enter your API key above to start chatting!`,
                 assistantMessage = fixIncompleteCodeBlocks(assistantMessage);
                 
                 removeTypingIndicator();
+                stopGenerationTimer();
                 
                 const assistantResponse = {
                     role: 'assistant',
@@ -1832,22 +1972,29 @@ Enter your API key above to start chatting!`,
                 }
                 
             } catch (error) {
-                console.error('Error:', error);
-                removeTypingIndicator();
-                
-                const errorMessage = {
-                    role: 'assistant',
-                    content: `❌ Error: ${error.message}\n\nPlease try again. If the code is very long, try increasing the token limit or lowering the temperature.`,
-                    timestamp: new Date().toLocaleTimeString()
-                };
-                
-                addMessageToCurrentConversation(errorMessage);
-                displayMessage(errorMessage);
-                
+                if (error.name === 'AbortError') {
+                    // Generation was stopped by user - message already added
+                    console.log('Generation stopped by user');
+                } else {
+                    console.error('Error:', error);
+                    removeTypingIndicator();
+                    stopGenerationTimer();
+                    
+                    const errorMessage = {
+                        role: 'assistant',
+                        content: `❌ Error: ${error.message}\n\nPlease try again. If the code is very long, try increasing the token limit or lowering the temperature.`,
+                        timestamp: new Date().toLocaleTimeString()
+                    };
+                    
+                    addMessageToCurrentConversation(errorMessage);
+                    displayMessage(errorMessage);
+                }
             } finally {
                 isProcessing = false;
                 document.getElementById('userInput').disabled = false;
-                document.getElementById('sendBtn').disabled = false;
+                document.getElementById('sendBtn').style.display = 'flex';
+                document.getElementById('stopBtn').style.display = 'none';
+                abortController = null;
                 userInput.focus();
             }
         }
