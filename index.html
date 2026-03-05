@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="initial-scale=1.0,maximum-scale=1,minimum-scale=1.0,user-scalable=no,width=device-width,viewport-fit=cover">
-    <title>DeepSeek Chat - With Stop Button</title>
+    <title>DeepSeek Chat - Continue Button</title>
     <style>
         * {
             margin: 0;
@@ -31,6 +31,10 @@
             --accent-primary: #4f6af5;
             --accent-secondary: #6d8cff;
             --accent-gradient: linear-gradient(135deg, #4f6af5 0%, #6d8cff 100%);
+            
+            /* Continue button colors */
+            --continue-color: #2ea043;
+            --continue-hover: #3fb950;
             
             /* Stop button colors */
             --stop-color: #f85149;
@@ -644,6 +648,67 @@
             margin-right: 36px;
         }
 
+        /* Continue button styling */
+        .continue-container {
+            display: flex;
+            justify-content: center;
+            margin: 16px 0;
+        }
+
+        .continue-btn {
+            background: var(--continue-color);
+            color: white;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 12px rgba(46, 160, 67, 0.3);
+            animation: pulse-green 2s infinite;
+        }
+
+        .continue-btn:hover {
+            background: var(--continue-hover);
+            transform: scale(1.05);
+        }
+
+        .continue-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: white;
+        }
+
+        @keyframes pulse-green {
+            0% {
+                box-shadow: 0 0 0 0 rgba(46, 160, 67, 0.4);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(46, 160, 67, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(46, 160, 67, 0);
+            }
+        }
+
+        /* Incomplete code indicator */
+        .incomplete-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: var(--warning);
+            color: black;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
         /* File attachments styling */
         .file-attachment {
             background: rgba(255, 255, 255, 0.1);
@@ -675,6 +740,37 @@
         .image-preview:hover {
             transform: scale(1.02);
             border-color: var(--accent-primary);
+        }
+
+        /* Streaming indicator */
+        .streaming-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--assistant-message-bg);
+            border-radius: 8px;
+            margin-top: 8px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .streaming-stats {
+            display: flex;
+            gap: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+        }
+
+        .streaming-stat {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .streaming-stat span {
+            color: var(--accent-primary);
         }
 
         /* Typing indicator */
@@ -867,7 +963,7 @@
             justify-content: center;
             transition: all 0.2s;
             flex-shrink: 0;
-            animation: pulse 2s infinite;
+            animation: pulse-red 2s infinite;
         }
 
         .stop-btn:hover {
@@ -881,7 +977,7 @@
             fill: white;
         }
 
-        @keyframes pulse {
+        @keyframes pulse-red {
             0% {
                 box-shadow: 0 0 0 0 rgba(248, 81, 73, 0.4);
             }
@@ -902,6 +998,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
         }
 
         .current-settings {
@@ -1157,6 +1255,10 @@
         let abortController = null;
         let generationStartTime = null;
         let generationTimer = null;
+        
+        // Store the last incomplete message for continuation
+        let lastIncompleteMessage = null;
+        let lastUserMessage = null;
         
         // Default settings
         let temperature = 0.7;
@@ -1446,14 +1548,15 @@
         function addWelcomeMessage() {
             const welcomeMessage = {
                 role: 'assistant',
-                content: `🌙 **Stop Button Enabled!**
+                content: `🌙 **Continue Button Enabled!**
 
-👋 Hello! I'm your DeepSeek AI assistant with a STOP button!
+👋 Hello! I'm your DeepSeek AI assistant with a CONTINUE button!
 
-**🛑 New Feature: Stop Button**
-• Click the red stop button to cancel ongoing generations
-• Perfect for long code generation
-• Saves your tokens when you change your mind
+**🔄 New Feature: Continue Button**
+• When code gets cut off, a green CONTINUE button appears
+• Click it to request the remaining code
+• Automatically tracks what was already generated
+• Never lose the end of long code again!
 
 **Current Settings:**
 • Temperature: ${temperature.toFixed(1)} - ${getTemperatureDescription()}
@@ -1463,8 +1566,9 @@
 • 📸 Image analysis
 • 📄 Text files (.txt)
 • 🐍 Python files (.py)
-• 💻 Complete code blocks
+• 💻 Complete code with Continue button
 • 🛑 Stop/Cancel button
+• 🔄 Continue incomplete responses
 
 Enter your API key above to start chatting!`,
                 timestamp: new Date().toLocaleTimeString()
@@ -1508,6 +1612,114 @@ Enter your API key above to start chatting!`,
                 saveConversations();
                 renderChatHistory();
             }
+        }
+
+        // Check if message might be incomplete
+        function isMessageIncomplete(content) {
+            if (!content) return false;
+            
+            // Check for unclosed code blocks
+            const codeBlockCount = (content.match(/```/g) || []).length;
+            if (codeBlockCount % 2 !== 0) return true;
+            
+            // Check if it ends with incomplete line
+            const lastLine = content.split('\n').pop();
+            if (lastLine && !lastLine.trim() && content.trim().endsWith('...')) return true;
+            
+            // Check for incomplete function/class definitions
+            const incompletePatterns = [
+                /def\s+\w+\s*\([^)]*\)\s*:\s*$/,  // Incomplete function
+                /class\s+\w+\s*[:\(]\s*$/,        // Incomplete class
+                /if\s+.*:\s*$/,                    // Incomplete if
+                /else\s*:\s*$/,                     // Incomplete else
+                /for\s+.*:\s*$/,                     // Incomplete for
+                /while\s+.*:\s*$/,                   // Incomplete while
+                /try\s*:\s*$/,                        // Incomplete try
+                /except\s*[^:]*:\s*$/,                // Incomplete except
+                /finally\s*:\s*$/                      // Incomplete finally
+            ];
+            
+            for (const pattern of incompletePatterns) {
+                if (pattern.test(content)) return true;
+            }
+            
+            return false;
+        }
+
+        // Add continue button to message
+        function addContinueButton(messageId, originalMessage) {
+            const messagesDiv = document.getElementById('messages');
+            
+            // Check if continue button already exists
+            if (document.getElementById(`continue-${messageId}`)) return;
+            
+            const continueDiv = document.createElement('div');
+            continueDiv.className = 'continue-container';
+            continueDiv.id = `continue-${messageId}`;
+            
+            // Store the incomplete message for continuation
+            lastIncompleteMessage = {
+                id: messageId,
+                content: originalMessage
+            };
+            
+            continueDiv.innerHTML = `
+                <button class="continue-btn" onclick="continueMessage('${messageId}')">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M8 5v14l11-7z"/>
+                    </svg>
+                    Continue Generating
+                </button>
+            `;
+            
+            messagesDiv.appendChild(continueDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        // Continue incomplete message
+        async function continueMessage(messageId) {
+            if (isProcessing) {
+                alert('Already generating. Please wait or stop current generation.');
+                return;
+            }
+            
+            if (!lastIncompleteMessage || !lastUserMessage) {
+                alert('No incomplete message found to continue.');
+                return;
+            }
+            
+            // Remove the continue button
+            const continueBtn = document.getElementById(`continue-${messageId}`);
+            if (continueBtn) continueBtn.remove();
+            
+            // Get the incomplete message
+            const conversation = conversations.find(c => c.id === currentConversationId);
+            const incompleteMsg = conversation.messages.find(m => m.timestamp === lastIncompleteMessage.timestamp);
+            
+            if (!incompleteMsg) {
+                alert('Could not find the message to continue.');
+                return;
+            }
+            
+            // Create continuation prompt
+            const continuationPrompt = `Please continue from where you left off. Here's the code so far:
+
+\`\`\`
+${incompleteMsg.content}
+\`\`\`
+
+Please provide the COMPLETE remaining code without repeating what's already shown. Start from where it was cut off.`;
+            
+            // Set the user input
+            document.getElementById('userInput').value = continuationPrompt;
+            
+            // Auto-resize textarea
+            const textarea = document.getElementById('userInput');
+            textarea.style.height = 'auto';
+            textarea.style.height = (textarea.scrollHeight) + 'px';
+            
+            // Send the continuation request
+            await sendMessage(true);
         }
 
         function formatCodeBlocks(content) {
@@ -1617,6 +1829,21 @@ Enter your API key above to start chatting!`,
             const nameSpan = document.createElement('span');
             nameSpan.textContent = message.role === 'user' ? 'You' : 'DeepSeek';
             
+            // Add incomplete badge if message might be incomplete
+            if (message.role === 'assistant' && isMessageIncomplete(message.content)) {
+                const badgeSpan = document.createElement('span');
+                badgeSpan.className = 'incomplete-badge';
+                badgeSpan.innerHTML = '⚠️ Incomplete';
+                nameSpan.appendChild(badgeSpan);
+                
+                // Store for potential continuation
+                lastIncompleteMessage = {
+                    id: message.timestamp,
+                    content: message.content,
+                    timestamp: message.timestamp
+                };
+            }
+            
             headerDiv.appendChild(avatarDiv);
             headerDiv.appendChild(nameSpan);
             
@@ -1657,6 +1884,12 @@ Enter your API key above to start chatting!`,
             messageDiv.appendChild(timeDiv);
             
             messagesDiv.appendChild(messageDiv);
+            
+            // Add continue button if message is incomplete
+            if (message.role === 'assistant' && isMessageIncomplete(message.content)) {
+                addContinueButton(message.timestamp, message.content);
+            }
+            
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
@@ -1848,7 +2081,7 @@ Enter your API key above to start chatting!`,
             }
         }
 
-        async function sendMessage() {
+        async function sendMessage(isContinuation = false) {
             if (isProcessing) return;
             
             const userInput = document.getElementById('userInput');
@@ -1878,6 +2111,11 @@ Enter your API key above to start chatting!`,
                         }
                     }
                 }
+            }
+            
+            // Store user message for potential continuation
+            if (!isContinuation) {
+                lastUserMessage = fullMessage;
             }
             
             // Add user message
@@ -1973,7 +2211,6 @@ Enter your API key above to start chatting!`,
                 
             } catch (error) {
                 if (error.name === 'AbortError') {
-                    // Generation was stopped by user - message already added
                     console.log('Generation stopped by user');
                 } else {
                     console.error('Error:', error);
