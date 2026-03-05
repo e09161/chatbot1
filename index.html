@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="initial-scale=1.0,maximum-scale=1,minimum-scale=1.0,user-scalable=no,width=device-width,viewport-fit=cover">
-    <title>DeepSeek Chat - Complete Code Handler</title>
+    <title>DeepSeek Chat - Customizable Controls</title>
     <style>
         * {
             margin: 0;
@@ -32,19 +32,19 @@
             --accent-secondary: #6d8cff;
             --accent-gradient: linear-gradient(135deg, #4f6af5 0%, #6d8cff 100%);
             
+            /* Gauge colors */
+            --gauge-low: #2ea043;
+            --gauge-medium: #f0883e;
+            --gauge-high: #f85149;
+            --gauge-track: #2d333b;
+            
             /* Message colors */
             --user-message-bg: #4f6af5;
             --assistant-message-bg: #21262d;
             
-            /* Code block colors - GitHub Dark style */
+            /* Code block colors */
             --code-bg: #0d1117;
             --code-text: #e5e7eb;
-            --code-comment: #8b949e;
-            --code-keyword: #ff7b72;
-            --code-string: #a5d6ff;
-            --code-function: #d2a8ff;
-            --code-variable: #ffa657;
-            --code-number: #79c0ff;
             
             /* Status colors */
             --success: #2ea043;
@@ -275,12 +275,21 @@
             justify-content: space-between;
             align-items: center;
             background: var(--bg-secondary);
+            flex-wrap: wrap;
+            gap: 12px;
         }
 
         .chat-title {
             font-weight: 600;
             font-size: 16px;
             color: var(--text-primary);
+        }
+
+        .controls-container {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
         }
 
         .api-key-container {
@@ -293,7 +302,7 @@
             padding: 8px 12px;
             border: 1px solid var(--border-color);
             border-radius: 8px;
-            width: 240px;
+            width: 200px;
             font-size: 13px;
             outline: none;
             transition: border-color 0.2s;
@@ -323,6 +332,130 @@
 
         .save-btn:hover {
             opacity: 0.9;
+        }
+
+        /* Gauge Controls */
+        .gauge-container {
+            display: flex;
+            gap: 20px;
+            background: var(--bg-tertiary);
+            padding: 10px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .gauge-item {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            min-width: 140px;
+        }
+
+        .gauge-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        .gauge-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .gauge-value {
+            background: var(--bg-primary);
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--accent-primary);
+            border: 1px solid var(--border-color);
+        }
+
+        .gauge-track {
+            width: 100%;
+            height: 6px;
+            background: var(--gauge-track);
+            border-radius: 3px;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .gauge-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.1s ease;
+            position: relative;
+        }
+
+        .gauge-fill.temperature {
+            background: linear-gradient(90deg, var(--gauge-low), var(--gauge-medium), var(--gauge-high));
+        }
+
+        .gauge-fill.tokens {
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+        }
+
+        .gauge-handle {
+            width: 14px;
+            height: 14px;
+            background: white;
+            border: 2px solid var(--accent-primary);
+            border-radius: 50%;
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            cursor: grab;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: transform 0.1s;
+        }
+
+        .gauge-handle:hover {
+            transform: translate(-50%, -50%) scale(1.2);
+        }
+
+        .gauge-handle:active {
+            cursor: grabbing;
+        }
+
+        .gauge-markers {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 4px;
+            font-size: 9px;
+            color: var(--text-muted);
+            padding: 0 2px;
+        }
+
+        .preset-buttons {
+            display: flex;
+            gap: 4px;
+            margin-top: 4px;
+        }
+
+        .preset-btn {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-btn:hover {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        .preset-btn.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: white;
         }
 
         .messages-container {
@@ -721,6 +854,29 @@
             padding: 12px 24px;
             background: var(--bg-secondary);
             border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .current-settings {
+            display: flex;
+            gap: 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+        }
+
+        .setting-badge {
+            background: var(--bg-tertiary);
+            padding: 4px 8px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .setting-badge span {
+            color: var(--accent-primary);
+            margin-left: 4px;
+            font-weight: 600;
         }
 
         /* Modal */
@@ -806,16 +962,78 @@
         <div class="main-content">
             <div class="chat-header">
                 <div class="chat-title" id="currentChatTitle">New Chat</div>
-                <div class="api-key-container">
-                    <input type="password" id="apiKey" class="api-key-input" placeholder="Enter DeepSeek API Key" value="">
-                    <button onclick="saveApiKey()" class="save-btn">Save Key</button>
+                <div class="controls-container">
+                    <!-- Temperature Gauge -->
+                    <div class="gauge-container">
+                        <div class="gauge-item">
+                            <div class="gauge-header">
+                                <span class="gauge-label">
+                                    🌡️ Temperature
+                                    <span class="gauge-value" id="tempValue">0.7</span>
+                                </span>
+                            </div>
+                            <div class="gauge-track" id="tempTrack" onclick="setTemperatureFromClick(event)">
+                                <div class="gauge-fill temperature" id="tempFill" style="width: 70%">
+                                    <div class="gauge-handle" id="tempHandle" 
+                                         onmousedown="startDragTemp(event)"></div>
+                                </div>
+                            </div>
+                            <div class="gauge-markers">
+                                <span>Precise (0.1)</span>
+                                <span>Creative (1.0)</span>
+                                <span>Random (2.0)</span>
+                            </div>
+                            <div class="preset-buttons">
+                                <button class="preset-btn" onclick="setTemperature(0.1)">Precise</button>
+                                <button class="preset-btn" onclick="setTemperature(0.3)">Consistent</button>
+                                <button class="preset-btn" onclick="setTemperature(0.7)">Balanced</button>
+                                <button class="preset-btn" onclick="setTemperature(1.2)">Creative</button>
+                            </div>
+                        </div>
+
+                        <!-- Token Limit Gauge -->
+                        <div class="gauge-item">
+                            <div class="gauge-header">
+                                <span class="gauge-label">
+                                    📦 Max Tokens
+                                    <span class="gauge-value" id="tokenLimitValue">4000</span>
+                                </span>
+                            </div>
+                            <div class="gauge-track" id="tokenTrack" onclick="setTokenLimitFromClick(event)">
+                                <div class="gauge-fill tokens" id="tokenFill" style="width: 50%">
+                                    <div class="gauge-handle" id="tokenHandle" 
+                                         onmousedown="startDragToken(event)"></div>
+                                </div>
+                            </div>
+                            <div class="gauge-markers">
+                                <span>1K</span>
+                                <span>4K</span>
+                                <span>8K</span>
+                            </div>
+                            <div class="preset-buttons">
+                                <button class="preset-btn" onclick="setTokenLimit(1000)">1K</button>
+                                <button class="preset-btn" onclick="setTokenLimit(2000)">2K</button>
+                                <button class="preset-btn" onclick="setTokenLimit(4000)">4K</button>
+                                <button class="preset-btn" onclick="setTokenLimit(8000)">8K</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="api-key-container">
+                        <input type="password" id="apiKey" class="api-key-input" placeholder="Enter API Key" value="">
+                        <button onclick="saveApiKey()" class="save-btn">Save</button>
+                    </div>
                 </div>
             </div>
 
             <div id="messages" class="messages-container"></div>
             
             <div class="usage-info" id="usageInfo">
-                💰 No limits - Using your own API key | Code-complete mode
+                <span>💰 No limits - Using your own API key</span>
+                <div class="current-settings" id="currentSettings">
+                    <span class="setting-badge">🌡️ <span id="currentTemp">0.7</span></span>
+                    <span class="setting-badge">📦 <span id="currentTokens">4000</span></span>
+                </div>
             </div>
             
             <div class="input-area">
@@ -861,12 +1079,22 @@
         let apiKey = '';
         let isProcessing = false;
         let attachedFiles = [];
+        
+        // Default settings
+        let temperature = 0.7;
+        let maxTokens = 4000;
+        
+        // Drag state
+        let isDraggingTemp = false;
+        let isDraggingToken = false;
 
         // Load saved data
         document.addEventListener('DOMContentLoaded', () => {
             loadApiKey();
             loadConversations();
+            loadSettings();
             updateApiStatus();
+            initGauges();
             
             if (conversations.length === 0) {
                 createNewChat();
@@ -874,6 +1102,115 @@
                 loadConversation(conversations[0].id);
             }
         });
+
+        function loadSettings() {
+            const savedTemp = localStorage.getItem('deepseek_temperature');
+            if (savedTemp) {
+                temperature = parseFloat(savedTemp);
+                updateTemperatureDisplay();
+            }
+            
+            const savedTokens = localStorage.getItem('deepseek_max_tokens');
+            if (savedTokens) {
+                maxTokens = parseInt(savedTokens);
+                updateTokenDisplay();
+            }
+        }
+
+        function saveSettings() {
+            localStorage.setItem('deepseek_temperature', temperature.toString());
+            localStorage.setItem('deepseek_max_tokens', maxTokens.toString());
+        }
+
+        function initGauges() {
+            updateTemperatureDisplay();
+            updateTokenDisplay();
+            
+            // Add event listeners for dragging
+            document.addEventListener('mousemove', onDragMove);
+            document.addEventListener('mouseup', onDragEnd);
+        }
+
+        function updateTemperatureDisplay() {
+            const percent = (temperature / 2.0) * 100;
+            document.getElementById('tempFill').style.width = `${percent}%`;
+            document.getElementById('tempValue').textContent = temperature.toFixed(1);
+            document.getElementById('currentTemp').textContent = temperature.toFixed(1);
+        }
+
+        function updateTokenDisplay() {
+            const percent = (maxTokens / 8000) * 100;
+            document.getElementById('tokenFill').style.width = `${percent}%`;
+            document.getElementById('tokenLimitValue').textContent = maxTokens;
+            document.getElementById('currentTokens').textContent = maxTokens;
+        }
+
+        function setTemperature(value) {
+            temperature = Math.max(0, Math.min(2.0, value));
+            updateTemperatureDisplay();
+            saveSettings();
+        }
+
+        function setTokenLimit(value) {
+            maxTokens = Math.max(100, Math.min(8000, Math.round(value / 100) * 100));
+            updateTokenDisplay();
+            saveSettings();
+        }
+
+        function setTemperatureFromClick(event) {
+            const track = document.getElementById('tempTrack');
+            const rect = track.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
+            const newTemp = (percent / 100) * 2.0;
+            setTemperature(newTemp);
+        }
+
+        function setTokenLimitFromClick(event) {
+            const track = document.getElementById('tokenTrack');
+            const rect = track.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
+            const newTokens = Math.round((percent / 100) * 8000 / 100) * 100;
+            setTokenLimit(newTokens);
+        }
+
+        function startDragTemp(event) {
+            isDraggingTemp = true;
+            event.preventDefault();
+        }
+
+        function startDragToken(event) {
+            isDraggingToken = true;
+            event.preventDefault();
+        }
+
+        function onDragMove(event) {
+            if (isDraggingTemp) {
+                const track = document.getElementById('tempTrack');
+                const rect = track.getBoundingClientRect();
+                let x = event.clientX - rect.left;
+                x = Math.max(0, Math.min(rect.width, x));
+                const percent = (x / rect.width) * 100;
+                const newTemp = (percent / 100) * 2.0;
+                setTemperature(newTemp);
+            }
+            
+            if (isDraggingToken) {
+                const track = document.getElementById('tokenTrack');
+                const rect = track.getBoundingClientRect();
+                let x = event.clientX - rect.left;
+                x = Math.max(0, Math.min(rect.width, x));
+                const percent = (x / rect.width) * 100;
+                const newTokens = Math.round((percent / 100) * 8000 / 100) * 100;
+                setTokenLimit(newTokens);
+            }
+        }
+
+        function onDragEnd(event) {
+            isDraggingTemp = false;
+            isDraggingToken = false;
+        }
 
         function loadApiKey() {
             const savedKey = localStorage.getItem('deepseek_api_key');
@@ -1031,37 +1368,25 @@
         function addWelcomeMessage() {
             const welcomeMessage = {
                 role: 'assistant',
-                content: `🌙 **Complete Code Mode Enabled!**
+                content: `🌙 **Customizable Controls Enabled!**
 
-👋 Hello! I'm your DeepSeek AI assistant optimized for large code generation.
+👋 Hello! I'm your DeepSeek AI assistant with customizable temperature and token limits.
+
+**🎮 New Controls:**
+• 🌡️ **Temperature Gauge** - Control creativity (0.1 = precise, 2.0 = creative)
+• 📦 **Token Limit** - Control response length (1K to 8K tokens)
+• 🎯 **Preset Buttons** - Quick settings for different needs
+
+**Current Settings:**
+• Temperature: ${temperature.toFixed(1)} - ${getTemperatureDescription()}
+• Max Tokens: ${maxTokens} - ${getTokenDescription()}
 
 **Features:**
 • 📸 Image analysis
 • 📄 Text files (.txt)
 • 🐍 Python files (.py)
-• 💻 Complete code blocks (no truncation)
+• 💻 Complete code blocks
 • 📦 Download code as files
-• 🔄 Multiple chat history
-
-\`\`\`python
-# Example: I'll generate COMPLETE code
-def example_function():
-    """
-    This function demonstrates that I'll provide
-    complete, runnable code without truncation
-    """
-    result = "All code will be complete!"
-    print(result)
-    return result
-
-# Every function, class, and method will be included
-class CodeComplete:
-    def __init__(self):
-        self.status = "Ready to generate full code"
-    
-    def generate_code(self):
-        return "No more cut-off code!"
-\`\`\`
 
 Enter your API key above to start chatting!`,
                 timestamp: new Date().toLocaleTimeString()
@@ -1069,6 +1394,20 @@ Enter your API key above to start chatting!`,
             
             addMessageToCurrentConversation(welcomeMessage);
             displayMessage(welcomeMessage);
+        }
+
+        function getTemperatureDescription() {
+            if (temperature < 0.3) return "Very precise, focused responses";
+            if (temperature < 0.7) return "Balanced, consistent responses";
+            if (temperature < 1.2) return "Creative, varied responses";
+            return "Very creative, unpredictable responses";
+        }
+
+        function getTokenDescription() {
+            if (maxTokens < 2000) return "Short responses";
+            if (maxTokens < 4000) return "Medium responses";
+            if (maxTokens < 6000) return "Long responses";
+            return "Very long responses (best for code)";
         }
 
         function addSystemMessage(content) {
@@ -1358,21 +1697,13 @@ Enter your API key above to start chatting!`,
             const lines = text.split('\n');
             let inCodeBlock = false;
             let fixedLines = [];
-            let codeBlockContent = [];
             
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
                 
                 if (line.trim().startsWith('```')) {
-                    if (!inCodeBlock) {
-                        // Starting a code block
-                        inCodeBlock = true;
-                        fixedLines.push(line);
-                    } else {
-                        // Ending a code block
-                        inCodeBlock = false;
-                        fixedLines.push(line);
-                    }
+                    inCodeBlock = !inCodeBlock;
+                    fixedLines.push(line);
                 } else {
                     fixedLines.push(line);
                 }
@@ -1384,30 +1715,6 @@ Enter your API key above to start chatting!`,
             }
             
             return fixedLines.join('\n');
-        }
-
-        // Split long messages into chunks
-        function splitLongMessage(message) {
-            const maxChunkSize = 15000; // Safe size for most APIs
-            if (message.length <= maxChunkSize) return [message];
-            
-            const chunks = [];
-            let currentChunk = '';
-            
-            // Try to split at natural boundaries (code blocks, paragraphs)
-            const parts = message.split(/(```[\s\S]*?```)/g);
-            
-            for (const part of parts) {
-                if ((currentChunk + part).length > maxChunkSize) {
-                    if (currentChunk) chunks.push(currentChunk);
-                    currentChunk = part;
-                } else {
-                    currentChunk += part;
-                }
-            }
-            
-            if (currentChunk) chunks.push(currentChunk);
-            return chunks;
         }
 
         async function sendMessage() {
@@ -1477,7 +1784,7 @@ Enter your API key above to start chatting!`,
                 // Add system prompt to encourage complete code
                 const systemPrompt = {
                     role: 'system',
-                    content: 'You are a code assistant. Always provide COMPLETE, RUNNABLE code without truncation. Never cut off code mid-way. Include all imports, functions, classes, and ensure the code is fully executable. If the code is long, provide it in full without shortening.'
+                    content: `You are a code assistant. Always provide COMPLETE, RUNNABLE code without truncation. Never cut off code mid-way. Include all imports, functions, classes, and ensure the code is fully executable. If the code is long, provide it in full without shortening. Current settings: Temperature ${temperature.toFixed(1)} (${getTemperatureDescription()}), Max Tokens ${maxTokens}.`
                 };
                 
                 const allMessages = [systemPrompt, ...apiMessages];
@@ -1491,8 +1798,8 @@ Enter your API key above to start chatting!`,
                     body: JSON.stringify({
                         model: 'deepseek-chat',
                         messages: allMessages,
-                        temperature: 0.3, // Lower temperature for more consistent code
-                        max_tokens: 8000, // Increased for longer responses
+                        temperature: temperature,
+                        max_tokens: maxTokens,
                         stream: false
                     })
                 });
@@ -1521,7 +1828,7 @@ Enter your API key above to start chatting!`,
                 
                 if (data.usage) {
                     document.getElementById('usageInfo').innerHTML = 
-                        `💰 Tokens - Prompt: ${data.usage.prompt_tokens}, Completion: ${data.usage.completion_tokens}, Total: ${data.usage.total_tokens} | Code-complete mode`;
+                        `💰 Tokens - Prompt: ${data.usage.prompt_tokens}, Completion: ${data.usage.completion_tokens}, Total: ${data.usage.total_tokens} | Settings: 🌡️ ${temperature.toFixed(1)} 📦 ${maxTokens}`;
                 }
                 
             } catch (error) {
@@ -1530,7 +1837,7 @@ Enter your API key above to start chatting!`,
                 
                 const errorMessage = {
                     role: 'assistant',
-                    content: `❌ Error: ${error.message}\n\nPlease try again. If the code is very long, try requesting it in smaller chunks.`,
+                    content: `❌ Error: ${error.message}\n\nPlease try again. If the code is very long, try increasing the token limit or lowering the temperature.`,
                     timestamp: new Date().toLocaleTimeString()
                 };
                 
@@ -1562,13 +1869,6 @@ Enter your API key above to start chatting!`,
             this.style.height = 'auto';
             this.style.height = (this.scrollHeight) + 'px';
         });
-
-        // Add a helper function to prettify XML
-        window.prettify_xml = function(elem) {
-            const roughString = ET.tostring(elem, 'utf-8')
-            const reparsed = minidom.parseString(roughString)
-            return reparsed.toprettyxml(indent="  ")
-        };
     </script>
 </body>
 </html>
