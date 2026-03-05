@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="initial-scale=1.0,maximum-scale=1,minimum-scale=1.0,user-scalable=no,width=device-width,viewport-fit=cover">
-    <title>DeepSeek Chat - Continue Button</title>
+    <title>DeepSeek Chat - Complete Code Generator</title>
     <style>
         * {
             margin: 0;
@@ -39,12 +39,6 @@
             /* Stop button colors */
             --stop-color: #f85149;
             --stop-hover: #f97066;
-            
-            /* Gauge colors */
-            --gauge-low: #2ea043;
-            --gauge-medium: #f0883e;
-            --gauge-high: #f85149;
-            --gauge-track: #2d333b;
             
             /* Message colors */
             --user-message-bg: #4f6af5;
@@ -342,130 +336,6 @@
             opacity: 0.9;
         }
 
-        /* Gauge Controls */
-        .gauge-container {
-            display: flex;
-            gap: 20px;
-            background: var(--bg-tertiary);
-            padding: 10px 16px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-        }
-
-        .gauge-item {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            min-width: 140px;
-        }
-
-        .gauge-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
-
-        .gauge-label {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .gauge-value {
-            background: var(--bg-primary);
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
-            color: var(--accent-primary);
-            border: 1px solid var(--border-color);
-        }
-
-        .gauge-track {
-            width: 100%;
-            height: 6px;
-            background: var(--gauge-track);
-            border-radius: 3px;
-            position: relative;
-            cursor: pointer;
-        }
-
-        .gauge-fill {
-            height: 100%;
-            border-radius: 3px;
-            transition: width 0.1s ease;
-            position: relative;
-        }
-
-        .gauge-fill.temperature {
-            background: linear-gradient(90deg, var(--gauge-low), var(--gauge-medium), var(--gauge-high));
-        }
-
-        .gauge-fill.tokens {
-            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-        }
-
-        .gauge-handle {
-            width: 14px;
-            height: 14px;
-            background: white;
-            border: 2px solid var(--accent-primary);
-            border-radius: 50%;
-            position: absolute;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            cursor: grab;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            transition: transform 0.1s;
-        }
-
-        .gauge-handle:hover {
-            transform: translate(-50%, -50%) scale(1.2);
-        }
-
-        .gauge-handle:active {
-            cursor: grabbing;
-        }
-
-        .gauge-markers {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 4px;
-            font-size: 9px;
-            color: var(--text-muted);
-            padding: 0 2px;
-        }
-
-        .preset-buttons {
-            display: flex;
-            gap: 4px;
-            margin-top: 4px;
-        }
-
-        .preset-btn {
-            background: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            color: var(--text-secondary);
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-
-        .preset-btn:hover {
-            border-color: var(--accent-primary);
-            color: var(--accent-primary);
-        }
-
-        .preset-btn.active {
-            background: var(--accent-primary);
-            border-color: var(--accent-primary);
-            color: white;
-        }
-
         .messages-container {
             flex: 1;
             overflow-y: auto;
@@ -740,37 +610,6 @@
         .image-preview:hover {
             transform: scale(1.02);
             border-color: var(--accent-primary);
-        }
-
-        /* Streaming indicator */
-        .streaming-indicator {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 8px 12px;
-            background: var(--assistant-message-bg);
-            border-radius: 8px;
-            margin-top: 8px;
-            font-size: 12px;
-            color: var(--text-secondary);
-            border: 1px solid var(--border-color);
-        }
-
-        .streaming-stats {
-            display: flex;
-            gap: 12px;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
-        }
-
-        .streaming-stat {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .streaming-stat span {
-            color: var(--accent-primary);
         }
 
         /* Typing indicator */
@@ -1066,16 +905,6 @@
             border-radius: 8px;
         }
 
-        /* Links */
-        a {
-            color: var(--accent-secondary);
-            text-decoration: none;
-        }
-
-        a:hover {
-            text-decoration: underline;
-        }
-
         /* Error badge */
         .error-badge {
             background: var(--error);
@@ -1127,62 +956,6 @@
             <div class="chat-header">
                 <div class="chat-title" id="currentChatTitle">New Chat</div>
                 <div class="controls-container">
-                    <!-- Temperature Gauge -->
-                    <div class="gauge-container">
-                        <div class="gauge-item">
-                            <div class="gauge-header">
-                                <span class="gauge-label">
-                                    🌡️ Temperature
-                                    <span class="gauge-value" id="tempValue">0.7</span>
-                                </span>
-                            </div>
-                            <div class="gauge-track" id="tempTrack" onclick="setTemperatureFromClick(event)">
-                                <div class="gauge-fill temperature" id="tempFill" style="width: 35%">
-                                    <div class="gauge-handle" id="tempHandle" 
-                                         onmousedown="startDragTemp(event)"></div>
-                                </div>
-                            </div>
-                            <div class="gauge-markers">
-                                <span>Precise (0.1)</span>
-                                <span>Creative (1.0)</span>
-                                <span>Random (2.0)</span>
-                            </div>
-                            <div class="preset-buttons">
-                                <button class="preset-btn" onclick="setTemperature(0.1)">Precise</button>
-                                <button class="preset-btn" onclick="setTemperature(0.3)">Consistent</button>
-                                <button class="preset-btn" onclick="setTemperature(0.7)">Balanced</button>
-                                <button class="preset-btn" onclick="setTemperature(1.2)">Creative</button>
-                            </div>
-                        </div>
-
-                        <!-- Token Limit Gauge -->
-                        <div class="gauge-item">
-                            <div class="gauge-header">
-                                <span class="gauge-label">
-                                    📦 Max Tokens
-                                    <span class="gauge-value" id="tokenLimitValue">4000</span>
-                                </span>
-                            </div>
-                            <div class="gauge-track" id="tokenTrack" onclick="setTokenLimitFromClick(event)">
-                                <div class="gauge-fill tokens" id="tokenFill" style="width: 50%">
-                                    <div class="gauge-handle" id="tokenHandle" 
-                                         onmousedown="startDragToken(event)"></div>
-                                </div>
-                            </div>
-                            <div class="gauge-markers">
-                                <span>1K</span>
-                                <span>4K</span>
-                                <span>8K</span>
-                            </div>
-                            <div class="preset-buttons">
-                                <button class="preset-btn" onclick="setTokenLimit(1000)">1K</button>
-                                <button class="preset-btn" onclick="setTokenLimit(2000)">2K</button>
-                                <button class="preset-btn" onclick="setTokenLimit(4000)">4K</button>
-                                <button class="preset-btn" onclick="setTokenLimit(8000)">8K</button>
-                            </div>
-                        </div>
-                    </div>
-
                     <div class="api-key-container">
                         <input type="password" id="apiKey" class="api-key-input" placeholder="Enter API Key" value="">
                         <button onclick="saveApiKey()" class="save-btn">Save</button>
@@ -1195,8 +968,7 @@
             <div class="usage-info" id="usageInfo">
                 <span>💰 No limits - Using your own API key</span>
                 <div class="current-settings" id="currentSettings">
-                    <span class="setting-badge">🌡️ <span id="currentTemp">0.7</span></span>
-                    <span class="setting-badge">📦 <span id="currentTokens">4000</span></span>
+                    <span class="setting-badge">🔧 Continue Button Ready</span>
                 </div>
                 <div class="generation-status" id="generationStatus" style="display: none;">
                     <span class="status-dot"></span>
@@ -1256,25 +1028,14 @@
         let generationStartTime = null;
         let generationTimer = null;
         
-        // Store the last incomplete message for continuation
-        let lastIncompleteMessage = null;
-        let lastUserMessage = null;
-        
-        // Default settings
-        let temperature = 0.7;
-        let maxTokens = 4000;
-        
-        // Drag state
-        let isDraggingTemp = false;
-        let isDraggingToken = false;
+        // Store incomplete messages for continuation
+        let incompleteMessages = [];
 
         // Load saved data
         document.addEventListener('DOMContentLoaded', () => {
             loadApiKey();
             loadConversations();
-            loadSettings();
             updateApiStatus();
-            initGauges();
             
             if (conversations.length === 0) {
                 createNewChat();
@@ -1282,115 +1043,6 @@
                 loadConversation(conversations[0].id);
             }
         });
-
-        function loadSettings() {
-            const savedTemp = localStorage.getItem('deepseek_temperature');
-            if (savedTemp) {
-                temperature = parseFloat(savedTemp);
-                updateTemperatureDisplay();
-            }
-            
-            const savedTokens = localStorage.getItem('deepseek_max_tokens');
-            if (savedTokens) {
-                maxTokens = parseInt(savedTokens);
-                updateTokenDisplay();
-            }
-        }
-
-        function saveSettings() {
-            localStorage.setItem('deepseek_temperature', temperature.toString());
-            localStorage.setItem('deepseek_max_tokens', maxTokens.toString());
-        }
-
-        function initGauges() {
-            updateTemperatureDisplay();
-            updateTokenDisplay();
-            
-            // Add event listeners for dragging
-            document.addEventListener('mousemove', onDragMove);
-            document.addEventListener('mouseup', onDragEnd);
-        }
-
-        function updateTemperatureDisplay() {
-            const percent = (temperature / 2.0) * 100;
-            document.getElementById('tempFill').style.width = `${percent}%`;
-            document.getElementById('tempValue').textContent = temperature.toFixed(1);
-            document.getElementById('currentTemp').textContent = temperature.toFixed(1);
-        }
-
-        function updateTokenDisplay() {
-            const percent = (maxTokens / 8000) * 100;
-            document.getElementById('tokenFill').style.width = `${percent}%`;
-            document.getElementById('tokenLimitValue').textContent = maxTokens;
-            document.getElementById('currentTokens').textContent = maxTokens;
-        }
-
-        function setTemperature(value) {
-            temperature = Math.max(0, Math.min(2.0, value));
-            updateTemperatureDisplay();
-            saveSettings();
-        }
-
-        function setTokenLimit(value) {
-            maxTokens = Math.max(100, Math.min(8000, Math.round(value / 100) * 100));
-            updateTokenDisplay();
-            saveSettings();
-        }
-
-        function setTemperatureFromClick(event) {
-            const track = document.getElementById('tempTrack');
-            const rect = track.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
-            const newTemp = (percent / 100) * 2.0;
-            setTemperature(newTemp);
-        }
-
-        function setTokenLimitFromClick(event) {
-            const track = document.getElementById('tokenTrack');
-            const rect = track.getBoundingClientRect();
-            const x = event.clientX - rect.left;
-            const percent = Math.max(0, Math.min(100, (x / rect.width) * 100));
-            const newTokens = Math.round((percent / 100) * 8000 / 100) * 100;
-            setTokenLimit(newTokens);
-        }
-
-        function startDragTemp(event) {
-            isDraggingTemp = true;
-            event.preventDefault();
-        }
-
-        function startDragToken(event) {
-            isDraggingToken = true;
-            event.preventDefault();
-        }
-
-        function onDragMove(event) {
-            if (isDraggingTemp) {
-                const track = document.getElementById('tempTrack');
-                const rect = track.getBoundingClientRect();
-                let x = event.clientX - rect.left;
-                x = Math.max(0, Math.min(rect.width, x));
-                const percent = (x / rect.width) * 100;
-                const newTemp = (percent / 100) * 2.0;
-                setTemperature(newTemp);
-            }
-            
-            if (isDraggingToken) {
-                const track = document.getElementById('tokenTrack');
-                const rect = track.getBoundingClientRect();
-                let x = event.clientX - rect.left;
-                x = Math.max(0, Math.min(rect.width, x));
-                const percent = (x / rect.width) * 100;
-                const newTokens = Math.round((percent / 100) * 8000 / 100) * 100;
-                setTokenLimit(newTokens);
-            }
-        }
-
-        function onDragEnd(event) {
-            isDraggingTemp = false;
-            isDraggingToken = false;
-        }
 
         function loadApiKey() {
             const savedKey = localStorage.getItem('deepseek_api_key');
@@ -1550,46 +1202,23 @@
                 role: 'assistant',
                 content: `🌙 **Continue Button Enabled!**
 
-👋 Hello! I'm your DeepSeek AI assistant with a CONTINUE button!
+👋 Hello! I'm your DeepSeek AI assistant with a working CONTINUE button!
 
-**🔄 New Feature: Continue Button**
-• When code gets cut off, a green CONTINUE button appears
-• Click it to request the remaining code
-• Automatically tracks what was already generated
-• Never lose the end of long code again!
+**🔄 How to Get Complete Code:**
+1. Ask for code (like the PTE generator)
+2. If the code gets cut off, a green CONTINUE button will appear
+3. Click it to get the remaining code
+4. Repeat until you have the complete code
 
-**Current Settings:**
-• Temperature: ${temperature.toFixed(1)} - ${getTemperatureDescription()}
-• Max Tokens: ${maxTokens} - ${getTokenDescription()}
+**Example Request:**
+"Generate a complete PTE Academic QTI generator for Canvas LMS with all question types including speaking, reading, writing, and listening sections."
 
-**Features:**
-• 📸 Image analysis
-• 📄 Text files (.txt)
-• 🐍 Python files (.py)
-• 💻 Complete code with Continue button
-• 🛑 Stop/Cancel button
-• 🔄 Continue incomplete responses
-
-Enter your API key above to start chatting!`,
+The continue button will help you get the full code even if it's very long!`,
                 timestamp: new Date().toLocaleTimeString()
             };
             
             addMessageToCurrentConversation(welcomeMessage);
             displayMessage(welcomeMessage);
-        }
-
-        function getTemperatureDescription() {
-            if (temperature < 0.3) return "Very precise, focused responses";
-            if (temperature < 0.7) return "Balanced, consistent responses";
-            if (temperature < 1.2) return "Creative, varied responses";
-            return "Very creative, unpredictable responses";
-        }
-
-        function getTokenDescription() {
-            if (maxTokens < 2000) return "Short responses";
-            if (maxTokens < 4000) return "Medium responses";
-            if (maxTokens < 6000) return "Long responses";
-            return "Very long responses (best for code)";
         }
 
         function addSystemMessage(content) {
@@ -1622,35 +1251,50 @@ Enter your API key above to start chatting!`,
             const codeBlockCount = (content.match(/```/g) || []).length;
             if (codeBlockCount % 2 !== 0) return true;
             
-            // Check if it ends with incomplete line
-            const lastLine = content.split('\n').pop();
-            if (lastLine && !lastLine.trim() && content.trim().endsWith('...')) return true;
+            // Check if it ends abruptly
+            const lastChar = content.trim().slice(-1);
+            const lastLine = content.split('\n').pop().trim();
             
-            // Check for incomplete function/class definitions
-            const incompletePatterns = [
+            // Check for incomplete Python structures
+            const incompletePython = [
                 /def\s+\w+\s*\([^)]*\)\s*:\s*$/,  // Incomplete function
                 /class\s+\w+\s*[:\(]\s*$/,        // Incomplete class
                 /if\s+.*:\s*$/,                    // Incomplete if
+                /elif\s+.*:\s*$/,                   // Incomplete elif
                 /else\s*:\s*$/,                     // Incomplete else
-                /for\s+.*:\s*$/,                     // Incomplete for
-                /while\s+.*:\s*$/,                   // Incomplete while
-                /try\s*:\s*$/,                        // Incomplete try
-                /except\s*[^:]*:\s*$/,                // Incomplete except
-                /finally\s*:\s*$/                      // Incomplete finally
+                /for\s+.*:\s*$/,                    // Incomplete for
+                /while\s+.*:\s*$/,                  // Incomplete while
+                /try\s*:\s*$/,                      // Incomplete try
+                /except\s*[^:]*:\s*$/,              // Incomplete except
+                /finally\s*:\s*$/,                  // Incomplete finally
+                /with\s+.*:\s*$/,                   // Incomplete with
+                /@\w+/,                             // Decorator without function
+                /\]\s*$/,                            // Unclosed list
+                /\}\s*$/,                            // Unclosed dict/set
+                /\)\s*$/                              // Unclosed parenthesis
             ];
             
-            for (const pattern of incompletePatterns) {
-                if (pattern.test(content)) return true;
+            for (const pattern of incompletePython) {
+                if (pattern.test(lastLine)) return true;
+            }
+            
+            // Check for truncated lines
+            if (lastLine.length > 0 && !lastLine.match(/[.;)}\]]$/) && content.split('\n').length > 10) {
+                // Check if it might be cut off mid-line
+                const secondLastLine = content.split('\n').slice(-2, -1)[0];
+                if (secondLastLine && !secondLastLine.match(/[.;)}\]]$/)) {
+                    return true;
+                }
             }
             
             return false;
         }
 
         // Add continue button to message
-        function addContinueButton(messageId, originalMessage) {
+        function addContinueButton(messageId, originalMessage, messageIndex) {
             const messagesDiv = document.getElementById('messages');
             
-            // Check if continue button already exists
+            // Check if continue button already exists for this message
             if (document.getElementById(`continue-${messageId}`)) return;
             
             const continueDiv = document.createElement('div');
@@ -1658,17 +1302,18 @@ Enter your API key above to start chatting!`,
             continueDiv.id = `continue-${messageId}`;
             
             // Store the incomplete message for continuation
-            lastIncompleteMessage = {
+            incompleteMessages.push({
                 id: messageId,
-                content: originalMessage
-            };
+                content: originalMessage,
+                index: messageIndex
+            });
             
             continueDiv.innerHTML = `
                 <button class="continue-btn" onclick="continueMessage('${messageId}')">
                     <svg viewBox="0 0 24 24">
                         <path d="M8 5v14l11-7z"/>
                     </svg>
-                    Continue Generating
+                    Continue Generating (Part ${incompleteMessages.length + 1})
                 </button>
             `;
             
@@ -1683,8 +1328,10 @@ Enter your API key above to start chatting!`,
                 return;
             }
             
-            if (!lastIncompleteMessage || !lastUserMessage) {
-                alert('No incomplete message found to continue.');
+            // Find the incomplete message
+            const incompleteMsg = incompleteMessages.find(m => m.id === messageId);
+            if (!incompleteMsg) {
+                alert('Could not find the message to continue.');
                 return;
             }
             
@@ -1692,24 +1339,22 @@ Enter your API key above to start chatting!`,
             const continueBtn = document.getElementById(`continue-${messageId}`);
             if (continueBtn) continueBtn.remove();
             
-            // Get the incomplete message
+            // Get the conversation
             const conversation = conversations.find(c => c.id === currentConversationId);
-            const incompleteMsg = conversation.messages.find(m => m.timestamp === lastIncompleteMessage.timestamp);
-            
-            if (!incompleteMsg) {
-                alert('Could not find the message to continue.');
-                return;
-            }
             
             // Create continuation prompt
-            const continuationPrompt = `Please continue from where you left off. Here's the code so far:
+            const continuationPrompt = `CONTINUE THIS CODE FROM WHERE IT LEFT OFF. DO NOT REPEAT ANY CODE THAT HAS ALREADY BEEN PROVIDED. START FROM THE EXACT POINT WHERE IT WAS CUT OFF:
 
-\`\`\`
+\`\`\`python
 ${incompleteMsg.content}
 \`\`\`
 
-Please provide the COMPLETE remaining code without repeating what's already shown. Start from where it was cut off.`;
-            
+IMPORTANT: 
+1. Continue exactly from where the code was cut off
+2. Do not repeat any part of the code above
+3. Provide the complete remaining code
+4. If this is still incomplete, I will click Continue again`;
+
             // Set the user input
             document.getElementById('userInput').value = continuationPrompt;
             
@@ -1833,15 +1478,8 @@ Please provide the COMPLETE remaining code without repeating what's already show
             if (message.role === 'assistant' && isMessageIncomplete(message.content)) {
                 const badgeSpan = document.createElement('span');
                 badgeSpan.className = 'incomplete-badge';
-                badgeSpan.innerHTML = '⚠️ Incomplete';
+                badgeSpan.innerHTML = '⚠️ Incomplete - Click Continue below';
                 nameSpan.appendChild(badgeSpan);
-                
-                // Store for potential continuation
-                lastIncompleteMessage = {
-                    id: message.timestamp,
-                    content: message.content,
-                    timestamp: message.timestamp
-                };
             }
             
             headerDiv.appendChild(avatarDiv);
@@ -1887,7 +1525,7 @@ Please provide the COMPLETE remaining code without repeating what's already show
             
             // Add continue button if message is incomplete
             if (message.role === 'assistant' && isMessageIncomplete(message.content)) {
-                addContinueButton(message.timestamp, message.content);
+                addContinueButton(message.timestamp, message.content, messagesDiv.children.length - 1);
             }
             
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -1992,42 +1630,6 @@ Please provide the COMPLETE remaining code without repeating what's already show
             }
         }
 
-        // Fix incomplete code blocks
-        function fixIncompleteCodeBlocks(text) {
-            if (!text) return text;
-            
-            // Count opening and closing code blocks
-            const openCount = (text.match(/```/g) || []).length;
-            
-            // If odd number of backticks, add closing backticks
-            if (openCount % 2 !== 0) {
-                text += '\n```';
-            }
-            
-            // Fix cases where code block starts but doesn't end properly
-            const lines = text.split('\n');
-            let inCodeBlock = false;
-            let fixedLines = [];
-            
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i];
-                
-                if (line.trim().startsWith('```')) {
-                    inCodeBlock = !inCodeBlock;
-                    fixedLines.push(line);
-                } else {
-                    fixedLines.push(line);
-                }
-            }
-            
-            // If still in code block at end, close it
-            if (inCodeBlock) {
-                fixedLines.push('```');
-            }
-            
-            return fixedLines.join('\n');
-        }
-
         // Start generation timer
         function startGenerationTimer() {
             generationStartTime = Date.now();
@@ -2113,11 +1715,6 @@ Please provide the COMPLETE remaining code without repeating what's already show
                 }
             }
             
-            // Store user message for potential continuation
-            if (!isContinuation) {
-                lastUserMessage = fullMessage;
-            }
-            
             // Add user message
             const userMessage = {
                 role: 'user',
@@ -2157,10 +1754,19 @@ Please provide the COMPLETE remaining code without repeating what's already show
                     content: msg.content
                 }));
                 
-                // Add system prompt to encourage complete code
+                // Add system prompt to encourage complete code with continuation support
                 const systemPrompt = {
                     role: 'system',
-                    content: `You are a code assistant. Always provide COMPLETE, RUNNABLE code without truncation. Never cut off code mid-way. Include all imports, functions, classes, and ensure the code is fully executable. If the code is long, provide it in full without shortening. Current settings: Temperature ${temperature.toFixed(1)} (${getTemperatureDescription()}), Max Tokens ${maxTokens}.`
+                    content: `You are a code assistant with CONTINUE BUTTON support. 
+
+IMPORTANT RULES:
+1. Always provide COMPLETE, RUNNABLE code when possible
+2. If the code is very long and gets cut off, the user will click "Continue"
+3. When continuing, START EXACTLY WHERE YOU LEFT OFF - do not repeat any code
+4. Include all imports, functions, classes, and ensure code is fully executable
+5. If this is a continuation request, the user will specify "CONTINUE THIS CODE" - in that case, ONLY provide the remaining code
+
+The user has a continue button that will let them get multiple parts of long code.`
                 };
                 
                 const allMessages = [systemPrompt, ...apiMessages];
@@ -2174,8 +1780,8 @@ Please provide the COMPLETE remaining code without repeating what's already show
                     body: JSON.stringify({
                         model: 'deepseek-chat',
                         messages: allMessages,
-                        temperature: temperature,
-                        max_tokens: maxTokens,
+                        temperature: 0.3,
+                        max_tokens: 4000,
                         stream: false
                     }),
                     signal: abortController.signal
@@ -2188,9 +1794,6 @@ Please provide the COMPLETE remaining code without repeating what's already show
                 
                 const data = await response.json();
                 let assistantMessage = data.choices[0].message.content;
-                
-                // Fix any incomplete code blocks
-                assistantMessage = fixIncompleteCodeBlocks(assistantMessage);
                 
                 removeTypingIndicator();
                 stopGenerationTimer();
@@ -2206,7 +1809,7 @@ Please provide the COMPLETE remaining code without repeating what's already show
                 
                 if (data.usage) {
                     document.getElementById('usageInfo').innerHTML = 
-                        `💰 Tokens - Prompt: ${data.usage.prompt_tokens}, Completion: ${data.usage.completion_tokens}, Total: ${data.usage.total_tokens} | Settings: 🌡️ ${temperature.toFixed(1)} 📦 ${maxTokens}`;
+                        `💰 Tokens - Prompt: ${data.usage.prompt_tokens}, Completion: ${data.usage.completion_tokens}, Total: ${data.usage.total_tokens} | Click Continue if code is incomplete`;
                 }
                 
             } catch (error) {
@@ -2219,7 +1822,7 @@ Please provide the COMPLETE remaining code without repeating what's already show
                     
                     const errorMessage = {
                         role: 'assistant',
-                        content: `❌ Error: ${error.message}\n\nPlease try again. If the code is very long, try increasing the token limit or lowering the temperature.`,
+                        content: `❌ Error: ${error.message}\n\nPlease try again.`,
                         timestamp: new Date().toLocaleTimeString()
                     };
                     
