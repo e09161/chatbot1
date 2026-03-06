@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="initial-scale=1.0,maximum-scale=1,minimum-scale=1.0,user-scalable=no,width=device-width,viewport-fit=cover">
-    <title>DeepSeek Chat - Complete Code Generator with Gauges</title>
+    <title>DeepSeek Chat - Single Block Continue</title>
     <style>
         * {
             margin: 0;
@@ -561,7 +561,7 @@
             border-bottom-left-radius: 4px;
         }
 
-        /* Code block styling - FIXED for proper display */
+        /* Code block styling - Single block for all code */
         .code-block {
             background: var(--code-bg);
             color: var(--code-text);
@@ -652,7 +652,7 @@
         .continue-container {
             display: flex;
             justify-content: center;
-            margin: 16px 0;
+            margin: 16px 0 8px 0;
         }
 
         .continue-btn {
@@ -1223,8 +1223,8 @@
         let isDraggingTemp = false;
         let isDraggingToken = false;
         
-        // Store incomplete messages for continuation
-        let incompleteMessages = [];
+        // Store incomplete message for continuation
+        let incompleteMessageData = null;
 
         // Load saved data
         document.addEventListener('DOMContentLoaded', () => {
@@ -1506,26 +1506,20 @@
         function addWelcomeMessage() {
             const welcomeMessage = {
                 role: 'assistant',
-                content: `🌙 **Gauges & Continue Button Enabled!**
+                content: `🌙 **Single Block Continue Mode!**
 
-👋 Hello! I'm your DeepSeek AI assistant with full controls!
+👋 Hello! I'm your DeepSeek AI assistant with SINGLE BLOCK continuation!
 
-**🎮 Controls:**
-• 🌡️ **Temperature Gauge** - Control creativity (0.1 = precise, 2.0 = creative)
-• 📦 **Token Limit** - Control response length (1K to 8K tokens)
-• 🎯 **Preset Buttons** - Quick settings for different needs
-• 🔄 **Continue Button** - Get the rest of long code
+**🔄 How It Works:**
+• When code gets cut off, click the green CONTINUE button
+• The new code will be APPENDED to the existing code block
+• You get ONE continuous code block, not multiple blocks
+• Copy/Download the complete code when done
 
-**💻 Code Display:**
-• All code is shown in proper code blocks
-• HTML content is escaped, not rendered
-• Copy and Download buttons for each block
-
-**How to Get Complete Code:**
-1. Ask for code (like the PTE generator)
-2. If code gets cut off, a green CONTINUE button appears
-3. Click it to get the remaining code
-4. Repeat until you have the complete code
+**Example:**
+1. First response: First 500 lines of code + Continue button
+2. Click Continue → Gets next 500 lines APPENDED to same block
+3. Repeat until you have the complete 2000+ line code!
 
 **Current Settings:**
 • Temperature: ${temperature.toFixed(1)}
@@ -1568,7 +1562,6 @@
             if (codeBlockCount % 2 !== 0) return true;
             
             // Check if it ends abruptly
-            const lastChar = content.trim().slice(-1);
             const lastLine = content.split('\n').pop().trim();
             
             // Check for incomplete Python structures
@@ -1598,7 +1591,7 @@
         }
 
         // Add continue button to message
-        function addContinueButton(messageId, originalMessage, messageIndex) {
+        function addContinueButton(messageId, originalMessage) {
             const messagesDiv = document.getElementById('messages');
             
             // Check if continue button already exists for this message
@@ -1609,18 +1602,18 @@
             continueDiv.id = `continue-${messageId}`;
             
             // Store the incomplete message for continuation
-            incompleteMessages.push({
+            incompleteMessageData = {
                 id: messageId,
                 content: originalMessage,
-                index: messageIndex
-            });
+                messageElement: messagesDiv.lastChild
+            };
             
             continueDiv.innerHTML = `
                 <button class="continue-btn" onclick="continueMessage('${messageId}')">
                     <svg viewBox="0 0 24 24">
                         <path d="M8 5v14l11-7z"/>
                     </svg>
-                    Continue Generating (Part ${incompleteMessages.length + 1})
+                    Continue Code (Append to existing block)
                 </button>
             `;
             
@@ -1628,17 +1621,15 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        // Continue incomplete message
+        // Continue incomplete message - APPEND to existing block
         async function continueMessage(messageId) {
             if (isProcessing) {
                 alert('Already generating. Please wait or stop current generation.');
                 return;
             }
             
-            // Find the incomplete message
-            const incompleteMsg = incompleteMessages.find(m => m.id === messageId);
-            if (!incompleteMsg) {
-                alert('Could not find the message to continue.');
+            if (!incompleteMessageData) {
+                alert('No incomplete message found to continue.');
                 return;
             }
             
@@ -1646,21 +1637,23 @@
             const continueBtn = document.getElementById(`continue-${messageId}`);
             if (continueBtn) continueBtn.remove();
             
-            // Get the conversation
-            const conversation = conversations.find(c => c.id === currentConversationId);
+            // Get the existing content
+            const existingContent = incompleteMessageData.content;
             
-            // Create continuation prompt
-            const continuationPrompt = `CONTINUE THIS CODE FROM WHERE IT LEFT OFF. DO NOT REPEAT ANY CODE THAT HAS ALREADY BEEN PROVIDED. START FROM THE EXACT POINT WHERE IT WAS CUT OFF:
+            // Create continuation prompt that asks to APPEND
+            const continuationPrompt = `CONTINUE THIS CODE FROM WHERE IT LEFT OFF AND APPEND TO THE EXISTING CODE. DO NOT CREATE A NEW CODE BLOCK. DO NOT REPEAT ANY CODE.
 
+Here's the existing code (stops at the cut-off point):
 \`\`\`
-${incompleteMsg.content}
+${existingContent}
 \`\`\`
 
-IMPORTANT: 
+IMPORTANT INSTRUCTIONS:
 1. Continue exactly from where the code was cut off
-2. Do not repeat any part of the code above
-3. Provide the complete remaining code
-4. If this is still incomplete, I will click Continue again`;
+2. PROVIDE ONLY THE NEW CODE that should be appended
+3. Do not include the triple backticks (I will add them)
+4. Do not repeat any part of the existing code
+5. Just give me the next part of the code`;
 
             // Set the user input
             document.getElementById('userInput').value = continuationPrompt;
@@ -1684,94 +1677,79 @@ IMPORTANT:
                                        .replace(/"/g, '&quot;')
                                        .replace(/'/g, '&#039;');
             
-            // Then extract and format code blocks
-            const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
-            let lastIndex = 0;
-            let formatted = '';
-            let match;
+            // Check if this is a continuation (we'll handle specially)
+            const isContinuation = content.includes('CONTINUATION PART');
             
-            while ((match = codeBlockRegex.exec(escapedContent)) !== null) {
-                // Add text before code block
-                const textBefore = escapedContent.substring(lastIndex, match.index);
-                if (textBefore) {
-                    formatted += textBefore.replace(/\n/g, '<br>');
-                }
-                
-                // Format code block
-                const language = match[1] || 'text';
-                let code = match[2];
-                
-                // Generate unique ID for copy button
-                const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                
-                formatted += `
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>${escapeHtml(language)}</span>
-                            <div>
-                                <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
-                                <button class="download-code-btn" onclick="downloadCode('${codeId}', '${escapeHtml(language)}')">Download</button>
-                            </div>
-                        </div>
-                        <pre><code id="${codeId}">${code}</code></pre>
-                    </div>
-                `;
-                
-                lastIndex = match.index + match[0].length;
-            }
-            
-            // Add remaining text
-            if (lastIndex < escapedContent.length) {
-                const textAfter = escapedContent.substring(lastIndex);
-                formatted += textAfter.replace(/\n/g, '<br>');
-            }
-            
-            // If no code blocks found, just escape and add line breaks
-            if (!formatted) {
-                formatted = escapedContent.replace(/\n/g, '<br>');
-            }
-            
-            return formatted;
+            // If this is the first message with code, create a new code block
+            // If it's a continuation, we'll handle it in displayMessage
+            return escapedContent;
         }
-
-        // Global function for copying code
-        window.copyCode = function(elementId) {
-            const codeElement = document.getElementById(elementId);
-            if (codeElement) {
-                const code = codeElement.textContent;
-                navigator.clipboard.writeText(code).then(() => {
-                    alert('✅ Code copied to clipboard!');
-                }).catch(() => {
-                    alert('❌ Failed to copy code');
-                });
-            }
-        };
-
-        // Global function for downloading code
-        window.downloadCode = function(elementId, language) {
-            const codeElement = document.getElementById(elementId);
-            if (codeElement) {
-                const code = codeElement.textContent;
-                const extension = language === 'python' ? 'py' : 
-                                 language === 'javascript' ? 'js' : 
-                                 language === 'html' ? 'html' : 
-                                 language === 'css' ? 'css' : 'txt';
-                
-                const blob = new Blob([code], { type: 'text/plain' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `code_${Date.now()}.${extension}`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }
-        };
 
         function displayMessage(message) {
             const messagesDiv = document.getElementById('messages');
             
+            // Check if this is a continuation and we have an incomplete message
+            const isContinuation = message.role === 'assistant' && 
+                                  incompleteMessageData && 
+                                  message.content.includes('def') || 
+                                  message.content.includes('class') ||
+                                  message.content.includes('import');
+            
+            if (isContinuation && incompleteMessageData) {
+                // This is a continuation - append to existing message
+                const existingMessageElement = incompleteMessageData.messageElement;
+                
+                // Get the existing content div
+                const existingContentDiv = existingMessageElement.querySelector('.message-content');
+                
+                // Get the existing code block
+                const existingCodeBlock = existingContentDiv.querySelector('.code-block');
+                
+                if (existingCodeBlock) {
+                    // Get the existing code
+                    const existingCode = existingCodeBlock.querySelector('code').textContent;
+                    
+                    // Append new code
+                    const newCode = message.content.replace(/```\w*\n?|```$/g, '').trim();
+                    const combinedCode = existingCode + '\n' + newCode;
+                    
+                    // Update the code block
+                    const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                    const language = 'python'; // Default to python
+                    
+                    existingCodeBlock.outerHTML = `
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span>${language}</span>
+                                <div>
+                                    <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
+                                    <button class="download-code-btn" onclick="downloadCode('${codeId}', '${language}')">Download</button>
+                                </div>
+                            </div>
+                            <pre><code id="${codeId}">${escapeHtml(combinedCode)}</code></pre>
+                        </div>
+                    `;
+                    
+                    // Update the message in conversation history
+                    const conversation = conversations.find(c => c.id === currentConversationId);
+                    if (conversation) {
+                        const lastMsg = conversation.messages[conversation.messages.length - 1];
+                        if (lastMsg.role === 'assistant') {
+                            lastMsg.content = combinedCode;
+                        }
+                    }
+                    
+                    // Check if still incomplete
+                    if (isMessageIncomplete(combinedCode)) {
+                        addContinueButton(incompleteMessageData.id, combinedCode);
+                    }
+                    
+                    messagesDiv.scrollTop = messagesDiv.scrollHeight;
+                    return;
+                }
+            }
+            
+            // Normal message display (not a continuation)
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${message.role}`;
             
@@ -1820,8 +1798,53 @@ IMPORTANT:
                 });
             }
             
-            // Format and add message content with proper code blocks
-            const formattedContent = formatCodeBlocks(message.content);
+            // Format code blocks
+            const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
+            let lastIndex = 0;
+            let formattedContent = '';
+            let match;
+            
+            while ((match = codeBlockRegex.exec(message.content)) !== null) {
+                // Add text before code block
+                const textBefore = message.content.substring(lastIndex, match.index);
+                if (textBefore) {
+                    formattedContent += escapeHtml(textBefore).replace(/\n/g, '<br>');
+                }
+                
+                // Format code block
+                const language = match[1] || 'text';
+                let code = match[2];
+                
+                // Generate unique ID for copy button
+                const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                
+                formattedContent += `
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span>${escapeHtml(language)}</span>
+                            <div>
+                                <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
+                                <button class="download-code-btn" onclick="downloadCode('${codeId}', '${escapeHtml(language)}')">Download</button>
+                            </div>
+                        </div>
+                        <pre><code id="${codeId}">${escapeHtml(code)}</code></pre>
+                    </div>
+                `;
+                
+                lastIndex = match.index + match[0].length;
+            }
+            
+            // Add remaining text
+            if (lastIndex < message.content.length) {
+                const textAfter = message.content.substring(lastIndex);
+                formattedContent += escapeHtml(textAfter).replace(/\n/g, '<br>');
+            }
+            
+            // If no code blocks found, just escape and add line breaks
+            if (!formattedContent) {
+                formattedContent = escapeHtml(message.content).replace(/\n/g, '<br>');
+            }
+            
             contentDiv.innerHTML += formattedContent;
             
             const timeDiv = document.createElement('div');
@@ -1836,11 +1859,46 @@ IMPORTANT:
             
             // Add continue button if message is incomplete
             if (message.role === 'assistant' && isMessageIncomplete(message.content)) {
-                addContinueButton(message.timestamp, message.content, messagesDiv.children.length - 1);
+                addContinueButton(message.timestamp, message.content);
             }
             
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
+
+        // Global function for copying code
+        window.copyCode = function(elementId) {
+            const codeElement = document.getElementById(elementId);
+            if (codeElement) {
+                const code = codeElement.textContent;
+                navigator.clipboard.writeText(code).then(() => {
+                    alert('✅ Code copied to clipboard!');
+                }).catch(() => {
+                    alert('❌ Failed to copy code');
+                });
+            }
+        };
+
+        // Global function for downloading code
+        window.downloadCode = function(elementId, language) {
+            const codeElement = document.getElementById(elementId);
+            if (codeElement) {
+                const code = codeElement.textContent;
+                const extension = language === 'python' ? 'py' : 
+                                 language === 'javascript' ? 'js' : 
+                                 language === 'html' ? 'html' : 
+                                 language === 'css' ? 'css' : 'txt';
+                
+                const blob = new Blob([code], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `code_${Date.now()}.${extension}`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+        };
 
         // File handling functions
         function handleFileSelect(event) {
@@ -2065,23 +2123,23 @@ IMPORTANT:
                     content: msg.content
                 }));
                 
-                // Add system prompt with temperature and token settings
+                // Add system prompt
                 const systemPrompt = {
                     role: 'system',
-                    content: `You are a code assistant with CONTINUE BUTTON support. 
+                    content: `You are a code assistant with SINGLE BLOCK CONTINUATION support.
 
 Current Settings:
-- Temperature: ${temperature.toFixed(1)} (${getTemperatureDescription()})
+- Temperature: ${temperature.toFixed(1)}
 - Max Tokens: ${maxTokens}
 
 IMPORTANT RULES:
 1. Always provide COMPLETE, RUNNABLE code when possible
-2. If the code is very long and gets cut off, the user will click "Continue"
-3. When continuing, START EXACTLY WHERE YOU LEFT OFF - do not repeat any code
-4. Include all imports, functions, classes, and ensure code is fully executable
-5. If this is a continuation request, the user will specify "CONTINUE THIS CODE" - in that case, ONLY provide the remaining code
+2. If this is a continuation request (asking to CONTINUE), ONLY provide the new code to append
+3. Do not include triple backticks in continuation responses
+4. Do not repeat any existing code
+5. Just give the next part of the code
 
-The user has a continue button that will let them get multiple parts of long code.`
+The user will click Continue to append multiple parts into one block.`
                 };
                 
                 const allMessages = [systemPrompt, ...apiMessages];
@@ -2124,7 +2182,7 @@ The user has a continue button that will let them get multiple parts of long cod
                 
                 if (data.usage) {
                     document.getElementById('usageInfo').innerHTML = 
-                        `💰 Tokens - Prompt: ${data.usage.prompt_tokens}, Completion: ${data.usage.completion_tokens}, Total: ${data.usage.total_tokens} | 🌡️ ${temperature.toFixed(1)} 📦 ${maxTokens} | Click Continue if code is incomplete`;
+                        `💰 Tokens - Prompt: ${data.usage.prompt_tokens}, Completion: ${data.usage.completion_tokens}, Total: ${data.usage.total_tokens} | 🌡️ ${temperature.toFixed(1)} 📦 ${maxTokens}`;
                 }
                 
             } catch (error) {
@@ -2155,10 +2213,10 @@ The user has a continue button that will let them get multiple parts of long cod
         }
 
         function getTemperatureDescription() {
-            if (temperature < 0.3) return "Very precise, focused responses";
-            if (temperature < 0.7) return "Balanced, consistent responses";
-            if (temperature < 1.2) return "Creative, varied responses";
-            return "Very creative, unpredictable responses";
+            if (temperature < 0.3) return "Very precise";
+            if (temperature < 0.7) return "Balanced";
+            if (temperature < 1.2) return "Creative";
+            return "Very creative";
         }
 
         // Modal functions
