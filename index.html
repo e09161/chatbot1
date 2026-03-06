@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="initial-scale=1.0,maximum-scale=1,minimum-scale=1.0,user-scalable=no,width=device-width,viewport-fit=cover">
-    <title>DeepSeek Chat - Single Block Continue</title>
+    <title>DeepSeek Chat - Fixed Follow-up</title>
     <style>
         * {
             margin: 0;
@@ -1506,20 +1506,22 @@
         function addWelcomeMessage() {
             const welcomeMessage = {
                 role: 'assistant',
-                content: `🌙 **Single Block Continue Mode!**
+                content: `🌙 **Single Block Continue Mode - Fixed Follow-ups!**
 
-👋 Hello! I'm your DeepSeek AI assistant with SINGLE BLOCK continuation!
+👋 Hello! I'm your DeepSeek AI assistant with WORKING follow-up conversations!
 
 **🔄 How It Works:**
+• Ask any question, get a response
+• Ask follow-up questions - they work!
 • When code gets cut off, click the green CONTINUE button
 • The new code will be APPENDED to the existing code block
 • You get ONE continuous code block, not multiple blocks
-• Copy/Download the complete code when done
 
 **Example:**
-1. First response: First 500 lines of code + Continue button
-2. Click Continue → Gets next 500 lines APPENDED to same block
-3. Repeat until you have the complete 2000+ line code!
+1. First question: "Generate a PTE generator"
+2. Response with Continue button
+3. Click Continue → Gets next part APPENDED
+4. Ask a new question: "Now add more features" → Works!
 
 **Current Settings:**
 • Temperature: ${temperature.toFixed(1)}
@@ -1677,11 +1679,6 @@ IMPORTANT INSTRUCTIONS:
                                        .replace(/"/g, '&quot;')
                                        .replace(/'/g, '&#039;');
             
-            // Check if this is a continuation (we'll handle specially)
-            const isContinuation = content.includes('CONTINUATION PART');
-            
-            // If this is the first message with code, create a new code block
-            // If it's a continuation, we'll handle it in displayMessage
             return escapedContent;
         }
 
@@ -1691,9 +1688,12 @@ IMPORTANT INSTRUCTIONS:
             // Check if this is a continuation and we have an incomplete message
             const isContinuation = message.role === 'assistant' && 
                                   incompleteMessageData && 
-                                  message.content.includes('def') || 
-                                  message.content.includes('class') ||
-                                  message.content.includes('import');
+                                  !message.content.includes('CONTINUE THIS CODE') &&
+                                  (message.content.includes('def') || 
+                                   message.content.includes('class') ||
+                                   message.content.includes('import') ||
+                                   message.content.includes('from') ||
+                                   message.content.includes('='));
             
             if (isContinuation && incompleteMessageData) {
                 // This is a continuation - append to existing message
@@ -1709,8 +1709,13 @@ IMPORTANT INSTRUCTIONS:
                     // Get the existing code
                     const existingCode = existingCodeBlock.querySelector('code').textContent;
                     
-                    // Append new code
-                    const newCode = message.content.replace(/```\w*\n?|```$/g, '').trim();
+                    // Clean the new code - remove any markdown code block markers
+                    let newCode = message.content
+                        .replace(/```\w*\n?/g, '')  // Remove opening ```
+                        .replace(/```$/g, '')        // Remove closing ```
+                        .trim();
+                    
+                    // Append new code to existing
                     const combinedCode = existingCode + '\n' + newCode;
                     
                     // Update the code block
@@ -1733,15 +1738,21 @@ IMPORTANT INSTRUCTIONS:
                     // Update the message in conversation history
                     const conversation = conversations.find(c => c.id === currentConversationId);
                     if (conversation) {
-                        const lastMsg = conversation.messages[conversation.messages.length - 1];
-                        if (lastMsg.role === 'assistant') {
-                            lastMsg.content = combinedCode;
+                        // Find the last assistant message
+                        for (let i = conversation.messages.length - 1; i >= 0; i--) {
+                            if (conversation.messages[i].role === 'assistant') {
+                                conversation.messages[i].content = combinedCode;
+                                break;
+                            }
                         }
                     }
                     
                     // Check if still incomplete
                     if (isMessageIncomplete(combinedCode)) {
                         addContinueButton(incompleteMessageData.id, combinedCode);
+                    } else {
+                        // Clear incomplete message data when complete
+                        incompleteMessageData = null;
                     }
                     
                     messagesDiv.scrollTop = messagesDiv.scrollHeight;
@@ -2126,20 +2137,19 @@ IMPORTANT INSTRUCTIONS:
                 // Add system prompt
                 const systemPrompt = {
                     role: 'system',
-                    content: `You are a code assistant with SINGLE BLOCK CONTINUATION support.
+                    content: `You are a helpful AI assistant. Respond to user queries naturally and helpfully.
 
 Current Settings:
 - Temperature: ${temperature.toFixed(1)}
 - Max Tokens: ${maxTokens}
 
-IMPORTANT RULES:
-1. Always provide COMPLETE, RUNNABLE code when possible
-2. If this is a continuation request (asking to CONTINUE), ONLY provide the new code to append
-3. Do not include triple backticks in continuation responses
-4. Do not repeat any existing code
-5. Just give the next part of the code
+IMPORTANT RULES FOR CONTINUATIONS:
+1. If the user asks to "continue" code, ONLY provide the new code to append
+2. Do not include triple backticks in continuation responses
+3. Do not repeat any existing code
+4. Just give the next part of the code
 
-The user will click Continue to append multiple parts into one block.`
+For normal conversations, respond naturally and completely.`
                 };
                 
                 const allMessages = [systemPrompt, ...apiMessages];
