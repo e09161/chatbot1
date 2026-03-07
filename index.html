@@ -1758,6 +1758,7 @@
 • File size limit: 10MB per file
 • Copy/download code blocks with syntax highlighting
 • Smart text vs code detection - regular text stays as text, code gets formatted
+• Full support for XML, HTML, CDATA, and all markup languages (stays as one block)
 
 **📝 Note:** If code is incomplete, just type "continue" in the chat and I'll provide the rest. All code will be displayed in properly formatted code blocks.
 
@@ -1801,10 +1802,20 @@
             const codeBlockCount = (content.match(/```/g) || []).length;
             if (codeBlockCount % 2 !== 0) return true;
             
+            // Check for unclosed CDATA sections
+            const cdataCount = (content.match(/<!\[CDATA\[/g) || []).length;
+            const cdataCloseCount = (content.match(/\]\]>/g) || []).length;
+            if (cdataCount > cdataCloseCount) return true;
+            
+            // Check for unclosed XML/HTML tags
+            const openTagCount = (content.match(/<[^\/][^>]*>/g) || []).length;
+            const closeTagCount = (content.match(/<\/[^>]+>/g) || []).length;
+            if (openTagCount > closeTagCount) return true;
+            
             // Check if it ends abruptly
             const lastLine = content.split('\n').pop().trim();
             
-            // Check for incomplete code structures across multiple languages
+            // Check for incomplete code structures
             const incompletePatterns = [
                 /def\s+\w+\s*\([^)]*\)\s*:\s*$/,  // Python function
                 /class\s+\w+\s*[:\(]\s*$/,        // Python class
@@ -1826,135 +1837,13 @@
                 /switch\s*\([^)]*\)\s*{?\s*$/,     // JavaScript switch
                 /{[\s]*$/,                          // Opening brace
                 /\[[\s]*$/,                         // Opening bracket
-                /\([\s]*$/                          // Opening parenthesis
+                /\([\s]*$/,                          // Opening parenthesis
+                /<!\[CDATA\[\s*$/,                   // Opening CDATA
+                /<[^\/][^>]*>\s*$/,                  // Opening HTML/XML tag
             ];
             
             for (const pattern of incompletePatterns) {
                 if (pattern.test(lastLine)) return true;
-            }
-            
-            return false;
-        }
-
-        // Improved function to detect code lines across multiple languages
-        function isCodeLine(line, index, allLines, inCodeBlock) {
-            const trimmedLine = line.trim();
-            if (!trimmedLine && !inCodeBlock) return false; // Empty lines only count inside code blocks
-            
-            // Check if line contains code block placeholder
-            if (line.includes('__CODE_BLOCK_')) return false;
-            
-            // PATTERNS THAT INDICATE THIS IS DEFINITELY TEXT, NOT CODE
-            const textPatterns = [
-                // Numbered lists (1. Item, 2. Item, etc.)
-                /^\s*\d+\.\s+\w/,
-                // Bullet points
-                /^\s*[-*•]\s+\w/,
-                // Capitalized sentences (likely English text)
-                /^\s*[A-Z][a-z]+\s+/,
-                // Common English words at start of sentences
-                /^\s*(The|A|An|This|That|These|Those|It|He|She|They|We|I|You|In|On|At|For|To|With|By|From|As|While|During|After|Before|When|If|Although|However|Therefore|Thus|Hence|Moreover|Furthermore|Consequently|Additionally|Specifically|Generally|Typically|Usually|Often|Sometimes|Rarely|Never)\s+/i,
-                // Question marks and exclamation marks (text)
-                /[?!]$/,
-                // Common punctuation in text
-                /[.,;:]$/,
-                // Long sentences with spaces (over 50 chars with spaces)
-                /^.{50,}\s.{10,}/,
-                // Common text patterns
-                /^\s*(Please|Note|Important|Warning|Caution|Example|Figure|Table|Section|Chapter|Page)\s+/i,
-                // Email addresses
-                /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/,
-                // URLs
-                /^(https?:\/\/|www\.)[^\s]+/,
-                // Common English contractions
-                /\b(can't|won't|don't|doesn't|isn't|aren't|wasn't|weren't|haven't|hasn't|hadn't|will|would|should|could|may|might|must)\b/i
-            ];
-            
-            for (const pattern of textPatterns) {
-                if (pattern.test(line)) return false;
-            }
-            
-            // PATTERNS THAT INDICATE THIS IS DEFINITELY CODE
-            const codePatterns = [
-                // Indentation (multiple spaces or tabs at start)
-                /^[ \t]{2,}[^\s]/,
-                
-                // Comments in various languages
-                /^\s*\/\//,           // Single-line comment (JS, C++, etc.)
-                /^\s*#/,               // Python, Ruby, etc.
-                /^\s*\/\*/,            // Multi-line comment start
-                /^\s*\*/,              // Multi-line comment continuation
-                
-                // Language keywords - Python
-                /^\s*(def|class|if|elif|else|for|while|try|except|finally|with|async|await|import|from|return|yield|raise|assert|pass|break|continue|global|nonlocal|lambda)\s+[^:\s]/,
-                /^\s*(True|False|None)\s*$/,
-                
-                // Language keywords - JavaScript/TypeScript
-                /^\s*(function|const|let|var|if|else|for|while|do|switch|case|break|continue|return|try|catch|finally|throw|class|extends|import|export|default|async|await|yield|typeof|instanceof|new|delete|void)\s+[^{;]/,
-                
-                // Language keywords - Java/C/C++/C#
-                /^\s*(public|private|protected|static|final|abstract|class|interface|enum|void|int|float|double|char|boolean|byte|long|short|if|else|for|while|do|switch|case|break|continue|return|try|catch|finally|throw|throws|new|this|super|extends|implements)\s+[^{;]/,
-                
-                // HTML/XML tags
-                /^\s*<\/?[a-z][\s\S]*>$/i,
-                
-                // CSS
-                /^\s*@(import|media|keyframes|font-face|supports|page)/,
-                /^\s*[a-zA-Z-]+\s*:\s*[^;]+;?$/,
-                
-                // SQL
-                /^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|FROM|WHERE|JOIN)\s+/i,
-                
-                // Code-specific symbols
-                /[{}[\]()<>]=?/,                    // Brackets and parentheses
-                /[+\-*/%=&|^~!]=?/,                  // Operators
-                /^\s*\w+\s*[=:][^=]/,                 // Assignments with = or :
-                /^\s*\w+\s*\([^)]*\)\s*{?\s*$/,      // Function calls/method definitions
-                /^\s*return\s+[^;]*;?\s*$/,           // Return statements
-                /^\s*import\s+[^;]*;?\s*$/,           // Import statements
-                /^\s*from\s+\w+\s+import/,            // Python from import
-                /^\s*include\s+[^;]*;?\s*$/,          // Include statements
-                /^\s*require\s*\(/,                   // Require statements
-                /^\s*console\./,                       // Console statements
-                /^\s*print\(/,                          // Print statements
-                /^\s*echo\s+/,                          // Echo statements
-                /^\s*cout\s*<</,                        // C++ output
-                /^\s*cin\s*>>/,                         // C++ input
-                /^\s*System\.out\./,                    // Java output
-                
-                // Strings in various languages
-                /^["'].*["']$/, 
-                /^`.*`$/,
-                
-                // Numbers and basic expressions
-                /^[+-]?\d+\.?\d*$/,
-                /^[+-]?\d+\s*[+\-*/]\s*\d+/,
-                
-                // Variable declarations
-                /^\s*\w+\s*=\s*[^;]+;?$/,
-                
-                // Control structures without braces (Python, etc.)
-                /^\s*(if|elif|else|for|while|try|except|finally|with|def|class)\s*.*:\s*$/,
-                
-                // Decorators
-                /^\s*@\w+/,
-            ];
-            
-            for (const pattern of codePatterns) {
-                if (pattern.test(line)) return true;
-            }
-            
-            // Check if previous line was code and this line is indented (continuation)
-            if (index > 0 && inCodeBlock && (line.startsWith('    ') || line.startsWith('\t'))) {
-                return true;
-            }
-            
-            // Check if line ends with a colon (could be Python or text)
-            if (trimmedLine.endsWith(':')) {
-                // If it's a short line with no spaces after colon, likely code
-                if (!trimmedLine.includes(' ')) return true;
-                // If it contains code-like words, likely code
-                if (/def|class|if|for|while|try|except|with/.test(trimmedLine)) return true;
             }
             
             return false;
@@ -1979,12 +1868,111 @@
                 return placeholder;
             });
             
-            // Now process the remaining text for code detection
+            // Now process the remaining text for markup/code detection
             const lines = textWithPlaceholders.split('\n');
             const result = [];
-            let inCodeBlock = false;
-            let currentCodeBlock = [];
-            let codeBlockStartLine = -1;
+            let inMarkupBlock = false;
+            let currentBlock = [];
+            let blockType = 'text'; // 'text', 'markup', or 'code'
+            let blockStartLine = -1;
+            
+            // Helper to detect if a line is part of markup (HTML/XML)
+            function isMarkupLine(line) {
+                const trimmed = line.trim();
+                
+                // XML/HTML tags
+                if (/^<\/?[a-z][\s\S]*>/.test(trimmed)) return true;
+                
+                // CDATA sections
+                if (/<!\[CDATA\[/.test(trimmed) || /\]\]>/.test(trimmed)) return true;
+                
+                // XML/HTML comments
+                if (/<!--/.test(trimmed) || /-->/.test(trimmed)) return true;
+                
+                // XML/HTML doctype
+                if (/<!DOCTYPE/i.test(trimmed)) return true;
+                
+                // XML/HTML processing instructions
+                if (/<\?/.test(trimmed) || /\?>/.test(trimmed)) return true;
+                
+                // XML/HTML attributes (but only if we're already in markup)
+                if (inMarkupBlock && /\s+[a-z-]+=["'][^"']*["']/.test(line)) return true;
+                
+                return false;
+            }
+            
+            // Helper to detect if a line is code (programming language)
+            function isCodeLine(line) {
+                const trimmed = line.trim();
+                
+                // Skip empty lines in detection
+                if (!trimmed) return false;
+                
+                // Skip markup lines
+                if (isMarkupLine(line)) return false;
+                
+                // Skip obvious text patterns
+                const textPatterns = [
+                    /^\s*\d+\.\s+\w/,           // Numbered lists
+                    /^\s*[-*•]\s+\w/,            // Bullet points
+                    /^\s*[A-Z][a-z]+\s+/,        // Capitalized sentences
+                    /[?!]$/,                      // Question/exclamation marks
+                    /[.,;:]$/,                    // Common punctuation
+                ];
+                
+                for (const pattern of textPatterns) {
+                    if (pattern.test(trimmed)) return false;
+                }
+                
+                // Code patterns
+                const codePatterns = [
+                    // Indentation
+                    /^[ \t]{2,}[^\s]/,
+                    
+                    // Comments
+                    /^\s*\/\//,
+                    /^\s*#/,
+                    /^\s*\/\*/,
+                    /^\s*\*/,
+                    
+                    // Language keywords
+                    /^\s*(def|class|if|elif|else|for|while|try|except|finally|with|async|await|import|from|return|yield|raise|assert|pass|break|continue)\b/,
+                    /^\s*(function|const|let|var|if|else|for|while|do|switch|case|return|try|catch|finally|throw)\b/,
+                    /^\s*(public|private|protected|static|final|abstract|void|int|float|double|char|boolean)\b/,
+                    
+                    // Code symbols
+                    /[{}[\]()<>]=?/,
+                    /[+\-*/%=&|^~!]=?/,
+                    /^\s*\w+\s*[=:][^=]/,
+                    /^\s*\w+\s*\([^)]*\)\s*{?\s*$/,
+                    /^\s*return\s+[^;]*;?\s*$/,
+                    /^\s*import\s+[^;]*;?\s*$/,
+                    /^\s*from\s+\w+\s+import/,
+                    
+                    // Strings
+                    /^["'].*["']$/,
+                    /^`.*`$/,
+                    
+                    // Numbers
+                    /^[+-]?\d+\.?\d*$/,
+                    /^[+-]?\d+\s*[+\-*/]\s*\d+/,
+                    
+                    // Variable declarations
+                    /^\s*\w+\s*=\s*[^;]+;?$/,
+                    
+                    // Control structures
+                    /^\s*(if|elif|else|for|while|try|except|finally|with|def|class)\s*.*:\s*$/,
+                    
+                    // Decorators
+                    /^\s*@\w+/,
+                ];
+                
+                for (const pattern of codePatterns) {
+                    if (pattern.test(line)) return true;
+                }
+                
+                return false;
+            }
             
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
@@ -1992,30 +1980,23 @@
                 // Check if this line contains a code block placeholder
                 const placeholderMatch = line.match(/__CODE_BLOCK_(\d+)__/);
                 if (placeholderMatch) {
-                    // If we were in a code block, close it first
-                    if (inCodeBlock && currentCodeBlock.length > 0) {
-                        // Only create code block if it has at least 2 lines or starts with a clear code indicator
-                        if (currentCodeBlock.length >= 2 || 
-                            (currentCodeBlock.length === 1 && isCodeLine(currentCodeBlock[0], codeBlockStartLine, lines, false))) {
-                            const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_' + i;
-                            result.push(`
-                                <div class="code-block">
-                                    <div class="code-header">
-                                        <span>code</span>
-                                        <div>
-                                            <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
-                                            <button class="download-code-btn" onclick="downloadCode('${codeId}', 'txt')">Download</button>
-                                        </div>
+                    // If we were in a block, close it first
+                    if (currentBlock.length > 0) {
+                        const blockId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_' + i;
+                        result.push(`
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>${blockType === 'markup' ? 'xml' : 'code'}</span>
+                                    <div>
+                                        <button class="copy-code-btn" onclick="copyCode('${blockId}')">Copy</button>
+                                        <button class="download-code-btn" onclick="downloadCode('${blockId}', '${blockType === 'markup' ? 'xml' : 'txt'}')">Download</button>
                                     </div>
-                                    <pre><code id="${codeId}">${escapeHtml(currentCodeBlock.join('\n'))}</code></pre>
                                 </div>
-                            `);
-                        } else {
-                            // Not enough lines for a code block, treat as regular text
-                            result.push(escapeHtml(currentCodeBlock.join('\n')).replace(/\n/g, '<br>'));
-                        }
-                        currentCodeBlock = [];
-                        inCodeBlock = false;
+                                <pre><code id="${blockId}">${escapeHtml(currentBlock.join('\n'))}</code></pre>
+                            </div>
+                        `);
+                        currentBlock = [];
+                        inMarkupBlock = false;
                     }
                     
                     const index = parseInt(placeholderMatch[1]);
@@ -2038,78 +2019,88 @@
                     continue;
                 }
                 
-                const isCode = isCodeLine(line, i, lines, inCodeBlock);
+                // Determine the type of this line
+                const isMarkup = isMarkupLine(line);
+                const isCode = !isMarkup && isCodeLine(line);
                 
-                if (isCode && !inCodeBlock) {
-                    // Start a new code block
-                    inCodeBlock = true;
-                    currentCodeBlock = [line];
-                    codeBlockStartLine = i;
-                } else if (inCodeBlock) {
-                    if (isCode || line.trim() === '') {
-                        // Continue the code block (include empty lines)
-                        currentCodeBlock.push(line);
+                // If this is a new block starting
+                if ((isMarkup || isCode) && !inMarkupBlock) {
+                    // Close previous text block if any
+                    if (currentBlock.length > 0) {
+                        result.push(escapeHtml(currentBlock.join('\n')).replace(/\n/g, '<br>'));
+                        currentBlock = [];
+                    }
+                    
+                    inMarkupBlock = true;
+                    blockType = isMarkup ? 'markup' : 'code';
+                    currentBlock = [line];
+                    blockStartLine = i;
+                }
+                // If continuing a markup/code block
+                else if (inMarkupBlock) {
+                    // Check if we should continue the block
+                    const shouldContinue = isMarkup || isCode || line.trim() === '';
+                    
+                    if (shouldContinue) {
+                        currentBlock.push(line);
                     } else {
-                        // End the code block
-                        if (currentCodeBlock.length >= 2 || 
-                            (currentCodeBlock.length === 1 && isCodeLine(currentCodeBlock[0], codeBlockStartLine, lines, false))) {
-                            const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_' + i;
+                        // End the block
+                        if (currentBlock.length > 0) {
+                            const blockId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_' + i;
                             result.push(`
                                 <div class="code-block">
                                     <div class="code-header">
-                                        <span>code</span>
+                                        <span>${blockType === 'markup' ? 'xml' : 'code'}</span>
                                         <div>
-                                            <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
-                                            <button class="download-code-btn" onclick="downloadCode('${codeId}', 'txt')">Download</button>
+                                            <button class="copy-code-btn" onclick="copyCode('${blockId}')">Copy</button>
+                                            <button class="download-code-btn" onclick="downloadCode('${blockId}', '${blockType === 'markup' ? 'xml' : 'txt'}')">Download</button>
                                         </div>
                                     </div>
-                                    <pre><code id="${codeId}">${escapeHtml(currentCodeBlock.join('\n'))}</code></pre>
+                                    <pre><code id="${blockId}">${escapeHtml(currentBlock.join('\n'))}</code></pre>
                                 </div>
                             `);
-                        } else {
-                            // Not enough lines for a code block, treat as regular text
-                            result.push(escapeHtml(currentCodeBlock.join('\n')).replace(/\n/g, '<br>'));
+                            currentBlock = [];
                         }
+                        inMarkupBlock = false;
                         
-                        // Add the current non-code line
+                        // Add the current line as text
                         if (line.trim() !== '') {
                             result.push(escapeHtml(line).replace(/\n/g, '<br>'));
-                        } else {
-                            result.push('<br>');
                         }
-                        
-                        currentCodeBlock = [];
-                        inCodeBlock = false;
                     }
-                } else {
-                    // Regular text line
+                }
+                // Regular text
+                else {
                     if (line.trim() !== '') {
-                        result.push(escapeHtml(line).replace(/\n/g, '<br>'));
+                        currentBlock.push(line);
                     } else {
+                        if (currentBlock.length > 0) {
+                            result.push(escapeHtml(currentBlock.join('\n')).replace(/\n/g, '<br>'));
+                            currentBlock = [];
+                        }
                         result.push('<br>');
                     }
                 }
             }
             
-            // Handle any remaining code block at the end
-            if (inCodeBlock && currentCodeBlock.length > 0) {
-                if (currentCodeBlock.length >= 2 || 
-                    (currentCodeBlock.length === 1 && isCodeLine(currentCodeBlock[0], codeBlockStartLine, lines, false))) {
-                    const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_final';
+            // Handle any remaining block at the end
+            if (currentBlock.length > 0) {
+                if (inMarkupBlock) {
+                    const blockId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_final';
                     result.push(`
                         <div class="code-block">
                             <div class="code-header">
-                                <span>code</span>
+                                <span>${blockType === 'markup' ? 'xml' : 'code'}</span>
                                 <div>
-                                    <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
-                                    <button class="download-code-btn" onclick="downloadCode('${codeId}', 'txt')">Download</button>
+                                    <button class="copy-code-btn" onclick="copyCode('${blockId}')">Copy</button>
+                                    <button class="download-code-btn" onclick="downloadCode('${blockId}', '${blockType === 'markup' ? 'xml' : 'txt'}')">Download</button>
                                 </div>
                             </div>
-                            <pre><code id="${codeId}">${escapeHtml(currentCodeBlock.join('\n'))}</code></pre>
+                            <pre><code id="${blockId}">${escapeHtml(currentBlock.join('\n'))}</code></pre>
                         </div>
                     `);
                 } else {
-                    result.push(escapeHtml(currentCodeBlock.join('\n')).replace(/\n/g, '<br>'));
+                    result.push(escapeHtml(currentBlock.join('\n')).replace(/\n/g, '<br>'));
                 }
             }
             
@@ -2215,7 +2206,9 @@
                                  language === 'rust' ? 'rs' :
                                  language === 'swift' ? 'swift' :
                                  language === 'kotlin' ? 'kt' :
-                                 language === 'sql' ? 'sql' : 'txt';
+                                 language === 'sql' ? 'sql' : 
+                                 language === 'xml' ? 'xml' :
+                                 language === 'html' ? 'html' : 'txt';
                 
                 const blob = new Blob([code], { type: 'text/plain' });
                 const url = URL.createObjectURL(blob);
@@ -2246,7 +2239,7 @@
             if (ext === 'xls' || ext === 'xlsx') return '📊';
             if (ext === 'json') return '📋';
             if (ext === 'js') return '📜';
-            if (ext === 'html') return '🌐';
+            if (ext === 'html' || ext === 'htm') return '🌐';
             if (ext === 'css') return '🎨';
             if (ext === 'md') return '📘';
             if (ext === 'java') return '☕';
@@ -2258,6 +2251,7 @@
             if (ext === 'swift') return '🐦';
             if (ext === 'kt') return '🟣';
             if (ext === 'sql') return '🗄️';
+            if (ext === 'xml') return '📰';
             return '📎';
         }
 
