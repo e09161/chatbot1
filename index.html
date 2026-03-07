@@ -1757,7 +1757,7 @@
 • Visual feedback when dragging files
 • File size limit: 10MB per file
 • Copy/download code blocks with syntax highlighting
-• Smart code block detection that preserves comments, docstrings, and all code structures
+• Smart text vs code detection - regular text stays as text, code gets formatted
 
 **📝 Note:** If code is incomplete, just type "continue" in the chat and I'll provide the rest. All code will be displayed in properly formatted code blocks.
 
@@ -1844,73 +1844,100 @@
             // Check if line contains code block placeholder
             if (line.includes('__CODE_BLOCK_')) return false;
             
-            // Common code patterns across languages
+            // PATTERNS THAT INDICATE THIS IS DEFINITELY TEXT, NOT CODE
+            const textPatterns = [
+                // Numbered lists (1. Item, 2. Item, etc.)
+                /^\s*\d+\.\s+\w/,
+                // Bullet points
+                /^\s*[-*•]\s+\w/,
+                // Capitalized sentences (likely English text)
+                /^\s*[A-Z][a-z]+\s+/,
+                // Common English words at start of sentences
+                /^\s*(The|A|An|This|That|These|Those|It|He|She|They|We|I|You|In|On|At|For|To|With|By|From|As|While|During|After|Before|When|If|Although|However|Therefore|Thus|Hence|Moreover|Furthermore|Consequently|Additionally|Specifically|Generally|Typically|Usually|Often|Sometimes|Rarely|Never)\s+/i,
+                // Question marks and exclamation marks (text)
+                /[?!]$/,
+                // Common punctuation in text
+                /[.,;:]$/,
+                // Long sentences with spaces (over 50 chars with spaces)
+                /^.{50,}\s.{10,}/,
+                // Common text patterns
+                /^\s*(Please|Note|Important|Warning|Caution|Example|Figure|Table|Section|Chapter|Page)\s+/i,
+                // Email addresses
+                /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/,
+                // URLs
+                /^(https?:\/\/|www\.)[^\s]+/,
+                // Common English contractions
+                /\b(can't|won't|don't|doesn't|isn't|aren't|wasn't|weren't|haven't|hasn't|hadn't|will|would|should|could|may|might|must)\b/i
+            ];
+            
+            for (const pattern of textPatterns) {
+                if (pattern.test(line)) return false;
+            }
+            
+            // PATTERNS THAT INDICATE THIS IS DEFINITELY CODE
             const codePatterns = [
-                // Indentation
-                /^[ \t]+[^\s]/,
+                // Indentation (multiple spaces or tabs at start)
+                /^[ \t]{2,}[^\s]/,
                 
                 // Comments in various languages
                 /^\s*\/\//,           // Single-line comment (JS, C++, etc.)
                 /^\s*#/,               // Python, Ruby, etc.
                 /^\s*\/\*/,            // Multi-line comment start
                 /^\s*\*/,              // Multi-line comment continuation
-                /^\s*<!--/,            // HTML comment
-                /^\s*--/,               // SQL comment
                 
                 // Language keywords - Python
-                /^\s*(def|class|if|elif|else|for|while|try|except|finally|with|async|await|import|from|return|yield|raise|assert|pass|break|continue|global|nonlocal|lambda)\b/,
+                /^\s*(def|class|if|elif|else|for|while|try|except|finally|with|async|await|import|from|return|yield|raise|assert|pass|break|continue|global|nonlocal|lambda)\s+[^:\s]/,
+                /^\s*(True|False|None)\s*$/,
                 
                 // Language keywords - JavaScript/TypeScript
-                /^\s*(function|const|let|var|if|else|for|while|do|switch|case|break|continue|return|try|catch|finally|throw|class|extends|import|export|default|async|await|yield|typeof|instanceof|new|delete|void)\b/,
+                /^\s*(function|const|let|var|if|else|for|while|do|switch|case|break|continue|return|try|catch|finally|throw|class|extends|import|export|default|async|await|yield|typeof|instanceof|new|delete|void)\s+[^{;]/,
                 
                 // Language keywords - Java/C/C++/C#
-                /^\s*(public|private|protected|static|final|abstract|class|interface|enum|void|int|float|double|char|boolean|byte|long|short|if|else|for|while|do|switch|case|break|continue|return|try|catch|finally|throw|throws|new|this|super|extends|implements|import|package)\b/,
+                /^\s*(public|private|protected|static|final|abstract|class|interface|enum|void|int|float|double|char|boolean|byte|long|short|if|else|for|while|do|switch|case|break|continue|return|try|catch|finally|throw|throws|new|this|super|extends|implements)\s+[^{;]/,
                 
-                // Language keywords - HTML/XML
+                // HTML/XML tags
                 /^\s*<\/?[a-z][\s\S]*>$/i,
                 
-                // Language keywords - CSS
+                // CSS
                 /^\s*@(import|media|keyframes|font-face|supports|page)/,
-                /^\s*[a-zA-Z-]+\s*:/,
+                /^\s*[a-zA-Z-]+\s*:\s*[^;]+;?$/,
                 
-                // Language keywords - SQL
-                /^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|FROM|WHERE|JOIN|INNER|LEFT|RIGHT|FULL|GROUP BY|ORDER BY|HAVING|UNION|ALL|DISTINCT|AS|ON|IN|EXISTS|BETWEEN|LIKE|IS NULL|IS NOT NULL)\b/i,
+                // SQL
+                /^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|FROM|WHERE|JOIN)\s+/i,
                 
-                // Language keywords - PHP
-                /^\s*<\?php/,
-                /^\s*\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*/,
+                // Code-specific symbols
+                /[{}[\]()<>]=?/,                    // Brackets and parentheses
+                /[+\-*/%=&|^~!]=?/,                  // Operators
+                /^\s*\w+\s*[=:][^=]/,                 // Assignments with = or :
+                /^\s*\w+\s*\([^)]*\)\s*{?\s*$/,      // Function calls/method definitions
+                /^\s*return\s+[^;]*;?\s*$/,           // Return statements
+                /^\s*import\s+[^;]*;?\s*$/,           // Import statements
+                /^\s*from\s+\w+\s+import/,            // Python from import
+                /^\s*include\s+[^;]*;?\s*$/,          // Include statements
+                /^\s*require\s*\(/,                   // Require statements
+                /^\s*console\./,                       // Console statements
+                /^\s*print\(/,                          // Print statements
+                /^\s*echo\s+/,                          // Echo statements
+                /^\s*cout\s*<</,                        // C++ output
+                /^\s*cin\s*>>/,                         // C++ input
+                /^\s*System\.out\./,                    // Java output
                 
-                // Language keywords - Ruby
-                /^\s*(def|class|module|if|unless|else|elsif|case|when|for|while|until|do|begin|rescue|ensure|end|yield|raise|attr_reader|attr_writer|attr_accessor)\b/,
+                // Strings in various languages
+                /^["'].*["']$/, 
+                /^`.*`$/,
                 
-                // Language keywords - Go
-                /^\s*(func|type|struct|interface|var|const|if|else|for|range|switch|case|default|select|go|defer|chan|map|package|import|return|break|continue|fallthrough)\b/,
+                // Numbers and basic expressions
+                /^[+-]?\d+\.?\d*$/,
+                /^[+-]?\d+\s*[+\-*/]\s*\d+/,
                 
-                // Language keywords - Rust
-                /^\s*(fn|let|mut|if|else|for|while|loop|match|enum|struct|trait|impl|pub|use|mod|crate|super|self|return|break|continue|async|await|move)\b/,
+                // Variable declarations
+                /^\s*\w+\s*=\s*[^;]+;?$/,
                 
-                // Language keywords - Swift
-                /^\s*(func|var|let|class|struct|enum|protocol|extension|if|else|for|while|repeat|switch|case|default|where|guard|defer|return|break|continue|fallthrough|import|public|private|internal|fileprivate)\b/,
+                // Control structures without braces (Python, etc.)
+                /^\s*(if|elif|else|for|while|try|except|finally|with|def|class)\s*.*:\s*$/,
                 
-                // Language keywords - Kotlin
-                /^\s*(fun|var|val|class|interface|object|if|else|for|while|do|when|try|catch|finally|throw|return|break|continue|import|package|public|private|internal|protected)\b/,
-                
-                // General code patterns
-                /^\s*[{}[\]()<>]/,                    // Brackets
-                /^\s*[+\-*/%=&|^~!<>]=?/,             // Operators
-                /^\s*\w+\s*[=:][^=]/,                  // Assignments with = or :
-                /^\s*\w+\s*\([^)]*\)\s*{?\s*$/,       // Function calls/method definitions
-                /^\s*return\s+[^;]*;?\s*$/,            // Return statements
-                /^\s*import\s+/,                        // Import statements
-                /^\s*from\s+\w+\s+import/,              // Python from import
-                /^\s*include\s+/,                       // Include statements
-                /^\s*require\s*\(/,                     // Require statements
-                /^\s*console\./,                         // Console statements
-                /^\s*print/,                             // Print statements
-                /^\s*echo/,                              // Echo statements
-                /^\s*cout/,                              // C++ output
-                /^\s*cin/,                               // C++ input
-                /^\s*System\.out\./,                     // Java output
+                // Decorators
+                /^\s*@\w+/,
             ];
             
             for (const pattern of codePatterns) {
@@ -1922,14 +1949,12 @@
                 return true;
             }
             
-            // Check for strings in various languages
-            if (/^["'].*["']$/.test(trimmedLine) || /^`.*`$/.test(trimmedLine)) {
-                return true;
-            }
-            
-            // Check for numbers and basic expressions
-            if (/^[+-]?\d+\.?\d*$/.test(trimmedLine) || /^[+-]?\d+\s*[+\-*/]\s*\d+/.test(trimmedLine)) {
-                return true;
+            // Check if line ends with a colon (could be Python or text)
+            if (trimmedLine.endsWith(':')) {
+                // If it's a short line with no spaces after colon, likely code
+                if (!trimmedLine.includes(' ')) return true;
+                // If it contains code-like words, likely code
+                if (/def|class|if|for|while|try|except|with/.test(trimmedLine)) return true;
             }
             
             return false;
@@ -1969,19 +1994,26 @@
                 if (placeholderMatch) {
                     // If we were in a code block, close it first
                     if (inCodeBlock && currentCodeBlock.length > 0) {
-                        const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_' + i;
-                        result.push(`
-                            <div class="code-block">
-                                <div class="code-header">
-                                    <span>code</span>
-                                    <div>
-                                        <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
-                                        <button class="download-code-btn" onclick="downloadCode('${codeId}', 'txt')">Download</button>
+                        // Only create code block if it has at least 2 lines or starts with a clear code indicator
+                        if (currentCodeBlock.length >= 2 || 
+                            (currentCodeBlock.length === 1 && isCodeLine(currentCodeBlock[0], codeBlockStartLine, lines, false))) {
+                            const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_' + i;
+                            result.push(`
+                                <div class="code-block">
+                                    <div class="code-header">
+                                        <span>code</span>
+                                        <div>
+                                            <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
+                                            <button class="download-code-btn" onclick="downloadCode('${codeId}', 'txt')">Download</button>
+                                        </div>
                                     </div>
+                                    <pre><code id="${codeId}">${escapeHtml(currentCodeBlock.join('\n'))}</code></pre>
                                 </div>
-                                <pre><code id="${codeId}">${escapeHtml(currentCodeBlock.join('\n'))}</code></pre>
-                            </div>
-                        `);
+                            `);
+                        } else {
+                            // Not enough lines for a code block, treat as regular text
+                            result.push(escapeHtml(currentCodeBlock.join('\n')).replace(/\n/g, '<br>'));
+                        }
                         currentCodeBlock = [];
                         inCodeBlock = false;
                     }
@@ -2042,6 +2074,8 @@
                         // Add the current non-code line
                         if (line.trim() !== '') {
                             result.push(escapeHtml(line).replace(/\n/g, '<br>'));
+                        } else {
+                            result.push('<br>');
                         }
                         
                         currentCodeBlock = [];
