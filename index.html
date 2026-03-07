@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="initial-scale=1.0,maximum-scale=1,minimum-scale=1.0,user-scalable=no,width=device-width,viewport-fit=cover">
-    <title>DeepSeek Chat - Working Continue</title>
+    <title>DeepSeek Chat</title>
     <style>
         * {
             margin: 0;
@@ -37,10 +37,6 @@
             --gauge-medium: #f0883e;
             --gauge-high: #f85149;
             --gauge-track: #2d333b;
-            
-            /* Continue button colors */
-            --continue-color: #2ea043;
-            --continue-hover: #3fb950;
             
             /* Stop button colors */
             --stop-color: #f85149;
@@ -624,7 +620,7 @@
             border-bottom-left-radius: 4px;
         }
 
-        /* Code block styling - FIXED to always show */
+        /* Code block styling - IMPROVED */
         .code-block {
             background: var(--code-bg);
             color: var(--code-text);
@@ -708,53 +704,6 @@
             margin-top: 4px;
             margin-left: 36px;
             margin-right: 36px;
-        }
-
-        /* Continue button styling */
-        .continue-container {
-            display: flex;
-            justify-content: center;
-            margin: 16px 0 8px 0;
-        }
-
-        .continue-btn {
-            background: var(--continue-color);
-            color: white;
-            border: none;
-            padding: 10px 24px;
-            border-radius: 30px;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.2s;
-            box-shadow: 0 4px 12px rgba(46, 160, 67, 0.3);
-            animation: pulse-green 2s infinite;
-        }
-
-        .continue-btn:hover {
-            background: var(--continue-hover);
-            transform: scale(1.05);
-        }
-
-        .continue-btn svg {
-            width: 18px;
-            height: 18px;
-            fill: white;
-        }
-
-        @keyframes pulse-green {
-            0% {
-                box-shadow: 0 0 0 0 rgba(46, 160, 67, 0.4);
-            }
-            70% {
-                box-shadow: 0 0 0 10px rgba(46, 160, 67, 0);
-            }
-            100% {
-                box-shadow: 0 0 0 0 rgba(46, 160, 67, 0);
-            }
         }
 
         /* Incomplete code indicator */
@@ -1118,16 +1067,6 @@
             border-radius: 8px;
         }
 
-        /* Error badge */
-        .error-badge {
-            background: var(--error);
-            color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 10px;
-            margin-left: 8px;
-        }
-
         /* Paste notification */
         .paste-notification {
             position: fixed;
@@ -1246,11 +1185,11 @@
                                     <div class="gauge-header">
                                         <span class="gauge-label">
                                             📦 Max Tokens
-                                            <span class="gauge-value" id="tokenLimitValue">4000</span>
+                                            <span class="gauge-value" id="tokenLimitValue">8000</span>
                                         </span>
                                     </div>
                                     <div class="gauge-track" id="tokenTrack" onclick="setTokenLimitFromClick(event)">
-                                        <div class="gauge-fill tokens" id="tokenFill" style="width: 50%">
+                                        <div class="gauge-fill tokens" id="tokenFill" style="width: 100%">
                                             <div class="gauge-handle" id="tokenHandle" 
                                                  onmousedown="startDragToken(event)"></div>
                                         </div>
@@ -1284,7 +1223,7 @@
                 <span>💰 No limits - Using your own API key</span>
                 <div class="current-settings" id="currentSettings">
                     <span class="setting-badge">🌡️ <span id="currentTemp">0.7</span></span>
-                    <span class="setting-badge">📦 <span id="currentTokens">4000</span></span>
+                    <span class="setting-badge">📦 <span id="currentTokens">8000</span></span>
                 </div>
                 <div class="generation-status" id="generationStatus" style="display: none;">
                     <span class="status-dot"></span>
@@ -1359,15 +1298,11 @@
         
         // Default settings
         let temperature = 0.7;
-        let maxTokens = 8000; // Increased to 8000
+        let maxTokens = 8000;
         
         // Drag state
         let isDraggingTemp = false;
         let isDraggingToken = false;
-        
-        // Store incomplete message for continuation
-        let pendingContinuation = null;
-        let continuationCount = 0;
 
         // Load saved data
         document.addEventListener('DOMContentLoaded', () => {
@@ -1812,21 +1747,18 @@
         function addWelcomeMessage() {
             const welcomeMessage = {
                 role: 'assistant',
-                content: `🌙 **Working Continue Button with Drag & Drop!**
+                content: `🌙 **DeepSeek Chat with Drag & Drop!**
 
 👋 Hello! I'm your DeepSeek AI assistant with enhanced file handling!
 
-**✅ New Features Added:**
+**✅ Features:**
 • Drag & drop files directly into the input area
 • Paste images from clipboard (Ctrl+V / Cmd+V)
 • Visual feedback when dragging files
 • File size limit: 10MB per file
+• Copy/download code blocks with syntax highlighting
 
-**🔄 How It Works:**
-1. **Drag & drop** any file (images, .txt, .py) into the chat area
-2. **Paste images** directly from clipboard
-3. Files appear as attachments below the input
-4. Ask me about the uploaded files!
+**📝 Note:** If code is incomplete, just type "continue" in the chat and I'll provide the rest. All code will be displayed in properly formatted code blocks.
 
 **Current Settings:**
 • Temperature: ${temperature.toFixed(1)}
@@ -1860,7 +1792,7 @@
             }
         }
 
-        // Check if message might be incomplete
+        // Check if message might be incomplete (just for visual indicator)
         function isMessageIncomplete(content) {
             if (!content) return false;
             
@@ -1894,213 +1826,135 @@
                 if (pattern.test(lastLine)) return true;
             }
             
-            // Check if it reached max tokens (likely incomplete)
-            if (content.includes('...') || content.match(/\.{3,}$/)) return true;
-            
             return false;
         }
 
-        // Add continue button to message
-        function addContinueButton(messageId, messageElement, originalContent) {
-            const messagesDiv = document.getElementById('messages');
+        function formatMessageContent(content) {
+            if (!content) return '';
             
-            // Remove any existing continue button for this message
-            const existingBtn = document.getElementById(`continue-${messageId}`);
-            if (existingBtn) existingBtn.remove();
+            // First, handle existing code blocks (they're already formatted)
+            const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
+            let lastIndex = 0;
+            let formattedContent = '';
+            let match;
             
-            const continueDiv = document.createElement('div');
-            continueDiv.className = 'continue-container';
-            continueDiv.id = `continue-${messageId}`;
+            // Temporary array to store code blocks
+            const codeBlocks = [];
+            let codeBlockIndex = 0;
             
-            // Store pending continuation
-            pendingContinuation = {
-                messageId: messageId,
-                messageElement: messageElement,
-                content: originalContent
-            };
+            // Replace code blocks with placeholders
+            let textWithPlaceholders = content.replace(codeBlockRegex, (match, language, code) => {
+                const placeholder = `__CODE_BLOCK_${codeBlockIndex}__`;
+                codeBlocks[codeBlockIndex] = {
+                    language: language || 'text',
+                    code: code
+                };
+                codeBlockIndex++;
+                return placeholder;
+            });
             
-            continuationCount++;
+            // Now process the remaining text for inline code detection
+            const lines = textWithPlaceholders.split('\n');
+            let inCodeBlock = false;
+            let currentCodeBlock = [];
+            let result = [];
             
-            continueDiv.innerHTML = `
-                <button class="continue-btn" onclick="continueGeneration('${messageId}')">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M8 5v14l11-7z"/>
-                    </svg>
-                    Continue Code (Part ${continuationCount + 1})
-                </button>
-            `;
-            
-            // Insert after the message
-            if (messageElement.nextSibling) {
-                messagesDiv.insertBefore(continueDiv, messageElement.nextSibling);
-            } else {
-                messagesDiv.appendChild(continueDiv);
-            }
-            
-            messagesDiv.scrollTop = messagesDiv.scrollHeight;
-        }
-
-        // Continue generation
-        async function continueGeneration(messageId) {
-            if (isProcessing) {
-                alert('Already generating. Please wait.');
-                return;
-            }
-            
-            if (!pendingContinuation) {
-                alert('No pending continuation found.');
-                return;
-            }
-            
-            // Remove the continue button
-            const continueBtn = document.getElementById(`continue-${messageId}`);
-            if (continueBtn) continueBtn.remove();
-            
-            // Get the current content
-            const currentContent = pendingContinuation.content;
-            
-            // Create continuation prompt
-            const continuationPrompt = `CONTINUE THIS CODE EXACTLY FROM WHERE IT WAS CUT OFF. PROVIDE ONLY THE NEXT PART OF THE CODE - NO EXPLANATIONS, NO MARKDOWN.
-
-HERE'S THE EXISTING CODE (ENDS AT CUT-OFF POINT):
-\`\`\`
-${currentContent}
-\`\`\`
-
-IMPORTANT RULES:
-1. Continue EXACTLY from where it stopped
-2. Provide ONLY the new code - no backticks, no explanations
-3. Do not repeat ANY existing code
-4. Just give me the raw next part`;
-
-            try {
-                // Show typing indicator
-                showTypingIndicator();
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
                 
-                // Disable input
-                isProcessing = true;
-                document.getElementById('userInput').disabled = true;
-                document.getElementById('sendBtn').style.display = 'none';
-                document.getElementById('stopBtn').style.display = 'flex';
-                
-                // Create new AbortController
-                abortController = new AbortController();
-                
-                // Get conversation
-                const conversation = conversations.find(c => c.id === currentConversationId);
-                
-                // Create messages array
-                const apiMessages = [
-                    ...conversation.messages.map(msg => ({
-                        role: msg.role,
-                        content: msg.content
-                    })),
-                    {
-                        role: 'user',
-                        content: continuationPrompt
-                    }
-                ];
-                
-                const response = await fetch(DEEPSEEK_API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey}`
-                    },
-                    body: JSON.stringify({
-                        model: 'deepseek-chat',
-                        messages: apiMessages,
-                        temperature: 0.3, // Lower for more predictable continuations
-                        max_tokens: maxTokens,
-                        stream: false
-                    }),
-                    signal: abortController.signal
-                });
-                
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error?.message || `API Error: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                let newCode = data.choices[0].message.content;
-                
-                // Clean the new code
-                newCode = newCode.replace(/```\w*\n?/g, '').replace(/```$/g, '').trim();
-                
-                // Append to existing code
-                const combinedCode = currentContent + '\n' + newCode;
-                
-                // Update the message element
-                const messageElement = pendingContinuation.messageElement;
-                const contentDiv = messageElement.querySelector('.message-content');
-                
-                // Find and update the code block
-                const codeBlock = contentDiv.querySelector('.code-block');
-                if (codeBlock) {
-                    const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                    const language = 'python';
+                // Check if this line contains a code block placeholder
+                const placeholderMatch = line.match(/__CODE_BLOCK_(\d+)__/);
+                if (placeholderMatch) {
+                    const index = parseInt(placeholderMatch[1]);
+                    const block = codeBlocks[index];
                     
-                    codeBlock.outerHTML = `
+                    // Add the properly formatted code block
+                    const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_' + index;
+                    result.push(`
                         <div class="code-block">
                             <div class="code-header">
-                                <span>${language}</span>
+                                <span>${escapeHtml(block.language)}</span>
                                 <div>
                                     <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
-                                    <button class="download-code-btn" onclick="downloadCode('${codeId}', '${language}')">Download</button>
+                                    <button class="download-code-btn" onclick="downloadCode('${codeId}', '${escapeHtml(block.language)}')">Download</button>
                                 </div>
                             </div>
-                            <pre><code id="${codeId}">${escapeHtml(combinedCode)}</code></pre>
+                            <pre><code id="${codeId}">${escapeHtml(block.code)}</code></pre>
                         </div>
-                    `;
+                    `);
+                    continue;
+                }
+                
+                // Check for lines that might be code (indented or containing code-like syntax)
+                const trimmedLine = line.trim();
+                
+                // Detect if line looks like code (has indentation or common code patterns)
+                const looksLikeCode = (
+                    (line.startsWith('    ') || line.startsWith('\t')) || // Indented lines
+                    /^[a-zA-Z_][a-zA-Z0-9_]*\s*[=:\(\)\[\{]\s*$/.test(trimmedLine) || // Variable assignments or function calls
+                    /^(def|class|if|elif|else|for|while|try|except|finally|with|import|from|return|print)\b/.test(trimmedLine) || // Python keywords
+                    /^(function|const|let|var|if|for|while|switch|case|return)\b/.test(trimmedLine) || // JavaScript keywords
+                    /^[{}[\]()<>]/.test(trimmedLine) || // Brackets
+                    /^<\/?[a-z][\s\S]*>/i.test(trimmedLine) || // HTML tags
+                    /^[a-zA-Z-]+\s*:\s/.test(trimmedLine) || // CSS properties
+                    /^@(import|media|keyframes|font-face)/.test(trimmedLine) // CSS at-rules
+                );
+                
+                // Check if line has code symbols
+                const hasCodeSymbols = /[{}[\]()<>;]/.test(trimmedLine) && !trimmedLine.includes(' ');
+                
+                if ((looksLikeCode || hasCodeSymbols) && !inCodeBlock) {
+                    inCodeBlock = true;
+                    currentCodeBlock = [line];
+                } else if (inCodeBlock) {
+                    // Check if this line breaks the code block pattern
+                    const isEmptyLine = trimmedLine === '';
+                    const likelyEndOfCode = !looksLikeCode && !hasCodeSymbols && !isEmptyLine && !line.startsWith('    ');
                     
-                    // Update conversation history
-                    for (let i = conversation.messages.length - 1; i >= 0; i--) {
-                        if (conversation.messages[i].role === 'assistant') {
-                            conversation.messages[i].content = combinedCode;
-                            break;
-                        }
-                    }
-                    saveConversations();
-                    
-                    // Check if still incomplete
-                    if (isMessageIncomplete(combinedCode)) {
-                        pendingContinuation.content = combinedCode;
-                        addContinueButton(messageId, messageElement, combinedCode);
+                    if (likelyEndOfCode && currentCodeBlock.length > 1) {
+                        // End of code block, format it
+                        const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_' + i;
+                        result.push(`
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>auto-detected</span>
+                                    <div>
+                                        <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
+                                        <button class="download-code-btn" onclick="downloadCode('${codeId}', 'text')">Download</button>
+                                    </div>
+                                </div>
+                                <pre><code id="${codeId}">${escapeHtml(currentCodeBlock.join('\n'))}</code></pre>
+                            </div>
+                        `);
+                        inCodeBlock = false;
+                        result.push(escapeHtml(line).replace(/\n/g, '<br>'));
                     } else {
-                        pendingContinuation = null;
-                        continuationCount = 0;
+                        currentCodeBlock.push(line);
                     }
-                }
-                
-                removeTypingIndicator();
-                
-                // Scroll to bottom
-                document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
-                
-                if (data.usage) {
-                    document.getElementById('usageInfo').innerHTML = 
-                        `💰 Tokens - Prompt: ${data.usage.prompt_tokens}, Completion: ${data.usage.completion_tokens}, Total: ${data.usage.total_tokens} | 🌡️ ${temperature.toFixed(1)} 📦 ${maxTokens}`;
-                }
-                
-            } catch (error) {
-                if (error.name === 'AbortError') {
-                    console.log('Continuation stopped');
                 } else {
-                    console.error('Error:', error);
-                    removeTypingIndicator();
-                    
-                    // Re-add continue button on error
-                    addContinueButton(messageId, pendingContinuation.messageElement, pendingContinuation.content);
+                    // Regular text line
+                    result.push(escapeHtml(line).replace(/\n/g, '<br>'));
                 }
-            } finally {
-                removeTypingIndicator();
-                isProcessing = false;
-                document.getElementById('userInput').disabled = false;
-                document.getElementById('sendBtn').style.display = 'flex';
-                document.getElementById('stopBtn').style.display = 'none';
-                abortController = null;
             }
+            
+            // Handle any remaining code block
+            if (inCodeBlock && currentCodeBlock.length > 0) {
+                const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_final';
+                result.push(`
+                    <div class="code-block">
+                        <div class="code-header">
+                            <span>auto-detected</span>
+                            <div>
+                                <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
+                                <button class="download-code-btn" onclick="downloadCode('${codeId}', 'text')">Download</button>
+                            </div>
+                        </div>
+                        <pre><code id="${codeId}">${escapeHtml(currentCodeBlock.join('\n'))}</code></pre>
+                    </div>
+                `);
+            }
+            
+            return result.join('');
         }
 
         function displayMessage(message) {
@@ -2124,7 +1978,7 @@ IMPORTANT RULES:
             if (isIncomplete) {
                 const badgeSpan = document.createElement('span');
                 badgeSpan.className = 'incomplete-badge';
-                badgeSpan.innerHTML = '⚠️ Incomplete - Click Continue below';
+                badgeSpan.innerHTML = '⚠️ May be incomplete - Type "continue" if needed';
                 nameSpan.appendChild(badgeSpan);
             }
             
@@ -2155,53 +2009,8 @@ IMPORTANT RULES:
                 });
             }
             
-            // Format code blocks
-            const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
-            let lastIndex = 0;
-            let formattedContent = '';
-            let match;
-            
-            while ((match = codeBlockRegex.exec(message.content)) !== null) {
-                // Add text before code block
-                const textBefore = message.content.substring(lastIndex, match.index);
-                if (textBefore) {
-                    formattedContent += escapeHtml(textBefore).replace(/\n/g, '<br>');
-                }
-                
-                // Format code block
-                const language = match[1] || 'text';
-                let code = match[2];
-                
-                // Generate unique ID
-                const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                
-                formattedContent += `
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>${escapeHtml(language)}</span>
-                            <div>
-                                <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
-                                <button class="download-code-btn" onclick="downloadCode('${codeId}', '${escapeHtml(language)}')">Download</button>
-                            </div>
-                        </div>
-                        <pre><code id="${codeId}">${escapeHtml(code)}</code></pre>
-                    </div>
-                `;
-                
-                lastIndex = match.index + match[0].length;
-            }
-            
-            // Add remaining text
-            if (lastIndex < message.content.length) {
-                const textAfter = message.content.substring(lastIndex);
-                formattedContent += escapeHtml(textAfter).replace(/\n/g, '<br>');
-            }
-            
-            // If no code blocks found
-            if (!formattedContent) {
-                formattedContent = escapeHtml(message.content).replace(/\n/g, '<br>');
-            }
-            
+            // Format and add the message content with proper code blocks
+            const formattedContent = formatMessageContent(message.content);
             contentDiv.innerHTML += formattedContent;
             
             const timeDiv = document.createElement('div');
@@ -2213,12 +2022,6 @@ IMPORTANT RULES:
             messageDiv.appendChild(timeDiv);
             
             messagesDiv.appendChild(messageDiv);
-            
-            // Add continue button if message is incomplete
-            if (message.role === 'assistant' && isMessageIncomplete(message.content)) {
-                addContinueButton(message.timestamp, messageDiv, message.content);
-            }
-            
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
@@ -2243,7 +2046,8 @@ IMPORTANT RULES:
                 const extension = language === 'python' ? 'py' : 
                                  language === 'javascript' ? 'js' : 
                                  language === 'html' ? 'html' : 
-                                 language === 'css' ? 'css' : 'txt';
+                                 language === 'css' ? 'css' : 
+                                 language === 'auto-detected' ? 'txt' : 'txt';
                 
                 const blob = new Blob([code], { type: 'text/plain' });
                 const url = URL.createObjectURL(blob);
