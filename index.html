@@ -620,7 +620,7 @@
             border-bottom-left-radius: 4px;
         }
 
-        /* Code block styling - IMPROVED */
+        /* Code block styling */
         .code-block {
             background: var(--code-bg);
             color: var(--code-text);
@@ -1757,6 +1757,7 @@
 • Visual feedback when dragging files
 • File size limit: 10MB per file
 • Copy/download code blocks with syntax highlighting
+• Smart code block detection that preserves comments, docstrings, and all code structures
 
 **📝 Note:** If code is incomplete, just type "continue" in the chat and I'll provide the rest. All code will be displayed in properly formatted code blocks.
 
@@ -1803,27 +1804,132 @@
             // Check if it ends abruptly
             const lastLine = content.split('\n').pop().trim();
             
-            // Check for incomplete Python structures
-            const incompletePython = [
-                /def\s+\w+\s*\([^)]*\)\s*:\s*$/,  // Incomplete function
-                /class\s+\w+\s*[:\(]\s*$/,        // Incomplete class
-                /if\s+.*:\s*$/,                    // Incomplete if
-                /elif\s+.*:\s*$/,                   // Incomplete elif
-                /else\s*:\s*$/,                     // Incomplete else
-                /for\s+.*:\s*$/,                    // Incomplete for
-                /while\s+.*:\s*$/,                  // Incomplete while
-                /try\s*:\s*$/,                      // Incomplete try
-                /except\s*[^:]*:\s*$/,              // Incomplete except
-                /finally\s*:\s*$/,                  // Incomplete finally
-                /with\s+.*:\s*$/,                   // Incomplete with
-                /@\w+/,                             // Decorator without function
-                /\]\s*$/,                            // Unclosed list
-                /\}\s*$/,                            // Unclosed dict/set
-                /\)\s*$/                              // Unclosed parenthesis
+            // Check for incomplete code structures across multiple languages
+            const incompletePatterns = [
+                /def\s+\w+\s*\([^)]*\)\s*:\s*$/,  // Python function
+                /class\s+\w+\s*[:\(]\s*$/,        // Python class
+                /if\s+.*:\s*$/,                    // Python if
+                /elif\s+.*:\s*$/,                   // Python elif
+                /else\s*:\s*$/,                     // Python else
+                /for\s+.*:\s*$/,                    // Python for
+                /while\s+.*:\s*$/,                  // Python while
+                /try\s*:\s*$/,                      // Python try
+                /except\s*[^:]*:\s*$/,              // Python except
+                /finally\s*:\s*$/,                  // Python finally
+                /with\s+.*:\s*$/,                   // Python with
+                /@\w+/,                             // Decorator
+                /function\s+\w+\s*\([^)]*\)\s*{?\s*$/, // JavaScript function
+                /const\s+\w+\s*=\s*\([^)]*\)\s*=>\s*{?\s*$/, // Arrow function
+                /if\s*\([^)]*\)\s*{?\s*$/,         // JavaScript if
+                /for\s*\([^)]*\)\s*{?\s*$/,        // JavaScript for
+                /while\s*\([^)]*\)\s*{?\s*$/,      // JavaScript while
+                /switch\s*\([^)]*\)\s*{?\s*$/,     // JavaScript switch
+                /{[\s]*$/,                          // Opening brace
+                /\[[\s]*$/,                         // Opening bracket
+                /\([\s]*$/                          // Opening parenthesis
             ];
             
-            for (const pattern of incompletePython) {
+            for (const pattern of incompletePatterns) {
                 if (pattern.test(lastLine)) return true;
+            }
+            
+            return false;
+        }
+
+        // Improved function to detect code lines across multiple languages
+        function isCodeLine(line, index, allLines, inCodeBlock) {
+            const trimmedLine = line.trim();
+            if (!trimmedLine && !inCodeBlock) return false; // Empty lines only count inside code blocks
+            
+            // Check if line contains code block placeholder
+            if (line.includes('__CODE_BLOCK_')) return false;
+            
+            // Common code patterns across languages
+            const codePatterns = [
+                // Indentation
+                /^[ \t]+[^\s]/,
+                
+                // Comments in various languages
+                /^\s*\/\//,           // Single-line comment (JS, C++, etc.)
+                /^\s*#/,               // Python, Ruby, etc.
+                /^\s*\/\*/,            // Multi-line comment start
+                /^\s*\*/,              // Multi-line comment continuation
+                /^\s*<!--/,            // HTML comment
+                /^\s*--/,               // SQL comment
+                
+                // Language keywords - Python
+                /^\s*(def|class|if|elif|else|for|while|try|except|finally|with|async|await|import|from|return|yield|raise|assert|pass|break|continue|global|nonlocal|lambda)\b/,
+                
+                // Language keywords - JavaScript/TypeScript
+                /^\s*(function|const|let|var|if|else|for|while|do|switch|case|break|continue|return|try|catch|finally|throw|class|extends|import|export|default|async|await|yield|typeof|instanceof|new|delete|void)\b/,
+                
+                // Language keywords - Java/C/C++/C#
+                /^\s*(public|private|protected|static|final|abstract|class|interface|enum|void|int|float|double|char|boolean|byte|long|short|if|else|for|while|do|switch|case|break|continue|return|try|catch|finally|throw|throws|new|this|super|extends|implements|import|package)\b/,
+                
+                // Language keywords - HTML/XML
+                /^\s*<\/?[a-z][\s\S]*>$/i,
+                
+                // Language keywords - CSS
+                /^\s*@(import|media|keyframes|font-face|supports|page)/,
+                /^\s*[a-zA-Z-]+\s*:/,
+                
+                // Language keywords - SQL
+                /^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|FROM|WHERE|JOIN|INNER|LEFT|RIGHT|FULL|GROUP BY|ORDER BY|HAVING|UNION|ALL|DISTINCT|AS|ON|IN|EXISTS|BETWEEN|LIKE|IS NULL|IS NOT NULL)\b/i,
+                
+                // Language keywords - PHP
+                /^\s*<\?php/,
+                /^\s*\$[a-zA-Z_\x7f-\xff][a-zA-Z0-9_\x7f-\xff]*/,
+                
+                // Language keywords - Ruby
+                /^\s*(def|class|module|if|unless|else|elsif|case|when|for|while|until|do|begin|rescue|ensure|end|yield|raise|attr_reader|attr_writer|attr_accessor)\b/,
+                
+                // Language keywords - Go
+                /^\s*(func|type|struct|interface|var|const|if|else|for|range|switch|case|default|select|go|defer|chan|map|package|import|return|break|continue|fallthrough)\b/,
+                
+                // Language keywords - Rust
+                /^\s*(fn|let|mut|if|else|for|while|loop|match|enum|struct|trait|impl|pub|use|mod|crate|super|self|return|break|continue|async|await|move)\b/,
+                
+                // Language keywords - Swift
+                /^\s*(func|var|let|class|struct|enum|protocol|extension|if|else|for|while|repeat|switch|case|default|where|guard|defer|return|break|continue|fallthrough|import|public|private|internal|fileprivate)\b/,
+                
+                // Language keywords - Kotlin
+                /^\s*(fun|var|val|class|interface|object|if|else|for|while|do|when|try|catch|finally|throw|return|break|continue|import|package|public|private|internal|protected)\b/,
+                
+                // General code patterns
+                /^\s*[{}[\]()<>]/,                    // Brackets
+                /^\s*[+\-*/%=&|^~!<>]=?/,             // Operators
+                /^\s*\w+\s*[=:][^=]/,                  // Assignments with = or :
+                /^\s*\w+\s*\([^)]*\)\s*{?\s*$/,       // Function calls/method definitions
+                /^\s*return\s+[^;]*;?\s*$/,            // Return statements
+                /^\s*import\s+/,                        // Import statements
+                /^\s*from\s+\w+\s+import/,              // Python from import
+                /^\s*include\s+/,                       // Include statements
+                /^\s*require\s*\(/,                     // Require statements
+                /^\s*console\./,                         // Console statements
+                /^\s*print/,                             // Print statements
+                /^\s*echo/,                              // Echo statements
+                /^\s*cout/,                              // C++ output
+                /^\s*cin/,                               // C++ input
+                /^\s*System\.out\./,                     // Java output
+            ];
+            
+            for (const pattern of codePatterns) {
+                if (pattern.test(line)) return true;
+            }
+            
+            // Check if previous line was code and this line is indented (continuation)
+            if (index > 0 && inCodeBlock && (line.startsWith('    ') || line.startsWith('\t'))) {
+                return true;
+            }
+            
+            // Check for strings in various languages
+            if (/^["'].*["']$/.test(trimmedLine) || /^`.*`$/.test(trimmedLine)) {
+                return true;
+            }
+            
+            // Check for numbers and basic expressions
+            if (/^[+-]?\d+\.?\d*$/.test(trimmedLine) || /^[+-]?\d+\s*[+\-*/]\s*\d+/.test(trimmedLine)) {
+                return true;
             }
             
             return false;
@@ -1834,13 +1940,8 @@
             
             // First, handle existing code blocks (they're already formatted)
             const codeBlockRegex = /```(\w*)\n([\s\S]*?)```/g;
-            let lastIndex = 0;
-            let formattedContent = '';
-            let match;
-            
-            // Temporary array to store code blocks
-            const codeBlocks = [];
             let codeBlockIndex = 0;
+            const codeBlocks = [];
             
             // Replace code blocks with placeholders
             let textWithPlaceholders = content.replace(codeBlockRegex, (match, language, code) => {
@@ -1853,11 +1954,12 @@
                 return placeholder;
             });
             
-            // Now process the remaining text for inline code detection
+            // Now process the remaining text for code detection
             const lines = textWithPlaceholders.split('\n');
+            const result = [];
             let inCodeBlock = false;
             let currentCodeBlock = [];
-            let result = [];
+            let codeBlockStartLine = -1;
             
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
@@ -1865,6 +1967,25 @@
                 // Check if this line contains a code block placeholder
                 const placeholderMatch = line.match(/__CODE_BLOCK_(\d+)__/);
                 if (placeholderMatch) {
+                    // If we were in a code block, close it first
+                    if (inCodeBlock && currentCodeBlock.length > 0) {
+                        const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_' + i;
+                        result.push(`
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>code</span>
+                                    <div>
+                                        <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
+                                        <button class="download-code-btn" onclick="downloadCode('${codeId}', 'txt')">Download</button>
+                                    </div>
+                                </div>
+                                <pre><code id="${codeId}">${escapeHtml(currentCodeBlock.join('\n'))}</code></pre>
+                            </div>
+                        `);
+                        currentCodeBlock = [];
+                        inCodeBlock = false;
+                    }
+                    
                     const index = parseInt(placeholderMatch[1]);
                     const block = codeBlocks[index];
                     
@@ -1885,73 +2006,77 @@
                     continue;
                 }
                 
-                // Check for lines that might be code (indented or containing code-like syntax)
-                const trimmedLine = line.trim();
+                const isCode = isCodeLine(line, i, lines, inCodeBlock);
                 
-                // Detect if line looks like code (has indentation or common code patterns)
-                const looksLikeCode = (
-                    (line.startsWith('    ') || line.startsWith('\t')) || // Indented lines
-                    /^[a-zA-Z_][a-zA-Z0-9_]*\s*[=:\(\)\[\{]\s*$/.test(trimmedLine) || // Variable assignments or function calls
-                    /^(def|class|if|elif|else|for|while|try|except|finally|with|import|from|return|print)\b/.test(trimmedLine) || // Python keywords
-                    /^(function|const|let|var|if|for|while|switch|case|return)\b/.test(trimmedLine) || // JavaScript keywords
-                    /^[{}[\]()<>]/.test(trimmedLine) || // Brackets
-                    /^<\/?[a-z][\s\S]*>/i.test(trimmedLine) || // HTML tags
-                    /^[a-zA-Z-]+\s*:\s/.test(trimmedLine) || // CSS properties
-                    /^@(import|media|keyframes|font-face)/.test(trimmedLine) // CSS at-rules
-                );
-                
-                // Check if line has code symbols
-                const hasCodeSymbols = /[{}[\]()<>;]/.test(trimmedLine) && !trimmedLine.includes(' ');
-                
-                if ((looksLikeCode || hasCodeSymbols) && !inCodeBlock) {
+                if (isCode && !inCodeBlock) {
+                    // Start a new code block
                     inCodeBlock = true;
                     currentCodeBlock = [line];
+                    codeBlockStartLine = i;
                 } else if (inCodeBlock) {
-                    // Check if this line breaks the code block pattern
-                    const isEmptyLine = trimmedLine === '';
-                    const likelyEndOfCode = !looksLikeCode && !hasCodeSymbols && !isEmptyLine && !line.startsWith('    ');
-                    
-                    if (likelyEndOfCode && currentCodeBlock.length > 1) {
-                        // End of code block, format it
-                        const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_' + i;
-                        result.push(`
-                            <div class="code-block">
-                                <div class="code-header">
-                                    <span>auto-detected</span>
-                                    <div>
-                                        <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
-                                        <button class="download-code-btn" onclick="downloadCode('${codeId}', 'text')">Download</button>
-                                    </div>
-                                </div>
-                                <pre><code id="${codeId}">${escapeHtml(currentCodeBlock.join('\n'))}</code></pre>
-                            </div>
-                        `);
-                        inCodeBlock = false;
-                        result.push(escapeHtml(line).replace(/\n/g, '<br>'));
-                    } else {
+                    if (isCode || line.trim() === '') {
+                        // Continue the code block (include empty lines)
                         currentCodeBlock.push(line);
+                    } else {
+                        // End the code block
+                        if (currentCodeBlock.length >= 2 || 
+                            (currentCodeBlock.length === 1 && isCodeLine(currentCodeBlock[0], codeBlockStartLine, lines, false))) {
+                            const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_' + i;
+                            result.push(`
+                                <div class="code-block">
+                                    <div class="code-header">
+                                        <span>code</span>
+                                        <div>
+                                            <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
+                                            <button class="download-code-btn" onclick="downloadCode('${codeId}', 'txt')">Download</button>
+                                        </div>
+                                    </div>
+                                    <pre><code id="${codeId}">${escapeHtml(currentCodeBlock.join('\n'))}</code></pre>
+                                </div>
+                            `);
+                        } else {
+                            // Not enough lines for a code block, treat as regular text
+                            result.push(escapeHtml(currentCodeBlock.join('\n')).replace(/\n/g, '<br>'));
+                        }
+                        
+                        // Add the current non-code line
+                        if (line.trim() !== '') {
+                            result.push(escapeHtml(line).replace(/\n/g, '<br>'));
+                        }
+                        
+                        currentCodeBlock = [];
+                        inCodeBlock = false;
                     }
                 } else {
                     // Regular text line
-                    result.push(escapeHtml(line).replace(/\n/g, '<br>'));
+                    if (line.trim() !== '') {
+                        result.push(escapeHtml(line).replace(/\n/g, '<br>'));
+                    } else {
+                        result.push('<br>');
+                    }
                 }
             }
             
-            // Handle any remaining code block
+            // Handle any remaining code block at the end
             if (inCodeBlock && currentCodeBlock.length > 0) {
-                const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_final';
-                result.push(`
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>auto-detected</span>
-                            <div>
-                                <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
-                                <button class="download-code-btn" onclick="downloadCode('${codeId}', 'text')">Download</button>
+                if (currentCodeBlock.length >= 2 || 
+                    (currentCodeBlock.length === 1 && isCodeLine(currentCodeBlock[0], codeBlockStartLine, lines, false))) {
+                    const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_final';
+                    result.push(`
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span>code</span>
+                                <div>
+                                    <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
+                                    <button class="download-code-btn" onclick="downloadCode('${codeId}', 'txt')">Download</button>
+                                </div>
                             </div>
+                            <pre><code id="${codeId}">${escapeHtml(currentCodeBlock.join('\n'))}</code></pre>
                         </div>
-                        <pre><code id="${codeId}">${escapeHtml(currentCodeBlock.join('\n'))}</code></pre>
-                    </div>
-                `);
+                    `);
+                } else {
+                    result.push(escapeHtml(currentCodeBlock.join('\n')).replace(/\n/g, '<br>'));
+                }
             }
             
             return result.join('');
@@ -2047,7 +2172,16 @@
                                  language === 'javascript' ? 'js' : 
                                  language === 'html' ? 'html' : 
                                  language === 'css' ? 'css' : 
-                                 language === 'auto-detected' ? 'txt' : 'txt';
+                                 language === 'java' ? 'java' :
+                                 language === 'cpp' ? 'cpp' :
+                                 language === 'c' ? 'c' :
+                                 language === 'php' ? 'php' :
+                                 language === 'ruby' ? 'rb' :
+                                 language === 'go' ? 'go' :
+                                 language === 'rust' ? 'rs' :
+                                 language === 'swift' ? 'swift' :
+                                 language === 'kotlin' ? 'kt' :
+                                 language === 'sql' ? 'sql' : 'txt';
                 
                 const blob = new Blob([code], { type: 'text/plain' });
                 const url = URL.createObjectURL(blob);
@@ -2081,6 +2215,15 @@
             if (ext === 'html') return '🌐';
             if (ext === 'css') return '🎨';
             if (ext === 'md') return '📘';
+            if (ext === 'java') return '☕';
+            if (ext === 'cpp' || ext === 'c' || ext === 'h') return '⚙️';
+            if (ext === 'php') return '🐘';
+            if (ext === 'rb') return '💎';
+            if (ext === 'go') return '🔵';
+            if (ext === 'rs') return '🦀';
+            if (ext === 'swift') return '🐦';
+            if (ext === 'kt') return '🟣';
+            if (ext === 'sql') return '🗄️';
             return '📎';
         }
 
