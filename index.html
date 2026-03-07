@@ -1747,15 +1747,15 @@
         function addWelcomeMessage() {
             const welcomeMessage = {
                 role: 'assistant',
-                content: `🌙 **DeepSeek Chat - FIXED Code Blocks!**
+                content: `🌙 **DeepSeek Chat - Fixed Code Blocks!**
 
-👋 Hello! Now code blocks stay as ONE continuous block!
+👋 Hello! Now code blocks are properly separated from explanatory text!
 
 **✅ Fixed:**
+• Explanatory text stays as regular text
+• Code blocks start at the actual code
 • Python functions with docstrings stay together
 • XML/HTML with CDATA sections remain intact
-• No more splitting at every line
-• Everything stays in ONE code block
 
 **Current Settings:**
 • Temperature: ${temperature.toFixed(1)}
@@ -1807,7 +1807,7 @@
             return false;
         }
 
-        // FIXED: Treat the ENTIRE content as ONE block if it contains code
+        // FIXED: Properly separate explanatory text from code
         function formatMessageContent(content) {
             if (!content) return '';
             
@@ -1827,20 +1827,88 @@
                 return placeholder;
             });
             
-            // Check if the ENTIRE remaining content is code/markup
+            // Split into lines for processing
             const lines = textWithPlaceholders.split('\n');
+            const result = [];
+            let currentText = '';
+            let inCodeBlock = false;
+            let currentCodeBlock = [];
+            let consecutiveCodeLines = 0;
             
-            // Count how many lines look like code
-            let codeLineCount = 0;
-            let totalNonEmptyLines = 0;
-            
-            for (let line of lines) {
+            // Function to check if a line is explanatory text
+            function isExplanatoryText(line) {
                 const trimmed = line.trim();
-                if (trimmed === '') continue;
+                if (!trimmed) return false;
                 
-                totalNonEmptyLines++;
+                // Check for common English text patterns
+                const textPatterns = [
+                    /^[A-Z][a-z]+/, // Capitalized word (start of sentence)
+                    /^[A-Z][a-z]+ [a-z]+/, // Two words, second lowercase
+                    /^[A-Z][a-z]+ [A-Z][a-z]+/, // Two capitalized words (proper nouns)
+                    /^[A-Z][a-z]+ [a-z]+ [a-z]+/, // Three words, first capitalized
+                    /^[A-Za-z]+ [a-z]+ [a-z]+ [a-z]+/, // Four or more words
+                    /^[A-Za-z]+,/, // Word with comma
+                    /^[A-Za-z]+\.$/, // Word with period
+                    /^[A-Za-z]+\?$/, // Word with question mark
+                    /^[A-Za-z]+!$/, // Word with exclamation
+                    /^[A-Za-z]+:[^:]/, // Word with colon (but not ::)
+                    /^[A-Za-z]+;/, // Word with semicolon
+                    /^[A-Za-z]+ [A-Za-z]+ [A-Za-z]+ [A-Za-z]+/, // Four or more words
+                    /^[Tt]he /, // "The" or "the" at start
+                    /^[Aa] /, // "A" or "a" at start
+                    /^[Ii]n /, // "In" or "in" at start
+                    /^[Oo]n /, // "On" or "on" at start
+                    /^[Aa]t /, // "At" or "at" at start
+                    /^[Ff]or /, // "For" or "for" at start
+                    /^[Tt]o /, // "To" or "to" at start
+                    /^[Ww]ith /, // "With" or "with" at start
+                    /^[Bb]y /, // "By" or "by" at start
+                    /^[Ff]rom /, // "From" or "from" at start
+                    /^[Aa]s /, // "As" or "as" at start
+                    /^[Ww]hile /, // "While" or "while" at start
+                    /^[Dd]uring /, // "During" or "during" at start
+                    /^[Aa]fter /, // "After" or "after" at start
+                    /^[Bb]efore /, // "Before" or "before" at start
+                    /^[Ww]hen /, // "When" or "when" at start
+                    /^[Ii]f /, // "If" or "if" at start
+                    /^[Aa]lthough /, // "Although" or "although" at start
+                    /^[Hh]owever /, // "However" or "however" at start
+                    /^[Tt]herefore /, // "Therefore" or "therefore" at start
+                    /^[Tt]hus /, // "Thus" or "thus" at start
+                    /^[Hh]ence /, // "Hence" or "hence" at start
+                    /^[Mm]oreover /, // "Moreover" or "moreover" at start
+                    /^[Ff]urthermore /, // "Furthermore" or "furthermore" at start
+                    /^[Cc]onsequently /, // "Consequently" or "consequently" at start
+                    /^[Aa]dditionally /, // "Additionally" or "additionally" at start
+                    /^[Ss]pecifically /, // "Specifically" or "specifically" at start
+                    /^[Gg]enerally /, // "Generally" or "generally" at start
+                    /^[Tt]ypically /, // "Typically" or "typically" at start
+                    /^[Uu]sually /, // "Usually" or "usually" at start
+                    /^[Oo]ften /, // "Often" or "often" at start
+                    /^[Ss]ometimes /, // "Sometimes" or "sometimes" at start
+                    /^[Rr]arely /, // "Rarely" or "rarely" at start
+                    /^[Nn]ever / // "Never" or "never" at start
+                ];
                 
-                // Check for Python code patterns
+                for (const pattern of textPatterns) {
+                    if (pattern.test(trimmed)) return true;
+                }
+                
+                // Check for very long lines (likely text)
+                if (trimmed.length > 80 && trimmed.includes(' ')) return true;
+                
+                return false;
+            }
+            
+            // Function to check if line is code
+            function isCodeLine(line) {
+                const trimmed = line.trim();
+                if (!trimmed) return false;
+                
+                // First check if it's explanatory text
+                if (isExplanatoryText(line)) return false;
+                
+                // Python code patterns
                 if (trimmed.startsWith('def ') ||
                     trimmed.startsWith('class ') ||
                     trimmed.startsWith('import ') ||
@@ -1862,11 +1930,10 @@
                     /^[a-zA-Z_][a-zA-Z0-9_]*\s*=/.test(trimmed) ||
                     /^[a-zA-Z_][a-zA-Z0-9_]*\(/.test(trimmed) ||
                     /^\s*[{}[\]]/.test(trimmed)) {
-                    codeLineCount++;
-                    continue;
+                    return true;
                 }
                 
-                // Check for XML/HTML markup
+                // XML/HTML markup
                 if (trimmed.startsWith('<?xml') ||
                     trimmed.startsWith('<!DOCTYPE') ||
                     (trimmed.startsWith('<') && trimmed.includes('>')) ||
@@ -1874,69 +1941,16 @@
                     trimmed.includes(']]>') ||
                     trimmed.startsWith('</') ||
                     /^<[a-z][\s\S]*>$/i.test(trimmed)) {
-                    codeLineCount++;
-                    continue;
+                    return true;
                 }
                 
-                // Check for indented lines (continuation of code)
+                // Indented lines (continuation of code)
                 if (line.startsWith('    ') || line.startsWith('\t')) {
-                    codeLineCount++;
-                }
-            }
-            
-            // If more than 70% of non-empty lines look like code, treat the ENTIRE content as ONE code block
-            if (totalNonEmptyLines > 0 && (codeLineCount / totalNonEmptyLines) > 0.7) {
-                // Determine if it's Python or XML/HTML
-                let language = 'text';
-                let fileExt = 'txt';
-                
-                // Check first few lines for clues
-                const firstLines = lines.slice(0, 5).join(' ').toLowerCase();
-                
-                if (firstLines.includes('def ') || 
-                    firstLines.includes('class ') || 
-                    firstLines.includes('import ') ||
-                    firstLines.includes('from ')) {
-                    language = 'python';
-                    fileExt = 'py';
-                } else if (firstLines.includes('<?xml') || 
-                          firstLines.includes('<!doctype') ||
-                          firstLines.includes('<html') ||
-                          firstLines.includes('<div') ||
-                          firstLines.includes('<![cdata[')) {
-                    language = 'xml';
-                    fileExt = 'xml';
+                    return true;
                 }
                 
-                // Create ONE code block with the entire content
-                const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                
-                // Process any remaining placeholders inside the code block
-                let fullCode = textWithPlaceholders;
-                
-                // Replace any placeholders with their actual code blocks (nested)
-                fullCode = fullCode.replace(/__CODE_BLOCK_(\d+)__/g, (match, index) => {
-                    const block = codeBlocks[parseInt(index)];
-                    return block ? block.code : match;
-                });
-                
-                return `
-                    <div class="code-block">
-                        <div class="code-header">
-                            <span>${language}</span>
-                            <div>
-                                <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
-                                <button class="download-code-btn" onclick="downloadCode('${codeId}', '${fileExt}')">Download</button>
-                            </div>
-                        </div>
-                        <pre><code id="${codeId}">${escapeHtml(fullCode)}</code></pre>
-                    </div>
-                `;
+                return false;
             }
-            
-            // If not mostly code, process normally with placeholders
-            const result = [];
-            let currentText = '';
             
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
@@ -1944,9 +1958,30 @@
                 // Check for placeholders
                 const placeholderMatch = line.match(/__CODE_BLOCK_(\d+)__/);
                 if (placeholderMatch) {
+                    // Flush any accumulated text
                     if (currentText.trim() !== '') {
                         result.push(escapeHtml(currentText).replace(/\n/g, '<br>'));
                         currentText = '';
+                    }
+                    
+                    // Flush any accumulated code block
+                    if (inCodeBlock && currentCodeBlock.length > 0) {
+                        const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_' + i;
+                        result.push(`
+                            <div class="code-block">
+                                <div class="code-header">
+                                    <span>code</span>
+                                    <div>
+                                        <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
+                                        <button class="download-code-btn" onclick="downloadCode('${codeId}', 'txt')">Download</button>
+                                    </div>
+                                </div>
+                                <pre><code id="${codeId}">${escapeHtml(currentCodeBlock.join('\n'))}</code></pre>
+                            </div>
+                        `);
+                        currentCodeBlock = [];
+                        inCodeBlock = false;
+                        consecutiveCodeLines = 0;
                     }
                     
                     const index = parseInt(placeholderMatch[1]);
@@ -1968,10 +2003,73 @@
                     continue;
                 }
                 
-                currentText += (currentText ? '\n' : '') + line;
+                const isCode = isCodeLine(line);
+                
+                if (isCode) {
+                    consecutiveCodeLines++;
+                    if (!inCodeBlock) {
+                        // Start a new code block
+                        if (currentText.trim() !== '') {
+                            result.push(escapeHtml(currentText).replace(/\n/g, '<br>'));
+                            currentText = '';
+                        }
+                        inCodeBlock = true;
+                        currentCodeBlock = [line];
+                    } else {
+                        // Continue the code block
+                        currentCodeBlock.push(line);
+                    }
+                } else {
+                    if (inCodeBlock) {
+                        // End the code block if we have at least 2 consecutive code lines
+                        if (consecutiveCodeLines >= 2) {
+                            const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_' + i;
+                            result.push(`
+                                <div class="code-block">
+                                    <div class="code-header">
+                                        <span>python</span>
+                                        <div>
+                                            <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
+                                            <button class="download-code-btn" onclick="downloadCode('${codeId}', 'py')">Download</button>
+                                        </div>
+                                    </div>
+                                    <pre><code id="${codeId}">${escapeHtml(currentCodeBlock.join('\n'))}</code></pre>
+                                </div>
+                            `);
+                        } else {
+                            // Not enough consecutive code lines, treat as regular text
+                            currentText = currentCodeBlock.join('\n');
+                        }
+                        currentCodeBlock = [];
+                        inCodeBlock = false;
+                        consecutiveCodeLines = 0;
+                    }
+                    
+                    // Add the current line to text
+                    currentText += (currentText ? '\n' : '') + line;
+                }
             }
             
-            if (currentText.trim() !== '') {
+            // Handle any remaining text or code block
+            if (inCodeBlock && currentCodeBlock.length > 0) {
+                if (consecutiveCodeLines >= 2) {
+                    const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9) + '_final';
+                    result.push(`
+                        <div class="code-block">
+                            <div class="code-header">
+                                <span>python</span>
+                                <div>
+                                    <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
+                                    <button class="download-code-btn" onclick="downloadCode('${codeId}', 'py')">Download</button>
+                                </div>
+                            </div>
+                            <pre><code id="${codeId}">${escapeHtml(currentCodeBlock.join('\n'))}</code></pre>
+                        </div>
+                    `);
+                } else {
+                    result.push(escapeHtml(currentCodeBlock.join('\n')).replace(/\n/g, '<br>'));
+                }
+            } else if (currentText.trim() !== '') {
                 result.push(escapeHtml(currentText).replace(/\n/g, '<br>'));
             }
             
@@ -2065,7 +2163,8 @@
             if (codeElement) {
                 const code = codeElement.textContent;
                 const extension = ext === 'py' ? 'py' : 
-                                 ext === 'xml' ? 'xml' : 'txt';
+                                 ext === 'xml' ? 'xml' : 
+                                 ext === 'html' ? 'html' : 'txt';
                 
                 const blob = new Blob([code], { type: 'text/plain' });
                 const url = URL.createObjectURL(blob);
