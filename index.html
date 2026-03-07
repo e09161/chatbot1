@@ -58,6 +58,10 @@
             --success: #2ea043;
             --error: #f85149;
             --warning: #f0883e;
+            
+            /* Drag and drop highlight */
+            --drag-highlight: rgba(79, 106, 245, 0.2);
+            --drag-border: #4f6af5;
         }
 
         body {
@@ -837,11 +841,17 @@
             }
         }
 
-        /* Input area */
+        /* Input area with drag & drop */
         .input-area {
             padding: 20px 24px;
             background: var(--bg-secondary);
             border-top: 1px solid var(--border-color);
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        .input-area.drag-over {
+            background: var(--drag-highlight);
+            border-top: 2px dashed var(--drag-border);
         }
 
         .file-upload-bar {
@@ -849,6 +859,7 @@
             gap: 12px;
             margin-bottom: 12px;
             flex-wrap: wrap;
+            align-items: center;
         }
 
         .file-upload-btn {
@@ -879,6 +890,20 @@
 
         .file-upload-btn:hover svg {
             fill: var(--accent-primary);
+        }
+
+        .drag-drop-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .drag-drop-hint svg {
+            width: 14px;
+            height: 14px;
+            fill: var(--text-muted);
         }
 
         .attached-files {
@@ -927,7 +952,7 @@
             font-family: inherit;
             max-height: 120px;
             outline: none;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, background-color 0.2s;
             background: var(--bg-tertiary);
             color: var(--text-primary);
         }
@@ -1102,6 +1127,41 @@
             font-size: 10px;
             margin-left: 8px;
         }
+
+        /* Paste notification */
+        .paste-notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--success);
+            border-radius: 8px;
+            padding: 10px 16px;
+            color: var(--success);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            z-index: 1001;
+            animation: slideIn 0.3s ease;
+        }
+
+        .paste-notification.fade-out {
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1232,7 +1292,7 @@
                 </div>
             </div>
             
-            <div class="input-area">
+            <div class="input-area" id="inputArea">
                 <div class="file-upload-bar">
                     <label for="fileInput" class="file-upload-btn">
                         <svg viewBox="0 0 24 24">
@@ -1241,7 +1301,13 @@
                         Attach Files
                     </label>
                     <input type="file" id="fileInput" multiple accept=".txt,.py,image/*" style="display: none;" onchange="handleFileSelect(event)">
-                    <span style="font-size: 12px; color: var(--text-muted);">Images, .txt, .py</span>
+                    
+                    <div class="drag-drop-hint">
+                        <svg viewBox="0 0 24 24">
+                            <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                        </svg>
+                        <span>Drag & drop files here or paste images</span>
+                    </div>
                 </div>
                 
                 <div id="attachedFiles" class="attached-files"></div>
@@ -1249,9 +1315,10 @@
                 <div class="input-container">
                     <textarea 
                         id="userInput" 
-                        placeholder="Message DeepSeek... (Shift+Enter for new line, Enter to send)" 
+                        placeholder="Message DeepSeek... (Shift+Enter for new line, Enter to send) - Drag files or paste images here" 
                         rows="1"
                         onkeydown="handleKeyDown(event)"
+                        onpaste="handlePaste(event)"
                     ></textarea>
                     <button onclick="sendMessage()" id="sendBtn" class="send-btn">
                         <svg viewBox="0 0 24 24">
@@ -1271,6 +1338,12 @@
     <!-- Image Modal -->
     <div id="imageModal" class="modal" onclick="closeModal()">
         <img class="modal-content" id="modalImage">
+    </div>
+
+    <!-- Paste notification -->
+    <div id="pasteNotification" class="paste-notification" style="display: none;">
+        <span>📋</span>
+        <span id="pasteMessage"></span>
     </div>
 
     <script>
@@ -1309,7 +1382,170 @@
             } else {
                 loadConversation(conversations[0].id);
             }
+            
+            // Initialize drag and drop
+            initDragAndDrop();
         });
+
+        function initDragAndDrop() {
+            const inputArea = document.getElementById('inputArea');
+            const textarea = document.getElementById('userInput');
+            
+            // Prevent default drag behaviors for the whole document
+            ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                document.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }, false);
+            });
+            
+            // Highlight drop area when file is dragged over
+            ['dragenter', 'dragover'].forEach(eventName => {
+                inputArea.addEventListener(eventName, () => {
+                    inputArea.classList.add('drag-over');
+                }, false);
+            });
+            
+            ['dragleave', 'drop'].forEach(eventName => {
+                inputArea.addEventListener(eventName, () => {
+                    inputArea.classList.remove('drag-over');
+                }, false);
+            });
+            
+            // Handle drop
+            inputArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                inputArea.classList.remove('drag-over');
+                
+                const files = Array.from(e.dataTransfer.files);
+                if (files.length > 0) {
+                    processDroppedFiles(files);
+                }
+            }, false);
+            
+            // Also allow dropping on textarea
+            textarea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                inputArea.classList.remove('drag-over');
+                
+                const files = Array.from(e.dataTransfer.files);
+                if (files.length > 0) {
+                    processDroppedFiles(files);
+                }
+            }, false);
+        }
+
+        function processDroppedFiles(files) {
+            files.forEach(file => {
+                // Check file size (limit to 10MB)
+                if (file.size > 10 * 1024 * 1024) {
+                    showPasteNotification(`❌ File too large: ${file.name} (max 10MB)`);
+                    return;
+                }
+                
+                const reader = new FileReader();
+                
+                reader.onload = (e) => {
+                    attachedFiles.push({
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        data: e.target.result,
+                        icon: getFileIcon(file.name)
+                    });
+                    displayAttachedFiles();
+                    showPasteNotification(`✅ Added: ${file.name}`);
+                };
+                
+                reader.onerror = () => {
+                    showPasteNotification(`❌ Failed to read: ${file.name}`);
+                };
+                
+                if (file.type.startsWith('image/')) {
+                    reader.readAsDataURL(file);
+                } else {
+                    reader.readAsText(file);
+                }
+            });
+        }
+
+        function handlePaste(event) {
+            const items = (event.clipboardData || window.clipboardData).items;
+            
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                
+                // Check for image data
+                if (item.type.indexOf('image') !== -1) {
+                    event.preventDefault(); // Prevent pasting image data into textarea
+                    
+                    const file = item.getAsFile();
+                    if (file) {
+                        const reader = new FileReader();
+                        
+                        reader.onload = (e) => {
+                            attachedFiles.push({
+                                name: `pasted_image_${Date.now()}.png`,
+                                type: 'image/png',
+                                size: file.size,
+                                data: e.target.result,
+                                icon: '📸'
+                            });
+                            displayAttachedFiles();
+                            showPasteNotification('✅ Image pasted successfully!');
+                        };
+                        
+                        reader.readAsDataURL(file);
+                    }
+                    break;
+                }
+                
+                // Check for text files or other data
+                if (item.kind === 'file') {
+                    const file = item.getAsFile();
+                    if (file) {
+                        const reader = new FileReader();
+                        
+                        reader.onload = (e) => {
+                            attachedFiles.push({
+                                name: file.name || `pasted_file_${Date.now()}.txt`,
+                                type: file.type || 'text/plain',
+                                size: file.size,
+                                data: e.target.result,
+                                icon: getFileIcon(file.name || 'file.txt')
+                            });
+                            displayAttachedFiles();
+                            showPasteNotification(`✅ File pasted: ${file.name || 'document'}`);
+                        };
+                        
+                        if (file.type.startsWith('image/')) {
+                            reader.readAsDataURL(file);
+                        } else {
+                            reader.readAsText(file);
+                        }
+                    }
+                }
+            }
+        }
+
+        function showPasteNotification(message) {
+            const notification = document.getElementById('pasteNotification');
+            const messageEl = document.getElementById('pasteMessage');
+            
+            messageEl.textContent = message;
+            notification.style.display = 'flex';
+            notification.classList.remove('fade-out');
+            
+            // Hide after 3 seconds
+            setTimeout(() => {
+                notification.classList.add('fade-out');
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 500);
+            }, 3000);
+        }
 
         function loadSettings() {
             const savedTemp = localStorage.getItem('deepseek_temperature');
@@ -1576,22 +1812,21 @@
         function addWelcomeMessage() {
             const welcomeMessage = {
                 role: 'assistant',
-                content: `🌙 **Working Continue Button!**
+                content: `🌙 **Working Continue Button with Drag & Drop!**
 
-👋 Hello! I'm your DeepSeek AI assistant with a FULLY WORKING continue button!
+👋 Hello! I'm your DeepSeek AI assistant with enhanced file handling!
 
-**✅ Fixed Issues:**
-• Continue button now APPENDS to existing code block
-• Copy/Download buttons always visible
-• No manual typing needed
-• One-click continuation
+**✅ New Features Added:**
+• Drag & drop files directly into the input area
+• Paste images from clipboard (Ctrl+V / Cmd+V)
+• Visual feedback when dragging files
+• File size limit: 10MB per file
 
 **🔄 How It Works:**
-1. Ask for code (like the PTE generator)
-2. First response shows code + Continue button
-3. **Click Continue** → Next part automatically APPENDED
-4. Repeat until complete
-5. Copy/Download the complete code
+1. **Drag & drop** any file (images, .txt, .py) into the chat area
+2. **Paste images** directly from clipboard
+3. Files appear as attachments below the input
+4. Ask me about the uploaded files!
 
 **Current Settings:**
 • Temperature: ${temperature.toFixed(1)}
@@ -2025,28 +2260,7 @@ IMPORTANT RULES:
         // File handling functions
         function handleFileSelect(event) {
             const files = Array.from(event.target.files);
-            
-            files.forEach(file => {
-                const reader = new FileReader();
-                
-                reader.onload = (e) => {
-                    attachedFiles.push({
-                        name: file.name,
-                        type: file.type,
-                        size: file.size,
-                        data: e.target.result,
-                        icon: getFileIcon(file.name)
-                    });
-                    displayAttachedFiles();
-                };
-                
-                if (file.type.startsWith('image/')) {
-                    reader.readAsDataURL(file);
-                } else {
-                    reader.readAsText(file);
-                }
-            });
-            
+            processDroppedFiles(files);
             event.target.value = '';
         }
 
@@ -2054,7 +2268,15 @@ IMPORTANT RULES:
             const ext = fileName.split('.').pop().toLowerCase();
             if (ext === 'py') return '🐍';
             if (ext === 'txt') return '📄';
-            if (['jpg', 'jpeg', 'png', 'gif'].includes(ext)) return '📸';
+            if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return '📸';
+            if (ext === 'pdf') return '📑';
+            if (ext === 'doc' || ext === 'docx') return '📝';
+            if (ext === 'xls' || ext === 'xlsx') return '📊';
+            if (ext === 'json') return '📋';
+            if (ext === 'js') return '📜';
+            if (ext === 'html') return '🌐';
+            if (ext === 'css') return '🎨';
+            if (ext === 'md') return '📘';
             return '📎';
         }
 
