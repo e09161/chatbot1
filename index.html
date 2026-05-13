@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DeepSeek Chat</title>
+    <title>DeepSeek Chat + Validator</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -13,214 +13,149 @@
             height: 100vh;
             display: flex;
         }
-        
-        /* Sidebar */
         #sidebar {
-            width: 260px;
-            min-width: 260px;
+            width: 260px; min-width: 260px;
             background: #0d0d0d;
-            display: flex;
-            flex-direction: column;
+            display: flex; flex-direction: column;
             border-right: 1px solid #222;
         }
         #sidebar-header {
-            padding: 20px 15px;
-            border-bottom: 1px solid #222;
-            font-weight: bold;
-            font-size: 18px;
+            padding: 20px 15px; border-bottom: 1px solid #222;
+            font-weight: bold; font-size: 18px;
         }
         #new-chat-btn {
-            margin: 15px;
-            padding: 10px;
-            background: #1a1a2e;
-            border: 1px solid #333;
-            border-radius: 8px;
-            color: #e0e0e0;
-            cursor: pointer;
-            text-align: center;
-            font-size: 14px;
+            margin: 15px; padding: 10px;
+            background: #1a1a2e; border: 1px solid #333;
+            border-radius: 8px; color: #e0e0e0;
+            cursor: pointer; text-align: center; font-size: 14px;
         }
         #new-chat-btn:hover { background: #222; }
-        #chat-list {
-            flex: 1;
-            overflow-y: auto;
-            padding: 10px;
-        }
+        #chat-list { flex: 1; overflow-y: auto; padding: 10px; }
         .chat-item {
-            padding: 12px;
-            margin: 4px 0;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 13px;
-            color: #999;
-            border: 1px solid transparent;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            padding: 12px; margin: 4px 0; border-radius: 8px;
+            cursor: pointer; font-size: 13px; color: #999;
+            display: flex; justify-content: space-between; align-items: center;
         }
         .chat-item:hover { background: #1a1a2e; color: #e0e0e0; }
-        .chat-item.active { background: #1a1a2e; border-color: #4a90d9; color: #e0e0e0; }
-        .chat-item-title {
-            flex: 1;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-        .chat-item-delete {
-            color: #666;
-            margin-left: 8px;
-            cursor: pointer;
-            font-size: 14px;
-        }
+        .chat-item.active { background: #1a1a2e; border: 1px solid #4a90d9; color: #e0e0e0; }
+        .chat-item-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .chat-item-delete { color: #666; margin-left: 8px; cursor: pointer; }
         .chat-item-delete:hover { color: #f44; }
-        #sidebar-footer {
-            padding: 15px;
-            border-top: 1px solid #222;
-            font-size: 12px;
-            color: #888;
-        }
+        #sidebar-footer { padding: 15px; border-top: 1px solid #222; font-size: 12px; color: #888; }
         
-        /* Main */
-        #main {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            min-width: 0;
-        }
+        #main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
         #header {
-            padding: 12px 20px;
-            background: #0d0d0d;
-            display: flex;
-            gap: 10px;
-            align-items: center;
+            padding: 12px 20px; background: #0d0d0d;
+            display: flex; gap: 10px; align-items: center;
             border-bottom: 1px solid #222;
         }
         #header input {
-            background: #1a1a2e;
-            border: 1px solid #333;
-            color: #e0e0e0;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 13px;
-            width: 280px;
+            background: #1a1a2e; border: 1px solid #333;
+            color: #e0e0e0; padding: 8px 12px;
+            border-radius: 6px; font-size: 13px; width: 280px;
         }
         #header button {
-            padding: 8px 16px;
-            background: #4a90d9;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13px;
+            padding: 8px 16px; background: #4a90d9;
+            color: white; border: none; border-radius: 6px;
+            cursor: pointer; font-size: 13px;
         }
         #header button:hover { background: #357abd; }
         #status { font-size: 12px; margin-left: auto; }
-        #status.ready { color: #4caf50; }
-        #status.no-key { color: #f44336; }
         
         #messages {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            max-width: 850px;
-            margin: 0 auto;
-            width: 100%;
+            flex: 1; overflow-y: auto; padding: 20px;
+            max-width: 850px; margin: 0 auto; width: 100%;
         }
         .msg {
-            margin-bottom: 20px;
-            padding: 15px;
-            border-radius: 10px;
-            max-width: 85%;
-            white-space: pre-wrap;
-            word-break: break-word;
-            font-size: 14px;
-            line-height: 1.6;
+            margin-bottom: 20px; padding: 15px; border-radius: 10px;
+            max-width: 85%; white-space: pre-wrap; word-break: break-word;
+            font-size: 14px; line-height: 1.6;
         }
         .user { background: #16213e; margin-left: auto; }
         .assistant { background: #0f3460; margin-right: auto; }
         
         .code-block {
-            background: #0d0d0d;
-            border: 1px solid #333;
-            border-radius: 8px;
-            margin: 10px 0;
-            overflow: hidden;
+            background: #0d0d0d; border: 1px solid #333;
+            border-radius: 8px; margin: 10px 0; overflow: hidden;
+            position: relative;
         }
         .code-header {
-            background: #222;
-            padding: 8px 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 12px;
-            color: #888;
+            background: #222; padding: 8px 15px;
+            display: flex; justify-content: space-between;
+            align-items: center; font-size: 12px; color: #888;
         }
         .code-header button {
-            background: #333;
-            color: #ccc;
-            border: none;
-            padding: 4px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 11px;
-            margin-left: 5px;
+            background: #333; color: #ccc; border: none;
+            padding: 4px 10px; border-radius: 4px;
+            cursor: pointer; font-size: 11px; margin-left: 5px;
         }
         .code-header button:hover { background: #444; }
         .code-content {
             padding: 15px;
             font-family: 'Courier New', monospace;
-            font-size: 13px;
-            line-height: 1.5;
-            white-space: pre-wrap;
-            word-break: break-word;
-            overflow-x: auto;
-            color: #a8d8a8;
+            font-size: 13px; line-height: 1.5;
+            white-space: pre-wrap; word-break: break-word;
+            overflow-x: auto; color: #a8d8a8;
         }
         
+        /* Validation badges */
+        .validation-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-left: 8px;
+        }
+        .validation-pass { background: #1b5e20; color: #4caf50; }
+        .validation-warn { background: #e65100; color: #ff9800; }
+        .validation-error { background: #b71c1c; color: #f44336; }
+        
+        .validation-details {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 10px;
+            margin-top: 8px;
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            display: none;
+        }
+        .validation-details.show { display: block; }
+        .validation-details .error-line { color: #f44336; }
+        .validation-details .warn-line { color: #ff9800; }
+        .validation-details .ok-line { color: #4caf50; }
+        
         #input-area {
-            padding: 15px 20px;
-            background: #0d0d0d;
-            display: flex;
-            gap: 10px;
-            max-width: 850px;
-            margin: 0 auto;
-            width: 100%;
+            padding: 15px 20px; background: #0d0d0d;
+            display: flex; gap: 10px;
+            max-width: 850px; margin: 0 auto; width: 100%;
             border-top: 1px solid #222;
         }
         #userInput {
-            flex: 1;
-            padding: 12px;
-            border: 1px solid #333;
-            border-radius: 8px;
-            background: #1a1a2e;
-            color: #e0e0e0;
-            font-family: inherit;
-            font-size: 14px;
-            resize: none;
-            outline: none;
+            flex: 1; padding: 12px;
+            border: 1px solid #333; border-radius: 8px;
+            background: #1a1a2e; color: #e0e0e0;
+            font-family: inherit; font-size: 14px;
+            resize: none; outline: none;
         }
         #userInput:focus { border-color: #4a90d9; }
-        #sendBtn {
-            padding: 12px 20px;
-            background: #4a90d9;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
+        #sendBtn, #stopBtn {
+            padding: 12px 20px; color: white; border: none;
+            border-radius: 8px; cursor: pointer; font-size: 14px;
         }
+        #sendBtn { background: #4a90d9; }
         #sendBtn:hover { background: #357abd; }
         #sendBtn:disabled { opacity: 0.5; }
-        #stopBtn {
-            padding: 12px 20px;
-            background: #d94a4a;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-        }
+        #stopBtn { background: #d94a4a; }
         #stopBtn:hover { background: #c0392b; }
+        
+        #validateAllBtn {
+            padding: 8px 16px; background: #ff9800;
+            color: white; border: none; border-radius: 6px;
+            cursor: pointer; font-size: 13px;
+        }
+        #validateAllBtn:hover { background: #f57c00; }
     </style>
 </head>
 <body>
@@ -228,9 +163,7 @@
         <div id="sidebar-header">💬 Chats</div>
         <div id="new-chat-btn" onclick="newChat()">+ New Chat</div>
         <div id="chat-list"></div>
-        <div id="sidebar-footer">
-            <div id="sidebarStatus"></div>
-        </div>
+        <div id="sidebar-footer" id="sidebarStatus"></div>
     </div>
     
     <div id="main">
@@ -238,19 +171,22 @@
             <span style="color:#888;">API Key:</span>
             <input type="password" id="apiKey" placeholder="sk-...">
             <button onclick="saveKey()">Save</button>
-            <span id="status" class="no-key">Set API key</span>
+            <button id="validateAllBtn" onclick="validateAllCodeBlocks()">🔍 Validate All Code</button>
+            <span id="status"></span>
         </div>
         
         <div id="messages"></div>
         
         <div id="input-area">
-            <textarea id="userInput" rows="1" placeholder="Ask anything..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}"></textarea>
+            <textarea id="userInput" rows="1" placeholder="Ask for code..."
+                      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}"></textarea>
             <button id="sendBtn" onclick="send()">Send</button>
             <button id="stopBtn" onclick="stop()" style="display:none;">Stop</button>
         </div>
     </div>
 
     <script>
+        // ============ CONFIG ============
         const API_URL = 'https://api.deepseek.com/v1/chat/completions';
         let apiKey = localStorage.getItem('ds_key') || '';
         let chats = JSON.parse(localStorage.getItem('ds_chats') || '[]');
@@ -261,7 +197,10 @@
         document.getElementById('apiKey').value = apiKey;
         updateStatus();
         renderChatList();
+        if (!chats.length) newChat();
+        else loadChat(chats[0].id);
 
+        // ============ API KEY ============
         function saveKey() {
             apiKey = document.getElementById('apiKey').value.trim();
             localStorage.setItem('ds_key', apiKey);
@@ -269,83 +208,70 @@
         }
 
         function updateStatus() {
-            const status = document.getElementById('status');
-            const sidebarStatus = document.getElementById('sidebarStatus');
+            const s = document.getElementById('status');
+            const ss = document.getElementById('sidebarStatus');
             if (apiKey) {
-                status.textContent = 'Ready';
-                status.className = 'ready';
-                sidebarStatus.textContent = '✅ API Ready';
-                sidebarStatus.style.color = '#4caf50';
+                s.textContent = '✅ Ready';
+                s.style.color = '#4caf50';
+                ss.textContent = '✅ API Ready';
+                ss.style.color = '#4caf50';
             } else {
-                status.textContent = 'Set API key';
-                status.className = 'no-key';
-                sidebarStatus.textContent = '❌ No API key';
-                sidebarStatus.style.color = '#f44336';
+                s.textContent = '❌ Set API key';
+                s.style.color = '#f44';
+                ss.textContent = '❌ No API key';
+                ss.style.color = '#f44';
             }
         }
 
         // ============ CHAT HISTORY ============
-        function saveChats() {
-            localStorage.setItem('ds_chats', JSON.stringify(chats));
-        }
+        function saveChats() { localStorage.setItem('ds_chats', JSON.stringify(chats)); }
 
         function renderChatList() {
             const list = document.getElementById('chat-list');
             list.innerHTML = '';
-            
             chats.sort((a, b) => b.updatedAt - a.updatedAt);
-            
             chats.forEach(chat => {
                 const div = document.createElement('div');
                 div.className = 'chat-item' + (chat.id === currentChatId ? ' active' : '');
                 div.onclick = () => loadChat(chat.id);
-                
                 const title = chat.messages.find(m => m.role === 'user')?.content?.substring(0, 30) || 'New Chat';
-                
-                div.innerHTML = `
-                    <span class="chat-item-title">${escapeHtml(title)}</span>
+                div.innerHTML = `<span class="chat-item-title">${title.replace(/</g,'&lt;')}</span>
                     <span class="chat-item-delete" onclick="event.stopPropagation();deleteChat('${chat.id}')">×</span>`;
                 list.appendChild(div);
             });
         }
 
         function newChat() {
-            const id = 'chat_' + Date.now();
-            currentChatId = id;
-            chats.push({
-                id: id,
-                messages: [],
-                createdAt: Date.now(),
-                updatedAt: Date.now()
-            });
-            saveChats();
-            renderChatList();
+            currentChatId = 'chat_' + Date.now();
+            chats.push({ id: currentChatId, messages: [], createdAt: Date.now(), updatedAt: Date.now() });
+            saveChats(); renderChatList();
             document.getElementById('messages').innerHTML = '';
         }
 
         function loadChat(id) {
             currentChatId = id;
             const chat = chats.find(c => c.id === id);
-            const container = document.getElementById('messages');
-            container.innerHTML = '';
-            
-            if (chat && chat.messages) {
-                chat.messages.forEach(m => renderMessage(m));
-                container.scrollTop = container.scrollHeight;
+            document.getElementById('messages').innerHTML = '';
+            if (chat?.messages) {
+                chat.messages.forEach(m => {
+                    const div = document.createElement('div');
+                    div.className = `msg ${m.role}`;
+                    div.innerHTML = formatContent(m.content);
+                    document.getElementById('messages').appendChild(div);
+                });
+                document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+                // Auto-validate on load
+                setTimeout(validateAllCodeBlocks, 500);
             }
             renderChatList();
         }
 
         function deleteChat(id) {
             chats = chats.filter(c => c.id !== id);
-            if (currentChatId === id) {
-                currentChatId = null;
-                document.getElementById('messages').innerHTML = '';
-            }
-            if (chats.length === 0) newChat();
+            if (currentChatId === id) { currentChatId = null; document.getElementById('messages').innerHTML = ''; }
+            if (!chats.length) newChat();
             else if (!currentChatId) loadChat(chats[0].id);
-            saveChats();
-            renderChatList();
+            saveChats(); renderChatList();
         }
 
         // ============ FORMATTING ============
@@ -357,34 +283,31 @@
 
         function formatContent(content) {
             if (!content) return '';
-            
-            // Split by ``` and alternate text/code
             const parts = content.split('```');
             let html = '';
-            
             for (let i = 0; i < parts.length; i++) {
                 if (i % 2 === 0) {
-                    if (parts[i].trim()) {
-                        html += escapeHtml(parts[i]).replace(/\n/g, '<br>');
-                    }
+                    if (parts[i].trim()) html += escapeHtml(parts[i]).replace(/\n/g, '<br>');
                 } else {
                     const code = parts[i];
                     const nl = code.indexOf('\n');
-                    const lang = nl > -1 ? code.substring(0, nl).trim() : '';
+                    const lang = nl > -1 ? code.substring(0, nl).trim() : 'code';
                     const codeContent = nl > -1 ? code.substring(nl + 1) : code;
                     const id = 'c' + Math.random().toString(36).substr(2, 8);
                     const ext = lang === 'python' ? 'py' : lang === 'xml' ? 'xml' : lang === 'html' ? 'html' : 'txt';
                     
                     html += `
-                        <div class="code-block">
+                        <div class="code-block" data-code-id="${id}">
                             <div class="code-header">
-                                <span>${escapeHtml(lang || 'code')}</span>
+                                <span>${escapeHtml(lang)} <span class="validation-badge" id="badge-${id}"></span></span>
                                 <span>
                                     <button onclick="copyCode('${id}')">Copy</button>
                                     <button onclick="downloadCode('${id}','${ext}')">Download</button>
+                                    <button onclick="validateCodeBlock('${id}')" style="background:#ff9800;">🔍 Check</button>
                                 </span>
                             </div>
                             <div class="code-content"><code id="${id}">${escapeHtml(codeContent.trim())}</code></div>
+                            <div class="validation-details" id="details-${id}"></div>
                         </div>`;
                 }
             }
@@ -407,39 +330,202 @@
             }
         }
 
-        // ============ MESSAGES ============
-        function renderMessage(msg) {
-            const div = document.createElement('div');
-            div.className = `msg ${msg.role}`;
-            div.innerHTML = formatContent(msg.content);
-            document.getElementById('messages').appendChild(div);
-        }
-
-        function addMessage(role, content) {
-            const chat = chats.find(c => c.id === currentChatId);
-            if (!chat) return;
+        // ============ CODE VALIDATOR ============
+        function validatePython(code) {
+            const issues = [];
+            const lines = code.split('\n');
             
-            chat.messages.push({ role, content });
-            chat.updatedAt = Date.now();
-            saveChats();
-            renderChatList();
-            renderMessage({ role, content });
+            // Check parentheses
+            let parenCount = 0;
+            let bracketCount = 0;
+            let braceCount = 0;
             
-            const container = document.getElementById('messages');
-            container.scrollTop = container.scrollHeight;
-        }
-
-        // ============ API ============
-        function stop() {
-            if (controller) {
-                controller.abort();
-                controller = null;
-                isProcessing = false;
-                document.getElementById('sendBtn').disabled = false;
-                document.getElementById('stopBtn').style.display = 'none';
-                document.getElementById('sendBtn').style.display = 'inline';
-                document.getElementById('userInput').disabled = false;
+            lines.forEach((line, i) => {
+                for (const ch of line) {
+                    if (ch === '(') parenCount++;
+                    if (ch === ')') parenCount--;
+                    if (ch === '[') bracketCount++;
+                    if (ch === ']') bracketCount--;
+                    if (ch === '{') braceCount++;
+                    if (ch === '}') braceCount--;
+                }
+                
+                // Check for common issues
+                if (line.includes('def ') && !line.includes(':')) {
+                    issues.push({ line: i + 1, type: 'error', msg: 'Function definition missing colon' });
+                }
+                if (line.includes('if ') && !line.includes(':') && !line.trim().endsWith(':')) {
+                    issues.push({ line: i + 1, type: 'error', msg: 'If statement might be missing colon' });
+                }
+            });
+            
+            if (parenCount !== 0) issues.push({ line: 0, type: 'error', msg: `Unbalanced parentheses (${parenCount > 0 ? '+' : ''}${parenCount})` });
+            if (bracketCount !== 0) issues.push({ line: 0, type: 'error', msg: `Unbalanced brackets (${bracketCount > 0 ? '+' : ''}${bracketCount})` });
+            if (braceCount !== 0) issues.push({ line: 0, type: 'warn', msg: `Unbalanced braces (${braceCount > 0 ? '+' : ''}${braceCount}) - might be f-strings` });
+            
+            // Check for truncated code
+            const lastLine = lines[lines.length - 1]?.trim();
+            if (lastLine && (lastLine.endsWith('=') || lastLine.endsWith('(') || lastLine.endsWith(',') || lastLine.endsWith('\\'))) {
+                issues.push({ line: lines.length, type: 'warn', msg: 'Code appears truncated' });
             }
+            
+            return issues;
+        }
+
+        function validateJavaScript(code) {
+            const issues = [];
+            const lines = code.split('\n');
+            
+            let braceCount = 0;
+            let parenCount = 0;
+            let bracketCount = 0;
+            
+            lines.forEach((line, i) => {
+                for (const ch of line) {
+                    if (ch === '(') parenCount++;
+                    if (ch === ')') parenCount--;
+                    if (ch === '[') bracketCount++;
+                    if (ch === ']') bracketCount--;
+                    if (ch === '{') braceCount++;
+                    if (ch === '}') braceCount--;
+                }
+            });
+            
+            if (parenCount !== 0) issues.push({ line: 0, type: 'error', msg: `Unbalanced parentheses (${parenCount})` });
+            if (bracketCount !== 0) issues.push({ line: 0, type: 'error', msg: `Unbalanced brackets (${bracketCount})` });
+            if (braceCount !== 0) issues.push({ line: 0, type: 'error', msg: `Unbalanced braces (${braceCount})` });
+            
+            // Check for missing closing of template literals
+            const backtickCount = (code.match(/`/g) || []).length;
+            if (backtickCount % 2 !== 0) {
+                issues.push({ line: 0, type: 'error', msg: 'Unclosed template literal (backtick)' });
+            }
+            
+            return issues;
+        }
+
+        function validateXML(code) {
+            const issues = [];
+            const lines = code.split('\n');
+            
+            // Simple tag matching
+            const openTags = [];
+            const tagRegex = /<\/?(\w+)[^>]*>/g;
+            let match;
+            
+            while ((match = tagRegex.exec(code)) !== null) {
+                if (match[0].startsWith('</')) {
+                    // Closing tag
+                    if (openTags.length === 0 || openTags[openTags.length - 1] !== match[1]) {
+                        issues.push({ line: 0, type: 'warn', msg: `Mismatched closing tag: </${match[1]}>` });
+                    } else {
+                        openTags.pop();
+                    }
+                } else if (!match[0].endsWith('/>')) {
+                    // Opening tag (not self-closing)
+                    openTags.push(match[1]);
+                }
+            }
+            
+            if (openTags.length > 0) {
+                issues.push({ line: 0, type: 'error', msg: `Unclosed tags: ${openTags.join(', ')}` });
+            }
+            
+            // Check XML declaration
+            if (code.includes('<') && !code.trim().startsWith('<?xml') && !code.trim().startsWith('<')) {
+                issues.push({ line: 0, type: 'warn', msg: 'XML might be missing declaration or has text before root element' });
+            }
+            
+            return issues;
+        }
+
+        function detectLanguage(code) {
+            if (/^(import |from |def |class )/m.test(code)) return 'python';
+            if (/^<\?xml|<manifest|<questestinterop/i.test(code)) return 'xml';
+            if (/^(const |let |var |function )/m.test(code)) return 'javascript';
+            if (/<(!DOCTYPE|html)/i.test(code)) return 'html';
+            return 'text';
+        }
+
+        function validateCodeBlock(id) {
+            const codeEl = document.getElementById(id);
+            const detailsEl = document.getElementById('details-' + id);
+            const badgeEl = document.getElementById('badge-' + id);
+            
+            if (!codeEl) return;
+            
+            const code = codeEl.textContent;
+            const lang = detectLanguage(code);
+            let issues = [];
+            
+            if (lang === 'python') issues = validatePython(code);
+            else if (lang === 'javascript' || lang === 'html') issues = validateJavaScript(code);
+            else if (lang === 'xml') issues = validateXML(code);
+            else {
+                // Generic validation
+                const parens = (code.match(/\(/g) || []).length - (code.match(/\)/g) || []).length;
+                const braces = (code.match(/\{/g) || []).length - (code.match(/\}/g) || []).length;
+                const brackets = (code.match(/\[/g) || []).length - (code.match(/\]/g) || []).length;
+                
+                if (parens !== 0) issues.push({ line: 0, type: 'error', msg: `Unbalanced parentheses: ${parens}` });
+                if (braces !== 0) issues.push({ line: 0, type: 'error', msg: `Unbalanced braces: ${braces}` });
+                if (brackets !== 0) issues.push({ line: 0, type: 'error', msg: `Unbalanced brackets: ${brackets}` });
+            }
+            
+            // Update badge
+            const errors = issues.filter(i => i.type === 'error');
+            const warns = issues.filter(i => i.type === 'warn');
+            
+            if (errors.length > 0) {
+                badgeEl.textContent = `❌ ${errors.length} error${errors.length > 1 ? 's' : ''}`;
+                badgeEl.className = 'validation-badge validation-error';
+            } else if (warns.length > 0) {
+                badgeEl.textContent = `⚠️ ${warns.length} warning${warns.length > 1 ? 's' : ''}`;
+                badgeEl.className = 'validation-badge validation-warn';
+            } else {
+                badgeEl.textContent = '✅ Valid';
+                badgeEl.className = 'validation-badge validation-pass';
+            }
+            
+            // Show details
+            if (issues.length > 0) {
+                detailsEl.innerHTML = issues.map(i => 
+                    `<div class="${i.type === 'error' ? 'error-line' : 'warn-line'}">Line ${i.line}: ${i.msg}</div>`
+                ).join('');
+                detailsEl.classList.add('show');
+            } else {
+                detailsEl.innerHTML = '<div class="ok-line">✅ No issues found</div>';
+                detailsEl.classList.add('show');
+            }
+        }
+
+        function validateAllCodeBlocks() {
+            const blocks = document.querySelectorAll('[data-code-id]');
+            blocks.forEach(block => {
+                const id = block.getAttribute('data-code-id');
+                validateCodeBlock(id);
+            });
+            
+            const total = blocks.length;
+            const errors = document.querySelectorAll('.validation-error').length;
+            const warns = document.querySelectorAll('.validation-warn').length;
+            
+            if (total === 0) {
+                alert('No code blocks found to validate.');
+            } else if (errors === 0 && warns === 0) {
+                alert(`✅ All ${total} code block(s) passed validation!`);
+            } else {
+                alert(`🔍 Validated ${total} code block(s): ${errors} error(s), ${warns} warning(s)`);
+            }
+        }
+
+        // ============ MESSAGES ============
+        function stop() {
+            if (controller) { controller.abort(); controller = null; }
+            isProcessing = false;
+            document.getElementById('sendBtn').disabled = false;
+            document.getElementById('stopBtn').style.display = 'none';
+            document.getElementById('userInput').disabled = false;
         }
 
         async function send() {
@@ -450,51 +536,67 @@
             const text = input.value.trim();
             if (!text) return;
             
-            addMessage('user', text);
-            input.value = '';
-            input.style.height = 'auto';
+            const chat = chats.find(c => c.id === currentChatId);
+            chat.messages.push({ role: 'user', content: text });
+            chat.updatedAt = Date.now();
+            saveChats(); renderChatList();
+            
+            const div = document.createElement('div');
+            div.className = 'msg user';
+            div.textContent = text;
+            document.getElementById('messages').appendChild(div);
+            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+            
+            input.value = ''; input.style.height = 'auto';
             
             isProcessing = true;
-            document.getElementById('sendBtn').style.display = 'none';
+            document.getElementById('sendBtn').disabled = true;
             document.getElementById('stopBtn').style.display = 'inline';
             document.getElementById('userInput').disabled = true;
-            
             controller = new AbortController();
             
             try {
-                const chat = chats.find(c => c.id === currentChatId);
                 const apiMessages = chat.messages.map(m => ({ role: m.role, content: m.content }));
                 
                 const response = await fetch(API_URL, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${apiKey}`
-                    },
-                    body: JSON.stringify({
-                        model: 'deepseek-chat',
-                        messages: apiMessages,
-                        stream: false
-                    }),
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+                    body: JSON.stringify({ model: 'deepseek-chat', messages: apiMessages, stream: false }),
                     signal: controller.signal
                 });
                 
                 const data = await response.json();
+                if (!response.ok) throw new Error(data.error?.message || `Error ${response.status}`);
                 
-                if (!response.ok) {
-                    throw new Error(data.error?.message || `Error ${response.status}`);
-                }
+                const content = data.choices[0].message.content;
+                chat.messages.push({ role: 'assistant', content });
+                chat.updatedAt = Date.now();
+                saveChats();
                 
-                addMessage('assistant', data.choices[0].message.content);
+                const adiv = document.createElement('div');
+                adiv.className = 'msg assistant';
+                adiv.innerHTML = formatContent(content);
+                document.getElementById('messages').appendChild(adiv);
+                document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+                
+                // Auto-validate new code blocks
+                setTimeout(() => {
+                    const newBlocks = adiv.querySelectorAll('[data-code-id]');
+                    newBlocks.forEach(block => {
+                        validateCodeBlock(block.getAttribute('data-code-id'));
+                    });
+                }, 100);
                 
             } catch (err) {
                 if (err.name !== 'AbortError') {
-                    addMessage('assistant', 'Error: ' + err.message);
+                    const ediv = document.createElement('div');
+                    ediv.className = 'msg assistant';
+                    ediv.textContent = 'Error: ' + err.message;
+                    document.getElementById('messages').appendChild(ediv);
                 }
             } finally {
                 isProcessing = false;
                 document.getElementById('sendBtn').disabled = false;
-                document.getElementById('sendBtn').style.display = 'inline';
                 document.getElementById('stopBtn').style.display = 'none';
                 document.getElementById('userInput').disabled = false;
                 controller = null;
@@ -506,10 +608,6 @@
             this.style.height = 'auto';
             this.style.height = Math.min(this.scrollHeight, 150) + 'px';
         });
-
-        // Init
-        if (!chats.length) newChat();
-        else loadChat(chats[0].id);
     </script>
 </body>
 </html>
