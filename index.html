@@ -14,6 +14,7 @@
             display: flex;
         }
         
+        /* Sidebar */
         #sidebar {
             width: 260px;
             min-width: 260px;
@@ -79,6 +80,7 @@
             color: #888;
         }
         
+        /* Main */
         #main {
             flex: 1;
             display: flex;
@@ -198,21 +200,26 @@
             outline: none;
         }
         #userInput:focus { border-color: #4a90d9; }
-        #sendBtn, #continueBtn, #stopBtn {
+        #sendBtn {
             padding: 12px 20px;
+            background: #4a90d9;
             color: white;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             font-size: 14px;
-            white-space: nowrap;
         }
-        #sendBtn { background: #4a90d9; }
         #sendBtn:hover { background: #357abd; }
         #sendBtn:disabled { opacity: 0.5; }
-        #continueBtn { background: #4caf50; }
-        #continueBtn:hover { background: #388e3c; }
-        #stopBtn { background: #d94a4a; }
+        #stopBtn {
+            padding: 12px 20px;
+            background: #d94a4a;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
         #stopBtn:hover { background: #c0392b; }
     </style>
 </head>
@@ -237,10 +244,8 @@
         <div id="messages"></div>
         
         <div id="input-area">
-            <textarea id="userInput" rows="1" placeholder="Ask anything..." 
-                      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}"></textarea>
+            <textarea id="userInput" rows="1" placeholder="Ask anything..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}"></textarea>
             <button id="sendBtn" onclick="send()">Send</button>
-            <button id="continueBtn" onclick="continueGeneration()" style="display:none;">Continue</button>
             <button id="stopBtn" onclick="stop()" style="display:none;">Stop</button>
         </div>
     </div>
@@ -279,6 +284,7 @@
             }
         }
 
+        // ============ CHAT HISTORY ============
         function saveChats() {
             localStorage.setItem('ds_chats', JSON.stringify(chats));
         }
@@ -328,7 +334,6 @@
                 container.scrollTop = container.scrollHeight;
             }
             renderChatList();
-            checkIncomplete();
         }
 
         function deleteChat(id) {
@@ -343,6 +348,7 @@
             renderChatList();
         }
 
+        // ============ FORMATTING ============
         function escapeHtml(text) {
             const d = document.createElement('div');
             d.textContent = text;
@@ -352,6 +358,7 @@
         function formatContent(content) {
             if (!content) return '';
             
+            // Split by ``` and alternate text/code
             const parts = content.split('```');
             let html = '';
             
@@ -400,6 +407,7 @@
             }
         }
 
+        // ============ MESSAGES ============
         function renderMessage(msg) {
             const div = document.createElement('div');
             div.className = `msg ${msg.role}`;
@@ -417,102 +425,37 @@
             renderChatList();
             renderMessage({ role, content });
             
-            document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
-            
-            // Check if continue button should be shown
-            if (role === 'assistant') {
-                checkIncomplete();
-            }
+            const container = document.getElementById('messages');
+            container.scrollTop = container.scrollHeight;
         }
 
-        function isIncomplete(content) {
-            if (!content) return false;
-            
-            // Unclosed code block
-            const codeBlocks = (content.match(/```/g) || []).length;
-            if (codeBlocks % 2 !== 0) return true;
-            
-            // Truncated at a suspicious point
-            const trimmed = content.trim();
-            if (trimmed.endsWith('def ') || trimmed.endsWith('class ') || 
-                trimmed.endsWith('= ') || trimmed.endsWith('( ') ||
-                trimmed.endsWith(', ') || trimmed.endsWith(': ')) return true;
-            
-            // Very short response that looks like it should be longer
-            if (trimmed.length < 100 && trimmed.includes('```')) return true;
-            
-            return false;
-        }
-
-        function checkIncomplete() {
-            const chat = chats.find(c => c.id === currentChatId);
-            if (!chat || !chat.messages.length) return;
-            
-            const lastMsg = chat.messages[chat.messages.length - 1];
-            if (lastMsg.role === 'assistant' && isIncomplete(lastMsg.content)) {
-                document.getElementById('continueBtn').style.display = 'inline';
-            } else {
-                document.getElementById('continueBtn').style.display = 'none';
-            }
-        }
-
+        // ============ API ============
         function stop() {
             if (controller) {
                 controller.abort();
                 controller = null;
-                resetUI();
+                isProcessing = false;
+                document.getElementById('sendBtn').disabled = false;
+                document.getElementById('stopBtn').style.display = 'none';
+                document.getElementById('sendBtn').style.display = 'inline';
+                document.getElementById('userInput').disabled = false;
             }
         }
 
-        function resetUI() {
-            isProcessing = false;
-            document.getElementById('sendBtn').disabled = false;
-            document.getElementById('sendBtn').style.display = 'inline';
-            document.getElementById('stopBtn').style.display = 'none';
-            document.getElementById('userInput').disabled = false;
-            document.getElementById('userInput').focus();
-        }
-
-        async function continueGeneration() {
-            if (isProcessing || !apiKey || !currentChatId) return;
+        async function send() {
+            if (isProcessing || !apiKey) return;
+            if (!currentChatId) newChat();
             
-            const chat = chats.find(c => c.id === currentChatId);
-            if (!chat || !chat.messages.length) return;
+            const input = document.getElementById('userInput');
+            const text = input.value.trim();
+            if (!text) return;
             
-            const lastMsg = chat.messages[chat.messages.length - 1];
-            if (lastMsg.role !== 'assistant') return;
+            addMessage('user', text);
+            input.value = '';
+            input.style.height = 'auto';
             
-            // Remove incomplete message from storage
-            chat.messages.pop();
-            saveChats();
-            
-            // Remove from display
-            const messagesDiv = document.getElementById('messages');
-            const lastMsgDiv = messagesDiv.lastElementChild;
-            if (lastMsgDiv && lastMsgDiv.classList.contains('assistant')) {
-                lastMsgDiv.remove();
-            }
-            
-            // Add continuation prompt
-            const prompt = {
-                role: 'user',
-                content: 'Continue exactly from where you stopped. Do NOT repeat any code. Just provide the next part.'
-            };
-            
-            chat.messages.push(prompt);
-            chat.updatedAt = Date.now();
-            saveChats();
-            renderChatList();
-            renderMessage(prompt);
-            
-            document.getElementById('continueBtn').style.display = 'none';
-            await sendApiRequest();
-        }
-
-        async function sendApiRequest() {
             isProcessing = true;
             document.getElementById('sendBtn').style.display = 'none';
-            document.getElementById('continueBtn').style.display = 'none';
             document.getElementById('stopBtn').style.display = 'inline';
             document.getElementById('userInput').disabled = true;
             
@@ -549,24 +492,14 @@
                     addMessage('assistant', 'Error: ' + err.message);
                 }
             } finally {
-                resetUI();
+                isProcessing = false;
+                document.getElementById('sendBtn').disabled = false;
+                document.getElementById('sendBtn').style.display = 'inline';
+                document.getElementById('stopBtn').style.display = 'none';
+                document.getElementById('userInput').disabled = false;
+                controller = null;
+                input.focus();
             }
-        }
-
-        async function send() {
-            if (isProcessing || !apiKey) return;
-            if (!currentChatId) newChat();
-            
-            const input = document.getElementById('userInput');
-            const text = input.value.trim();
-            if (!text) return;
-            
-            addMessage('user', text);
-            input.value = '';
-            input.style.height = 'auto';
-            
-            document.getElementById('continueBtn').style.display = 'none';
-            await sendApiRequest();
         }
 
         document.getElementById('userInput').addEventListener('input', function() {
@@ -574,12 +507,9 @@
             this.style.height = Math.min(this.scrollHeight, 150) + 'px';
         });
 
-        // Initialize
+        // Init
         if (!chats.length) newChat();
-        else {
-            loadChat(chats[0].id);
-            checkIncomplete();
-        }
+        else loadChat(chats[0].id);
     </script>
 </body>
 </html>
