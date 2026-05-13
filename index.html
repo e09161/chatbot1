@@ -99,26 +99,16 @@
         }
         
         .validation-badge {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: bold;
-            margin-left: 8px;
+            display: inline-block; padding: 2px 8px;
+            border-radius: 10px; font-size: 10px; font-weight: bold; margin-left: 8px;
         }
         .validation-pass { background: #1b5e20; color: #4caf50; }
         .validation-warn { background: #e65100; color: #ff9800; }
         .validation-error { background: #b71c1c; color: #f44336; }
-        
         .validation-details {
-            background: #1a1a1a;
-            border: 1px solid #333;
-            border-radius: 6px;
-            padding: 10px;
-            margin-top: 8px;
-            font-size: 12px;
-            font-family: 'Courier New', monospace;
-            display: none;
+            background: #1a1a1a; border: 1px solid #333;
+            border-radius: 6px; padding: 10px; margin-top: 8px;
+            font-size: 12px; font-family: 'Courier New', monospace; display: none;
         }
         .validation-details.show { display: block; }
         .validation-details .error-line { color: #f44336; }
@@ -127,9 +117,29 @@
         
         #input-area {
             padding: 15px 20px; background: #0d0d0d;
-            display: flex; gap: 10px;
+            display: flex; flex-direction: column; gap: 8px;
             max-width: 850px; margin: 0 auto; width: 100%;
             border-top: 1px solid #222;
+        }
+        #input-area.drag-over {
+            background: #1a1a3e;
+            border-top: 2px dashed #4a90d9;
+        }
+        .attached-files {
+            display: flex; flex-wrap: wrap; gap: 6px;
+        }
+        .attached-file {
+            background: #1a1a2e; border: 1px solid #333;
+            border-radius: 16px; padding: 4px 12px;
+            font-size: 12px; display: flex; align-items: center; gap: 6px;
+            color: #ccc;
+        }
+        .attached-file .remove-file {
+            cursor: pointer; color: #888; font-weight: bold;
+        }
+        .attached-file .remove-file:hover { color: #f44; }
+        .input-row {
+            display: flex; gap: 10px;
         }
         #userInput {
             flex: 1; padding: 12px;
@@ -139,8 +149,8 @@
             resize: none; outline: none;
         }
         #userInput:focus { border-color: #4a90d9; }
-        #sendBtn, #stopBtn {
-            padding: 12px 20px; color: white; border: none;
+        #sendBtn, #stopBtn, #attachBtn {
+            padding: 12px 16px; color: white; border: none;
             border-radius: 8px; cursor: pointer; font-size: 14px;
         }
         #sendBtn { background: #4a90d9; }
@@ -148,13 +158,17 @@
         #sendBtn:disabled { opacity: 0.5; }
         #stopBtn { background: #d94a4a; }
         #stopBtn:hover { background: #c0392b; }
-        
+        #attachBtn { background: #555; }
+        #attachBtn:hover { background: #666; }
         #validateAllBtn {
             padding: 8px 16px; background: #ff9800;
             color: white; border: none; border-radius: 6px;
             cursor: pointer; font-size: 13px;
         }
         #validateAllBtn:hover { background: #f57c00; }
+        .drag-hint {
+            font-size: 11px; color: #666; text-align: center;
+        }
     </style>
 </head>
 <body>
@@ -177,22 +191,30 @@
         <div id="messages"></div>
         
         <div id="input-area">
-            <textarea id="userInput" rows="1" placeholder="Ask for code..."
-                      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}"></textarea>
-            <button id="sendBtn" onclick="send()">Send</button>
-            <button id="stopBtn" onclick="stop()" style="display:none;">Stop</button>
+            <div class="attached-files" id="attachedFiles"></div>
+            <div class="input-row">
+                <textarea id="userInput" rows="1" placeholder="Ask for code... Drag & drop files here"
+                          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}"></textarea>
+                <button id="attachBtn" onclick="document.getElementById('fileInput').click()">📎</button>
+                <button id="sendBtn" onclick="send()">Send</button>
+                <button id="stopBtn" onclick="stop()" style="display:none;">Stop</button>
+            </div>
+            <div class="drag-hint">Drop .py .xml .txt .html files here</div>
         </div>
     </div>
+    
+    <input type="file" id="fileInput" multiple accept=".py,.xml,.txt,.html,.js,.css,.json,.md,.csv" style="display:none;" onchange="handleFileSelect(event)">
 
     <script>
         const API_URL = 'https://api.deepseek.com/v1/chat/completions';
-        const MAX_TOKENS = 8192; // Hardcoded max tokens
+        const MAX_TOKENS = 8192;
         
         let apiKey = localStorage.getItem('ds_key') || '';
         let chats = JSON.parse(localStorage.getItem('ds_chats') || '[]');
         let currentChatId = null;
         let isProcessing = false;
         let controller = null;
+        let attachedFiles = []; // Current attachment list
 
         document.getElementById('apiKey').value = apiKey;
         updateStatus();
@@ -200,6 +222,109 @@
         if (!chats.length) newChat();
         else loadChat(chats[0].id);
 
+        // ============ DRAG & DROP ============
+        const inputArea = document.getElementById('inputArea');
+        
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            document.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            inputArea.addEventListener(eventName, () => {
+                inputArea.classList.add('drag-over');
+            });
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            inputArea.addEventListener(eventName, () => {
+                inputArea.classList.remove('drag-over');
+            });
+        });
+        
+        inputArea.addEventListener('drop', (e) => {
+            const files = Array.from(e.dataTransfer.files);
+            if (files.length > 0) processFiles(files);
+        });
+
+        function handleFileSelect(event) {
+            const files = Array.from(event.target.files);
+            if (files.length > 0) processFiles(files);
+            event.target.value = ''; // Reset input
+        }
+
+        function processFiles(files) {
+            files.forEach(file => {
+                // Check file type
+                const allowedExtensions = ['.py', '.xml', '.txt', '.html', '.js', '.css', '.json', '.md', '.csv'];
+                const ext = '.' + file.name.split('.').pop().toLowerCase();
+                
+                if (!allowedExtensions.includes(ext)) {
+                    alert(`File type "${ext}" not supported. Allowed: ${allowedExtensions.join(', ')}`);
+                    return;
+                }
+                
+                // Check file size (max 1MB)
+                if (file.size > 1024 * 1024) {
+                    alert(`File "${file.name}" is too large. Max size: 1MB`);
+                    return;
+                }
+                
+                // Check if already attached
+                if (attachedFiles.find(f => f.name === file.name)) {
+                    alert(`File "${file.name}" is already attached.`);
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    attachedFiles.push({
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        content: e.target.result,
+                        icon: getFileIcon(file.name)
+                    });
+                    renderAttachedFiles();
+                };
+                reader.onerror = () => {
+                    alert(`Failed to read file: ${file.name}`);
+                };
+                reader.readAsText(file);
+            });
+        }
+
+        function getFileIcon(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const icons = {
+                py: '🐍', xml: '📰', txt: '📄', html: '🌐',
+                js: '📜', css: '🎨', json: '📋', md: '📘', csv: '📊'
+            };
+            return icons[ext] || '📎';
+        }
+
+        function renderAttachedFiles() {
+            const container = document.getElementById('attachedFiles');
+            container.innerHTML = '';
+            
+            attachedFiles.forEach((file, index) => {
+                const div = document.createElement('div');
+                div.className = 'attached-file';
+                div.innerHTML = `
+                    ${file.icon} ${file.name} (${(file.size / 1024).toFixed(1)}KB)
+                    <span class="remove-file" onclick="removeFile(${index})">×</span>`;
+                container.appendChild(div);
+            });
+        }
+
+        function removeFile(index) {
+            attachedFiles.splice(index, 1);
+            renderAttachedFiles();
+        }
+
+        // ============ API KEY ============
         function saveKey() {
             apiKey = document.getElementById('apiKey').value.trim();
             localStorage.setItem('ds_key', apiKey);
@@ -222,6 +347,7 @@
             }
         }
 
+        // ============ CHAT HISTORY ============
         function saveChats() { localStorage.setItem('ds_chats', JSON.stringify(chats)); }
 
         function renderChatList() {
@@ -244,12 +370,16 @@
             chats.push({ id: currentChatId, messages: [], createdAt: Date.now(), updatedAt: Date.now() });
             saveChats(); renderChatList();
             document.getElementById('messages').innerHTML = '';
+            attachedFiles = [];
+            renderAttachedFiles();
         }
 
         function loadChat(id) {
             currentChatId = id;
             const chat = chats.find(c => c.id === id);
             document.getElementById('messages').innerHTML = '';
+            attachedFiles = [];
+            renderAttachedFiles();
             if (chat?.messages) {
                 chat.messages.forEach(m => {
                     const div = document.createElement('div');
@@ -271,6 +401,7 @@
             saveChats(); renderChatList();
         }
 
+        // ============ FORMATTING ============
         function escapeHtml(text) {
             const d = document.createElement('div');
             d.textContent = text;
@@ -326,10 +457,10 @@
             }
         }
 
+        // ============ VALIDATOR ============
         function validatePython(code) {
             const issues = [];
             let parenCount = 0, bracketCount = 0, braceCount = 0;
-            
             code.split('\n').forEach((line, i) => {
                 for (const ch of line) {
                     if (ch === '(') parenCount++;
@@ -340,16 +471,13 @@
                     if (ch === '}') braceCount--;
                 }
             });
-            
             if (parenCount !== 0) issues.push({ line: 0, type: 'error', msg: `Unbalanced parentheses (${parenCount > 0 ? '+' : ''}${parenCount})` });
             if (bracketCount !== 0) issues.push({ line: 0, type: 'error', msg: `Unbalanced brackets (${bracketCount > 0 ? '+' : ''}${bracketCount})` });
             if (braceCount !== 0) issues.push({ line: 0, type: 'warn', msg: `Unbalanced braces (${braceCount > 0 ? '+' : ''}${braceCount}) - might be f-strings` });
-            
             const lastLine = code.split('\n').pop()?.trim();
             if (lastLine && (lastLine.endsWith('=') || lastLine.endsWith('(') || lastLine.endsWith(',') || lastLine.endsWith('\\'))) {
                 issues.push({ line: code.split('\n').length, type: 'warn', msg: 'Code appears truncated' });
             }
-            
             return issues;
         }
 
@@ -358,11 +486,9 @@
             const parens = (code.match(/\(/g) || []).length - (code.match(/\)/g) || []).length;
             const braces = (code.match(/\{/g) || []).length - (code.match(/\}/g) || []).length;
             const brackets = (code.match(/\[/g) || []).length - (code.match(/\]/g) || []).length;
-            
             if (parens !== 0) issues.push({ line: 0, type: 'error', msg: `Unbalanced parentheses: ${parens}` });
             if (braces !== 0) issues.push({ line: 0, type: 'error', msg: `Unbalanced braces: ${braces}` });
             if (brackets !== 0) issues.push({ line: 0, type: 'error', msg: `Unbalanced brackets: ${brackets}` });
-            
             return issues;
         }
 
@@ -378,14 +504,11 @@
             const detailsEl = document.getElementById('details-' + id);
             const badgeEl = document.getElementById('badge-' + id);
             if (!codeEl) return;
-            
             const code = codeEl.textContent;
             const lang = detectLanguage(code);
             let issues = lang === 'python' ? validatePython(code) : validateGeneric(code);
-            
             const errors = issues.filter(i => i.type === 'error');
             const warns = issues.filter(i => i.type === 'warn');
-            
             if (errors.length > 0) {
                 badgeEl.textContent = `❌ ${errors.length} error${errors.length > 1 ? 's' : ''}`;
                 badgeEl.className = 'validation-badge validation-error';
@@ -396,7 +519,6 @@
                 badgeEl.textContent = '✅ Valid';
                 badgeEl.className = 'validation-badge validation-pass';
             }
-            
             if (issues.length > 0) {
                 detailsEl.innerHTML = issues.map(i => 
                     `<div class="${i.type === 'error' ? 'error-line' : 'warn-line'}">Line ${i.line}: ${i.msg}</div>`
@@ -411,22 +533,22 @@
         function validateAllCodeBlocks() {
             const blocks = document.querySelectorAll('[data-code-id]');
             blocks.forEach(block => validateCodeBlock(block.getAttribute('data-code-id')));
-            
             const total = blocks.length;
             const errors = document.querySelectorAll('.validation-error').length;
             const warns = document.querySelectorAll('.validation-warn').length;
-            
             if (total === 0) alert('No code blocks found to validate.');
             else if (errors === 0 && warns === 0) alert(`✅ All ${total} code block(s) passed validation!`);
             else alert(`🔍 Validated ${total} code block(s): ${errors} error(s), ${warns} warning(s)`);
         }
 
+        // ============ MESSAGES ============
         function stop() {
             if (controller) { controller.abort(); controller = null; }
             isProcessing = false;
             document.getElementById('sendBtn').disabled = false;
             document.getElementById('stopBtn').style.display = 'none';
             document.getElementById('userInput').disabled = false;
+            document.getElementById('attachBtn').disabled = false;
         }
 
         async function send() {
@@ -435,23 +557,46 @@
             
             const input = document.getElementById('userInput');
             const text = input.value.trim();
-            if (!text) return;
+            if (!text && attachedFiles.length === 0) return;
+            
+            // Build message with file contents
+            let fullMessage = text;
+            if (attachedFiles.length > 0) {
+                if (fullMessage) fullMessage += '\n\n';
+                fullMessage += '--- Attached Files ---\n';
+                attachedFiles.forEach(file => {
+                    fullMessage += `\n### File: ${file.name}\n\`\`\`\n${file.content}\n\`\`\`\n`;
+                });
+            }
             
             const chat = chats.find(c => c.id === currentChatId);
-            chat.messages.push({ role: 'user', content: text });
+            const userMsg = {
+                role: 'user',
+                content: fullMessage,
+                files: attachedFiles.map(f => ({ name: f.name, type: f.type, size: f.size }))
+            };
+            chat.messages.push(userMsg);
             chat.updatedAt = Date.now();
             saveChats(); renderChatList();
             
             const div = document.createElement('div');
             div.className = 'msg user';
-            div.textContent = text;
+            if (attachedFiles.length > 0) {
+                div.innerHTML = escapeHtml(text) + 
+                    '<br><br>📎 <em>' + attachedFiles.map(f => f.name).join(', ') + '</em>';
+            } else {
+                div.textContent = text;
+            }
             document.getElementById('messages').appendChild(div);
             document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
             
             input.value = ''; input.style.height = 'auto';
+            attachedFiles = [];
+            renderAttachedFiles();
             
             isProcessing = true;
             document.getElementById('sendBtn').disabled = true;
+            document.getElementById('attachBtn').disabled = true;
             document.getElementById('stopBtn').style.display = 'inline';
             document.getElementById('userInput').disabled = true;
             controller = new AbortController();
@@ -504,6 +649,7 @@
             } finally {
                 isProcessing = false;
                 document.getElementById('sendBtn').disabled = false;
+                document.getElementById('attachBtn').disabled = false;
                 document.getElementById('stopBtn').style.display = 'none';
                 document.getElementById('userInput').disabled = false;
                 controller = null;
