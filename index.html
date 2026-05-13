@@ -12,7 +12,80 @@
             color: #e0e0e0;
             height: 100vh;
             display: flex;
+        }
+        
+        /* Sidebar */
+        #sidebar {
+            width: 260px;
+            min-width: 260px;
+            background: #0d0d0d;
+            display: flex;
             flex-direction: column;
+            border-right: 1px solid #222;
+        }
+        #sidebar-header {
+            padding: 20px 15px;
+            border-bottom: 1px solid #222;
+            font-weight: bold;
+            font-size: 18px;
+        }
+        #new-chat-btn {
+            margin: 15px;
+            padding: 10px;
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #e0e0e0;
+            cursor: pointer;
+            text-align: center;
+            font-size: 14px;
+        }
+        #new-chat-btn:hover { background: #222; }
+        #chat-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        .chat-item {
+            padding: 12px;
+            margin: 4px 0;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #999;
+            border: 1px solid transparent;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .chat-item:hover { background: #1a1a2e; color: #e0e0e0; }
+        .chat-item.active { background: #1a1a2e; border-color: #4a90d9; color: #e0e0e0; }
+        .chat-item-title {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .chat-item-delete {
+            color: #666;
+            margin-left: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .chat-item-delete:hover { color: #f44; }
+        #sidebar-footer {
+            padding: 15px;
+            border-top: 1px solid #222;
+            font-size: 12px;
+            color: #888;
+        }
+        
+        /* Main */
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
         }
         #header {
             padding: 12px 20px;
@@ -20,7 +93,7 @@
             display: flex;
             gap: 10px;
             align-items: center;
-            flex-wrap: wrap;
+            border-bottom: 1px solid #222;
         }
         #header input {
             background: #1a1a2e;
@@ -49,7 +122,7 @@
             flex: 1;
             overflow-y: auto;
             padding: 20px;
-            max-width: 900px;
+            max-width: 850px;
             margin: 0 auto;
             width: 100%;
         }
@@ -63,14 +136,8 @@
             font-size: 14px;
             line-height: 1.6;
         }
-        .user {
-            background: #16213e;
-            margin-left: auto;
-        }
-        .assistant {
-            background: #0f3460;
-            margin-right: auto;
-        }
+        .user { background: #16213e; margin-left: auto; }
+        .assistant { background: #0f3460; margin-right: auto; }
         
         .code-block {
             background: #0d0d0d;
@@ -115,9 +182,10 @@
             background: #0d0d0d;
             display: flex;
             gap: 10px;
-            max-width: 900px;
+            max-width: 850px;
             margin: 0 auto;
             width: 100%;
+            border-top: 1px solid #222;
         }
         #userInput {
             flex: 1;
@@ -142,7 +210,7 @@
             font-size: 14px;
         }
         #sendBtn:hover { background: #357abd; }
-        #sendBtn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #sendBtn:disabled { opacity: 0.5; }
         #stopBtn {
             padding: 12px 20px;
             background: #d94a4a;
@@ -156,31 +224,43 @@
     </style>
 </head>
 <body>
-    <div id="header">
-        <span style="color:#888;">API Key:</span>
-        <input type="password" id="apiKey" placeholder="sk-...">
-        <button onclick="saveKey()">Save</button>
-        <button onclick="newChat()" style="background:#555;">New Chat</button>
-        <span id="status" class="no-key">Set API key</span>
+    <div id="sidebar">
+        <div id="sidebar-header">💬 Chats</div>
+        <div id="new-chat-btn" onclick="newChat()">+ New Chat</div>
+        <div id="chat-list"></div>
+        <div id="sidebar-footer">
+            <div id="sidebarStatus"></div>
+        </div>
     </div>
     
-    <div id="messages"></div>
-    
-    <div id="input-area">
-        <textarea id="userInput" rows="1" placeholder="Ask anything..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}"></textarea>
-        <button id="sendBtn" onclick="send()">Send</button>
-        <button id="stopBtn" onclick="stop()" style="display:none;">Stop</button>
+    <div id="main">
+        <div id="header">
+            <span style="color:#888;">API Key:</span>
+            <input type="password" id="apiKey" placeholder="sk-...">
+            <button onclick="saveKey()">Save</button>
+            <span id="status" class="no-key">Set API key</span>
+        </div>
+        
+        <div id="messages"></div>
+        
+        <div id="input-area">
+            <textarea id="userInput" rows="1" placeholder="Ask anything..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}"></textarea>
+            <button id="sendBtn" onclick="send()">Send</button>
+            <button id="stopBtn" onclick="stop()" style="display:none;">Stop</button>
+        </div>
     </div>
 
     <script>
         const API_URL = 'https://api.deepseek.com/v1/chat/completions';
         let apiKey = localStorage.getItem('ds_key') || '';
-        let messages = [];
+        let chats = JSON.parse(localStorage.getItem('ds_chats') || '[]');
+        let currentChatId = null;
         let isProcessing = false;
         let controller = null;
 
         document.getElementById('apiKey').value = apiKey;
         updateStatus();
+        renderChatList();
 
         function saveKey() {
             apiKey = document.getElementById('apiKey').value.trim();
@@ -190,46 +270,108 @@
 
         function updateStatus() {
             const status = document.getElementById('status');
+            const sidebarStatus = document.getElementById('sidebarStatus');
             if (apiKey) {
                 status.textContent = 'Ready';
                 status.className = 'ready';
+                sidebarStatus.textContent = '✅ API Ready';
+                sidebarStatus.style.color = '#4caf50';
             } else {
                 status.textContent = 'Set API key';
                 status.className = 'no-key';
+                sidebarStatus.textContent = '❌ No API key';
+                sidebarStatus.style.color = '#f44336';
             }
         }
 
+        // ============ CHAT HISTORY ============
+        function saveChats() {
+            localStorage.setItem('ds_chats', JSON.stringify(chats));
+        }
+
+        function renderChatList() {
+            const list = document.getElementById('chat-list');
+            list.innerHTML = '';
+            
+            chats.sort((a, b) => b.updatedAt - a.updatedAt);
+            
+            chats.forEach(chat => {
+                const div = document.createElement('div');
+                div.className = 'chat-item' + (chat.id === currentChatId ? ' active' : '');
+                div.onclick = () => loadChat(chat.id);
+                
+                const title = chat.messages.find(m => m.role === 'user')?.content?.substring(0, 30) || 'New Chat';
+                
+                div.innerHTML = `
+                    <span class="chat-item-title">${escapeHtml(title)}</span>
+                    <span class="chat-item-delete" onclick="event.stopPropagation();deleteChat('${chat.id}')">×</span>`;
+                list.appendChild(div);
+            });
+        }
+
         function newChat() {
-            messages = [];
+            const id = 'chat_' + Date.now();
+            currentChatId = id;
+            chats.push({
+                id: id,
+                messages: [],
+                createdAt: Date.now(),
+                updatedAt: Date.now()
+            });
+            saveChats();
+            renderChatList();
             document.getElementById('messages').innerHTML = '';
         }
 
+        function loadChat(id) {
+            currentChatId = id;
+            const chat = chats.find(c => c.id === id);
+            const container = document.getElementById('messages');
+            container.innerHTML = '';
+            
+            if (chat && chat.messages) {
+                chat.messages.forEach(m => renderMessage(m));
+                container.scrollTop = container.scrollHeight;
+            }
+            renderChatList();
+        }
+
+        function deleteChat(id) {
+            chats = chats.filter(c => c.id !== id);
+            if (currentChatId === id) {
+                currentChatId = null;
+                document.getElementById('messages').innerHTML = '';
+            }
+            if (chats.length === 0) newChat();
+            else if (!currentChatId) loadChat(chats[0].id);
+            saveChats();
+            renderChatList();
+        }
+
+        // ============ FORMATTING ============
         function escapeHtml(text) {
             const d = document.createElement('div');
             d.textContent = text;
             return d.innerHTML;
         }
 
-        // The SIMPLEST formatter - only handles ``` blocks
         function formatContent(content) {
             if (!content) return '';
             
-            // Split by ``` and alternate between text and code
+            // Split by ``` and alternate text/code
             const parts = content.split('```');
             let html = '';
             
             for (let i = 0; i < parts.length; i++) {
                 if (i % 2 === 0) {
-                    // Even indices are text
                     if (parts[i].trim()) {
                         html += escapeHtml(parts[i]).replace(/\n/g, '<br>');
                     }
                 } else {
-                    // Odd indices are code
                     const code = parts[i];
-                    const newlineIdx = code.indexOf('\n');
-                    const lang = newlineIdx > -1 ? code.substring(0, newlineIdx).trim() : '';
-                    const content = newlineIdx > -1 ? code.substring(newlineIdx + 1) : code;
+                    const nl = code.indexOf('\n');
+                    const lang = nl > -1 ? code.substring(0, nl).trim() : '';
+                    const codeContent = nl > -1 ? code.substring(nl + 1) : code;
                     const id = 'c' + Math.random().toString(36).substr(2, 8);
                     const ext = lang === 'python' ? 'py' : lang === 'xml' ? 'xml' : lang === 'html' ? 'html' : 'txt';
                     
@@ -242,11 +384,10 @@
                                     <button onclick="downloadCode('${id}','${ext}')">Download</button>
                                 </span>
                             </div>
-                            <div class="code-content"><code id="${id}">${escapeHtml(content.trim())}</code></div>
+                            <div class="code-content"><code id="${id}">${escapeHtml(codeContent.trim())}</code></div>
                         </div>`;
                 }
             }
-            
             return html;
         }
 
@@ -266,15 +407,29 @@
             }
         }
 
-        function addMessage(role, content) {
-            messages.push({ role, content });
+        // ============ MESSAGES ============
+        function renderMessage(msg) {
             const div = document.createElement('div');
-            div.className = `msg ${role}`;
-            div.innerHTML = formatContent(content);
+            div.className = `msg ${msg.role}`;
+            div.innerHTML = formatContent(msg.content);
             document.getElementById('messages').appendChild(div);
-            div.scrollIntoView({ behavior: 'smooth' });
         }
 
+        function addMessage(role, content) {
+            const chat = chats.find(c => c.id === currentChatId);
+            if (!chat) return;
+            
+            chat.messages.push({ role, content });
+            chat.updatedAt = Date.now();
+            saveChats();
+            renderChatList();
+            renderMessage({ role, content });
+            
+            const container = document.getElementById('messages');
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // ============ API ============
         function stop() {
             if (controller) {
                 controller.abort();
@@ -289,6 +444,7 @@
 
         async function send() {
             if (isProcessing || !apiKey) return;
+            if (!currentChatId) newChat();
             
             const input = document.getElementById('userInput');
             const text = input.value.trim();
@@ -306,6 +462,9 @@
             controller = new AbortController();
             
             try {
+                const chat = chats.find(c => c.id === currentChatId);
+                const apiMessages = chat.messages.map(m => ({ role: m.role, content: m.content }));
+                
                 const response = await fetch(API_URL, {
                     method: 'POST',
                     headers: {
@@ -314,7 +473,7 @@
                     },
                     body: JSON.stringify({
                         model: 'deepseek-chat',
-                        messages: messages,
+                        messages: apiMessages,
                         stream: false
                     }),
                     signal: controller.signal
@@ -347,6 +506,10 @@
             this.style.height = 'auto';
             this.style.height = Math.min(this.scrollHeight, 150) + 'px';
         });
+
+        // Init
+        if (!chats.length) newChat();
+        else loadChat(chats[0].id);
     </script>
 </body>
 </html>
