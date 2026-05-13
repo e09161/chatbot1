@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="initial-scale=1.0,maximum-scale=1,minimum-scale=1.0,user-scalable=no,width=device-width,viewport-fit=cover">
-    <title>DeepSeek Chat</title>
+    <title>DeepSeek Chat - QTI Quiz Generator</title>
     <style>
         * {
             margin: 0;
@@ -13,49 +13,31 @@
 
         :root {
             --sidebar-width: 260px;
-            
-            /* Dark theme colors */
             --bg-primary: #0d1117;
             --bg-secondary: #161b22;
             --bg-tertiary: #21262d;
             --sidebar-bg: #161b22;
             --border-color: #30363d;
             --hover-bg: #21262d;
-            
-            /* Text colors */
             --text-primary: #e5e7eb;
             --text-secondary: #9ca3af;
             --text-muted: #6e7681;
-            
-            /* Accent colors */
             --accent-primary: #4f6af5;
             --accent-secondary: #6d8cff;
             --accent-gradient: linear-gradient(135deg, #4f6af5 0%, #6d8cff 100%);
-            
-            /* Gauge colors */
             --gauge-low: #2ea043;
             --gauge-medium: #f0883e;
             --gauge-high: #f85149;
             --gauge-track: #2d333b;
-            
-            /* Stop button colors */
             --stop-color: #f85149;
             --stop-hover: #f97066;
-            
-            /* Message colors */
             --user-message-bg: #4f6af5;
             --assistant-message-bg: #21262d;
-            
-            /* Code block styling */
             --code-bg: #0d1117;
             --code-text: #e5e7eb;
-            
-            /* Status colors */
             --success: #2ea043;
             --error: #f85149;
             --warning: #f0883e;
-            
-            /* Drag and drop highlight */
             --drag-highlight: rgba(79, 106, 245, 0.2);
             --drag-border: #4f6af5;
         }
@@ -82,6 +64,7 @@
             display: flex;
             flex-direction: column;
             position: relative;
+            min-width: var(--sidebar-width);
         }
 
         .sidebar-header {
@@ -152,10 +135,6 @@
             border-radius: 3px;
         }
 
-        .chat-history::-webkit-scrollbar-thumb:hover {
-            background: var(--text-muted);
-        }
-
         .history-item {
             padding: 12px;
             margin: 4px 0;
@@ -166,7 +145,6 @@
             align-items: center;
             gap: 10px;
             transition: background 0.2s;
-            position: relative;
             border: 1px solid transparent;
             color: var(--text-secondary);
         }
@@ -191,11 +169,13 @@
             align-items: center;
             justify-content: center;
             color: var(--accent-primary);
+            flex-shrink: 0;
         }
 
         .history-item-content {
             flex: 1;
             overflow: hidden;
+            min-width: 0;
         }
 
         .history-item-title {
@@ -214,6 +194,7 @@
         .history-item-actions {
             display: none;
             gap: 4px;
+            flex-shrink: 0;
         }
 
         .history-item:hover .history-item-actions {
@@ -273,6 +254,7 @@
             display: flex;
             flex-direction: column;
             background: var(--bg-primary);
+            min-width: 0;
         }
 
         .chat-header {
@@ -284,7 +266,6 @@
             background: var(--bg-secondary);
             flex-wrap: wrap;
             gap: 12px;
-            position: relative;
         }
 
         .chat-title {
@@ -300,7 +281,6 @@
             flex-wrap: wrap;
         }
 
-        /* Collapsible Gauge Panel */
         .gauge-panel {
             position: relative;
         }
@@ -323,17 +303,6 @@
             border-color: var(--accent-primary);
             background: var(--hover-bg);
             color: var(--text-primary);
-        }
-
-        .gauge-panel-toggle svg {
-            width: 16px;
-            height: 16px;
-            fill: var(--text-secondary);
-            transition: transform 0.2s;
-        }
-
-        .gauge-panel-toggle:hover svg {
-            fill: var(--accent-primary);
         }
 
         .gauge-panel-content {
@@ -362,7 +331,6 @@
             pointer-events: all;
         }
 
-        /* Gauge Controls */
         .gauge-container {
             display: flex;
             flex-direction: column;
@@ -381,12 +349,6 @@
             align-items: center;
             font-size: 12px;
             color: var(--text-secondary);
-        }
-
-        .gauge-label {
-            display: flex;
-            align-items: center;
-            gap: 4px;
         }
 
         .gauge-value {
@@ -434,24 +396,6 @@
             transform: translate(-50%, -50%);
             cursor: grab;
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-            transition: transform 0.1s;
-        }
-
-        .gauge-handle:hover {
-            transform: translate(-50%, -50%) scale(1.2);
-        }
-
-        .gauge-handle:active {
-            cursor: grabbing;
-        }
-
-        .gauge-markers {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 4px;
-            font-size: 9px;
-            color: var(--text-muted);
-            padding: 0 2px;
         }
 
         .preset-buttons {
@@ -476,12 +420,6 @@
             color: var(--accent-primary);
         }
 
-        .preset-btn.active {
-            background: var(--accent-primary);
-            border-color: var(--accent-primary);
-            color: white;
-        }
-
         .api-key-container {
             display: flex;
             gap: 8px;
@@ -495,17 +433,12 @@
             width: 200px;
             font-size: 13px;
             outline: none;
-            transition: border-color 0.2s;
             background: var(--bg-tertiary);
             color: var(--text-primary);
         }
 
         .api-key-input:focus {
             border-color: var(--accent-primary);
-        }
-
-        .api-key-input::placeholder {
-            color: var(--text-muted);
         }
 
         .save-btn {
@@ -529,7 +462,6 @@
             overflow-y: auto;
             padding: 24px;
             background: var(--bg-primary);
-            position: relative;
         }
 
         .messages-container::-webkit-scrollbar {
@@ -543,10 +475,6 @@
         .messages-container::-webkit-scrollbar-thumb {
             background: var(--border-color);
             border-radius: 3px;
-        }
-
-        .messages-container::-webkit-scrollbar-thumb:hover {
-            background: var(--text-muted);
         }
 
         .message {
@@ -570,10 +498,6 @@
             margin-bottom: 6px;
             font-size: 13px;
             color: var(--text-secondary);
-        }
-
-        .message.user .message-header {
-            flex-direction: row-reverse;
         }
 
         .message-avatar {
@@ -626,6 +550,7 @@
             overflow: hidden;
             border: 1px solid var(--border-color);
             background: var(--code-bg);
+            max-width: 100%;
         }
 
         .code-block {
@@ -639,7 +564,6 @@
             border-left: 4px solid var(--accent-primary);
             white-space: pre-wrap;
             word-break: break-word;
-            max-width: 100%;
         }
 
         .code-block pre {
@@ -710,7 +634,6 @@
             margin-right: 36px;
         }
 
-        /* Incomplete code indicator */
         .incomplete-badge {
             display: inline-flex;
             align-items: center;
@@ -722,34 +645,6 @@
             font-size: 10px;
             font-weight: 600;
             margin-left: 8px;
-        }
-
-        /* File attachments styling */
-        .file-attachment {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 8px 12px;
-            margin: 8px 0;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            border: 1px solid var(--border-color);
-        }
-
-        .image-preview {
-            max-width: 200px;
-            max-height: 200px;
-            border-radius: 8px;
-            margin: 8px 0;
-            cursor: pointer;
-            transition: transform 0.2s;
-            border: 1px solid var(--border-color);
-        }
-
-        .image-preview:hover {
-            transform: scale(1.02);
-            border-color: var(--accent-primary);
         }
 
         /* Typing indicator */
@@ -783,78 +678,11 @@
             padding: 20px 24px;
             background: var(--bg-secondary);
             border-top: 1px solid var(--border-color);
-            transition: background-color 0.2s ease, border-color 0.2s ease;
         }
 
         .input-area.drag-over {
             background: var(--drag-highlight);
             border-top: 2px dashed var(--drag-border);
-        }
-
-        .file-upload-bar {
-            display: flex;
-            gap: 12px;
-            margin-bottom: 12px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .file-upload-btn {
-            background: var(--bg-tertiary);
-            border: 1px dashed var(--border-color);
-            border-radius: 20px;
-            padding: 8px 16px;
-            font-size: 13px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s;
-            color: var(--text-secondary);
-        }
-
-        .file-upload-btn:hover {
-            border-color: var(--accent-primary);
-            background: var(--hover-bg);
-            color: var(--text-primary);
-        }
-
-        .drag-drop-hint {
-            font-size: 12px;
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .attached-files {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-bottom: 12px;
-        }
-
-        .attached-file {
-            background: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: 16px;
-            padding: 4px 12px;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            color: var(--text-secondary);
-        }
-
-        .attached-file .remove-file {
-            cursor: pointer;
-            color: var(--error);
-            font-weight: bold;
-            margin-left: 4px;
-        }
-
-        .attached-file .remove-file:hover {
-            color: #ff6b6b;
         }
 
         .input-container {
@@ -873,7 +701,6 @@
             font-family: inherit;
             max-height: 120px;
             outline: none;
-            transition: border-color 0.2s, background-color 0.2s;
             background: var(--bg-tertiary);
             color: var(--text-primary);
         }
@@ -888,13 +715,7 @@
             opacity: 0.7;
         }
 
-        textarea::placeholder {
-            color: var(--text-muted);
-        }
-
-        .send-btn {
-            background: var(--accent-gradient);
-            color: white;
+        .send-btn, .stop-btn, .continue-btn {
             border: none;
             border-radius: 50%;
             width: 46px;
@@ -907,6 +728,11 @@
             flex-shrink: 0;
         }
 
+        .send-btn {
+            background: var(--accent-gradient);
+            color: white;
+        }
+
         .send-btn:hover:not(:disabled) {
             transform: scale(1.05);
         }
@@ -916,7 +742,7 @@
             cursor: not-allowed;
         }
 
-        .send-btn svg {
+        .send-btn svg, .stop-btn svg, .continue-btn svg {
             width: 20px;
             height: 20px;
             fill: white;
@@ -925,16 +751,6 @@
         .stop-btn {
             background: var(--stop-color);
             color: white;
-            border: none;
-            border-radius: 50%;
-            width: 46px;
-            height: 46px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.2s;
-            flex-shrink: 0;
             animation: pulse-red 2s infinite;
         }
 
@@ -943,10 +759,14 @@
             transform: scale(1.05);
         }
 
-        .stop-btn svg {
-            width: 20px;
-            height: 20px;
-            fill: white;
+        .continue-btn {
+            background: var(--success);
+            color: white;
+        }
+
+        .continue-btn:hover {
+            background: #3fb950;
+            transform: scale(1.05);
         }
 
         @keyframes pulse-red {
@@ -1058,18 +878,45 @@
             from { transform: translateX(100%); opacity: 0; }
             to { transform: translateX(0); opacity: 1; }
         }
+
+        .btn-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                display: none;
+            }
+            
+            .message-content {
+                max-width: 95%;
+            }
+            
+            .controls-container {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .gauge-panel-content {
+                left: 0;
+                right: auto;
+                min-width: 300px;
+            }
+        }
     </style>
 </head>
 <body>
     <div class="app-container">
-        <!-- Left Sidebar -->
+        <!-- Sidebar -->
         <div class="sidebar">
             <div class="sidebar-header">
                 <div class="logo">
                     <svg viewBox="0 0 24 24" fill="#4f6af5">
                         <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z"/>
                     </svg>
-                    <span>DeepSeek</span>
+                    <span>DeepSeek QTI</span>
                 </div>
             </div>
 
@@ -1098,44 +945,37 @@
                 <div class="controls-container">
                     <div class="gauge-panel">
                         <div class="gauge-panel-toggle">
-                            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm0-14c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6-2.69-6-6-6z"/></svg>
+                            <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" fill="currentColor"/></svg>
                             <span>⚙️ Settings</span>
                         </div>
                         <div class="gauge-panel-content">
                             <div class="gauge-container">
                                 <div class="gauge-item">
                                     <div class="gauge-header">
-                                        <span class="gauge-label">🌡️ Temperature <span class="gauge-value" id="tempValue">0.7</span></span>
+                                        <span>🌡️ Temperature <span class="gauge-value" id="tempValue">0.7</span></span>
                                     </div>
                                     <div class="gauge-track" id="tempTrack" onclick="setTemperatureFromClick(event)">
                                         <div class="gauge-fill temperature" id="tempFill" style="width: 35%">
                                             <div class="gauge-handle" id="tempHandle" onmousedown="startDragTemp(event)"></div>
                                         </div>
                                     </div>
-                                    <div class="gauge-markers">
-                                        <span>Precise (0.1)</span><span>Creative (1.0)</span><span>Random (2.0)</span>
-                                    </div>
                                     <div class="preset-buttons">
                                         <button class="preset-btn" onclick="setTemperature(0.1)">Precise</button>
                                         <button class="preset-btn" onclick="setTemperature(0.3)">Consistent</button>
                                         <button class="preset-btn" onclick="setTemperature(0.7)">Balanced</button>
-                                        <button class="preset-btn" onclick="setTemperature(1.2)">Creative</button>
+                                        <button class="preset-btn" onclick="setTemperature(1.0)">Creative</button>
                                     </div>
                                 </div>
                                 <div class="gauge-item">
                                     <div class="gauge-header">
-                                        <span class="gauge-label">📦 Max Tokens <span class="gauge-value" id="tokenLimitValue">8000</span></span>
+                                        <span>📦 Max Tokens <span class="gauge-value" id="tokenLimitValue">8000</span></span>
                                     </div>
                                     <div class="gauge-track" id="tokenTrack" onclick="setTokenLimitFromClick(event)">
                                         <div class="gauge-fill tokens" id="tokenFill" style="width: 100%">
                                             <div class="gauge-handle" id="tokenHandle" onmousedown="startDragToken(event)"></div>
                                         </div>
                                     </div>
-                                    <div class="gauge-markers">
-                                        <span>1K</span><span>4K</span><span>8K</span>
-                                    </div>
                                     <div class="preset-buttons">
-                                        <button class="preset-btn" onclick="setTokenLimit(1000)">1K</button>
                                         <button class="preset-btn" onclick="setTokenLimit(2000)">2K</button>
                                         <button class="preset-btn" onclick="setTokenLimit(4000)">4K</button>
                                         <button class="preset-btn" onclick="setTokenLimit(8000)">8K</button>
@@ -1155,8 +995,8 @@
             <div id="messages" class="messages-container"></div>
             
             <div class="usage-info" id="usageInfo">
-                <span>💰 No limits - Using your own API key</span>
-                <div class="current-settings" id="currentSettings">
+                <span>💰 Using your own API key</span>
+                <div class="current-settings">
                     <span class="setting-badge">🌡️ <span id="currentTemp">0.7</span></span>
                     <span class="setting-badge">📦 <span id="currentTokens">8000</span></span>
                 </div>
@@ -1167,33 +1007,21 @@
             </div>
             
             <div class="input-area" id="inputArea">
-                <div class="file-upload-bar">
-                    <label for="fileInput" class="file-upload-btn">
-                        <svg viewBox="0 0 24 24"><path d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5c0-1.38 1.12-2.5 2.5-2.5s2.5 1.12 2.5 2.5v10.5c0 .55-.45 1-1 1s-1-.45-1-1V6H10v9.5c0 1.38 1.12 2.5 2.5 2.5s2.5-1.12 2.5-2.5V5c0-2.21-1.79-4-4-4S7 2.79 7 5v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/></svg>
-                        Attach Files
-                    </label>
-                    <input type="file" id="fileInput" multiple accept=".txt,.py,image/*" style="display: none;" onchange="handleFileSelect(event)">
-                    <div class="drag-drop-hint">
-                        <svg viewBox="0 0 24 24" width="14" height="14"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-                        <span>Drag & drop files here or paste images</span>
-                    </div>
-                </div>
-                
-                <div id="attachedFiles" class="attached-files"></div>
-                
                 <div class="input-container">
                     <textarea 
                         id="userInput" 
-                        placeholder="Message DeepSeek... (Shift+Enter for new line, Enter to send)" 
+                        placeholder="Ask me to create QTI Canvas quizzes, Python scripts, or XML files... (Shift+Enter for new line)" 
                         rows="1"
                         onkeydown="handleKeyDown(event)"
-                        onpaste="handlePaste(event)"
                     ></textarea>
                     <button onclick="sendMessage()" id="sendBtn" class="send-btn">
                         <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
                     </button>
                     <button onclick="stopGeneration()" id="stopBtn" class="stop-btn" style="display: none;">
                         <svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>
+                    </button>
+                    <button onclick="continueGeneration()" id="continueBtn" class="continue-btn" style="display: none;">
+                        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                     </button>
                 </div>
             </div>
@@ -1211,11 +1039,25 @@
 
     <script>
         const DEEPSEEK_API_URL = 'https://api.deepseek.com/v1/chat/completions';
+        
+        // System prompt to ensure proper code formatting
+        const SYSTEM_PROMPT = `You are a QTI Canvas quiz generator and Python coding assistant. 
+
+IMPORTANT RULES:
+1. ALWAYS wrap code in markdown code blocks with language specified: \`\`\`python or \`\`\`xml or \`\`\`html
+2. NEVER include stray text like "Copy", "Download", "python", "xml" outside code blocks
+3. Keep conversational text and code completely separate
+4. When creating Python scripts, ensure proper indentation (4 spaces)
+5. When creating XML, ensure proper nesting and closing tags
+6. Provide COMPLETE, working code - never truncate functions
+7. If code is very long, use multiple code blocks but keep each function/class complete
+8. Use proper string escaping: for triple-quoted strings, use consistent quotes
+9. For QTI/Canvas XML, use proper namespaces and schema references`;
+
         let conversations = [];
         let currentConversationId = null;
         let apiKey = '';
         let isProcessing = false;
-        let attachedFiles = [];
         let abortController = null;
         let generationStartTime = null;
         let generationTimer = null;
@@ -1223,53 +1065,220 @@
         let maxTokens = 8000;
         let isDraggingTemp = false;
         let isDraggingToken = false;
+        let lastIncompleteMessage = null;
 
-        // ==================== FIXED: Clean content formatting ====================
+        // ==================== IMPROVED CONTENT FORMATTER ====================
         function formatMessageContent(content) {
             if (!content) return '';
             
-            // Split by markdown code blocks (```...```)
-            const parts = content.split(/(```[\s\S]*?```)/g);
-            let result = '';
+            // Step 1: Extract markdown code blocks
+            const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
+            const codeBlocks = [];
+            let processedContent = content;
+            let match;
             
-            parts.forEach(part => {
-                if (part.startsWith('```') && part.endsWith('```')) {
-                    // This is a code block
-                    const codeContent = part.slice(3, -3);
-                    const firstNewline = codeContent.indexOf('\n');
-                    let language = 'text';
-                    let code = codeContent;
-                    
-                    if (firstNewline !== -1) {
-                        language = codeContent.substring(0, firstNewline).trim() || 'text';
-                        code = codeContent.substring(firstNewline + 1);
+            while ((match = codeBlockRegex.exec(content)) !== null) {
+                codeBlocks.push({
+                    language: match[1] || detectLanguage(match[2]),
+                    code: match[2].trim()
+                });
+            }
+            
+            // Replace code blocks with placeholders
+            let blockIndex = 0;
+            processedContent = content.replace(codeBlockRegex, () => {
+                return `__CODE_BLOCK_${blockIndex++}__`;
+            });
+            
+            // Step 2: Detect unfenced code
+            const lines = processedContent.split('\n');
+            const parts = [];
+            let currentText = [];
+            let currentCode = [];
+            let inCode = false;
+            
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const trimmed = line.trim();
+                
+                // Check for placeholder
+                const placeholderMatch = trimmed.match(/^__CODE_BLOCK_(\d+)__$/);
+                if (placeholderMatch) {
+                    // Flush text
+                    if (currentText.length > 0) {
+                        parts.push({ type: 'text', content: currentText.join('\n') });
+                        currentText = [];
                     }
+                    // Flush code
+                    if (currentCode.length > 0) {
+                        parts.push({ 
+                            type: 'code', 
+                            language: detectLanguage(currentCode.join('\n')), 
+                            content: currentCode.join('\n') 
+                        });
+                        currentCode = [];
+                        inCode = false;
+                    }
+                    // Add code block
+                    const idx = parseInt(placeholderMatch[1]);
+                    if (codeBlocks[idx]) {
+                        parts.push({ type: 'code', ...codeBlocks[idx] });
+                    }
+                    continue;
+                }
+                
+                const isCodeLine = isLikelyCode(trimmed);
+                
+                if (isCodeLine && !inCode && currentText.length > 0) {
+                    // Check if this is really the start of code
+                    const textSoFar = currentText.join(' ');
+                    if (textSoFar.match(/[.!?]$/) || currentText.length >= 3) {
+                        // End of paragraph, start code
+                        parts.push({ type: 'text', content: currentText.join('\n') });
+                        currentText = [];
+                        inCode = true;
+                        currentCode.push(line);
+                    } else {
+                        // Might be a false positive, keep as text
+                        currentText.push(line);
+                    }
+                } else if (isCodeLine && !inCode) {
+                    inCode = true;
+                    currentCode.push(line);
+                } else if (isCodeLine && inCode) {
+                    currentCode.push(line);
+                } else if (!isCodeLine && inCode) {
+                    // Might be end of code
+                    if (trimmed === '' && i < lines.length - 1) {
+                        const nextLine = lines[i + 1]?.trim() || '';
+                        if (!isLikelyCode(nextLine) && nextLine.length > 0) {
+                            // End of code block
+                            parts.push({ 
+                                type: 'code', 
+                                language: detectLanguage(currentCode.join('\n')), 
+                                content: currentCode.join('\n') 
+                            });
+                            currentCode = [];
+                            inCode = false;
+                            currentText.push(line);
+                        } else {
+                            currentCode.push(line);
+                        }
+                    } else if (trimmed.length > 0 && !trimmed.match(/^[#\/]/)) {
+                        // Non-code, non-comment line after code
+                        parts.push({ 
+                            type: 'code', 
+                            language: detectLanguage(currentCode.join('\n')), 
+                            content: currentCode.join('\n') 
+                        });
+                        currentCode = [];
+                        inCode = false;
+                        currentText.push(line);
+                    } else {
+                        currentCode.push(line);
+                    }
+                } else {
+                    currentText.push(line);
+                }
+            }
+            
+            // Flush remaining
+            if (currentCode.length > 0) {
+                parts.push({ 
+                    type: 'code', 
+                    language: detectLanguage(currentCode.join('\n')), 
+                    content: currentCode.join('\n') 
+                });
+            }
+            if (currentText.length > 0) {
+                parts.push({ type: 'text', content: currentText.join('\n') });
+            }
+            
+            // Step 3: Convert to HTML
+            let html = '';
+            parts.forEach(part => {
+                if (part.type === 'text' && part.content.trim()) {
+                    html += escapeHtml(part.content).replace(/\n/g, '<br>');
+                } else if (part.type === 'code' && part.content.trim()) {
+                    const codeId = 'code_' + Math.random().toString(36).substr(2, 9);
+                    const ext = part.language === 'python' ? 'py' : 
+                               part.language === 'xml' ? 'xml' :
+                               part.language === 'html' ? 'html' :
+                               part.language === 'javascript' ? 'js' : 'txt';
                     
-                    const codeId = 'code_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                    const ext = language === 'python' ? 'py' : 
-                               language === 'xml' || language === 'html' ? language : 'txt';
-                    
-                    result += `
+                    html += `
                         <div class="code-block-wrapper">
                             <div class="code-header">
-                                <span>${escapeHtml(language)}</span>
+                                <span>${escapeHtml(part.language)}</span>
                                 <div>
-                                    <button class="copy-code-btn" onclick="copyCode('${codeId}')">Copy</button>
-                                    <button class="download-code-btn" onclick="downloadCode('${codeId}', '${ext}')">Download</button>
+                                    <button class="copy-code-btn" onclick="window.copyCode('${codeId}')">📋 Copy</button>
+                                    <button class="download-code-btn" onclick="window.downloadCode('${codeId}', '${ext}')">💾 Download</button>
                                 </div>
                             </div>
                             <div class="code-block">
-                                <pre><code id="${codeId}">${escapeHtml(code.trim())}</code></pre>
+                                <pre><code id="${codeId}">${escapeHtml(part.content)}</code></pre>
                             </div>
                         </div>
                     `;
-                } else if (part.trim()) {
-                    // This is regular text
-                    result += escapeHtml(part).replace(/\n/g, '<br>');
                 }
             });
             
-            return result;
+            return html || escapeHtml(content).replace(/\n/g, '<br>');
+        }
+
+        function isLikelyCode(line) {
+            if (!line || line.length === 0) return false;
+            
+            const codePatterns = [
+                /^(import |from |def |class |return |if |elif |else:|for |while |try:|except|finally:|with |async |await |yield |raise |pass|break|continue|print\(|assert |del |global |nonlocal |lambda )/,
+                /^(const |let |var |function |export |require\()/,
+                /^@\w+/,
+                /^[a-zA-Z_]\w*\s*[:=]\s*/,
+                /^[a-zA-Z_]\w*\(/,
+                /^\s{4,}\S/,
+                /^\t\S/,
+                /^[)}>\]"']/,
+                /^<\?xml/,
+                /^<![A-Z]/,
+                /^<\/?\w+[>\s]/,
+                /^".*":\s*/,
+                /^#.*$/,
+                /^\/\/.*$/,
+                /^\/\*.*$/,
+                /^\*.*\*\/$/,
+                /^[a-zA-Z_]\w*\s*\+=\s*/,
+                /^[a-zA-Z_]\w*\s*=\s*\{/,
+                /^[a-zA-Z_]\w*\s*=\s*\[/,
+                /^[a-zA-Z_]\w*\s*=\s*\(/,
+                /^ET\.\w+/,
+                /^os\.\w+/,
+                /^datetime\.\w+/,
+                /^zipfile\.\w+/,
+                /^xml\.\w+/,
+            ];
+            
+            return codePatterns.some(pattern => pattern.test(line));
+        }
+
+        function detectLanguage(code) {
+            if (!code || code.trim().length === 0) return 'text';
+            
+            const indicators = {
+                python: /^(import |from |def |class |if __name__|with open|ET\.|os\.)/m,
+                xml: /^<\?xml|<[^>]+xmlns|<manifest|<questestinterop|<quiz/i,
+                html: /<(!DOCTYPE|html|head|body|div|span|script|style)\b/i,
+                javascript: /^(const |let |var |function |=>|require\(|document\.|window\.)/m,
+                css: /[{]\s*[\w-]+\s*:/,
+                json: /^[{[]\s*"[^"]+"\s*:/m,
+                bash: /^(#!\/bin\/|apt-get|npm |pip |git |cd |ls |mkdir)/m,
+                sql: /^(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP)\s/i
+            };
+            
+            for (const [lang, pattern] of Object.entries(indicators)) {
+                if (pattern.test(code)) return lang;
+            }
+            
+            return 'text';
         }
 
         function escapeHtml(text) {
@@ -1281,38 +1290,22 @@
         function isMessageIncomplete(content) {
             if (!content) return false;
             const codeBlockCount = (content.match(/```/g) || []).length;
-            return codeBlockCount % 2 !== 0;
+            if (codeBlockCount % 2 !== 0) return true;
+            
+            // Check for truncated functions
+            const lastLines = content.split('\n').slice(-5).join('\n');
+            if (lastLines.includes('def ') && !lastLines.includes('return') && !lastLines.includes('pass')) {
+                return true;
+            }
+            
+            // Check for truncated strings
+            const tripleQuotes = (content.match(/'''/g) || []).length;
+            if (tripleQuotes % 2 !== 0) return true;
+            
+            return false;
         }
 
-        // Global copy function
-        window.copyCode = function(elementId) {
-            const codeElement = document.getElementById(elementId);
-            if (codeElement) {
-                navigator.clipboard.writeText(codeElement.textContent).then(() => {
-                    showPasteNotification('✅ Code copied to clipboard!');
-                }).catch(() => {
-                    showPasteNotification('❌ Failed to copy code');
-                });
-            }
-        };
-
-        // Global download function
-        window.downloadCode = function(elementId, ext) {
-            const codeElement = document.getElementById(elementId);
-            if (codeElement) {
-                const blob = new Blob([codeElement.textContent], { type: 'text/plain' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `code_${Date.now()}.${ext}`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }
-        };
-
-        // ==================== Core functions ====================
+        // ==================== CORE FUNCTIONS ====================
         function loadApiKey() {
             const savedKey = localStorage.getItem('deepseek_api_key');
             if (savedKey) {
@@ -1328,7 +1321,7 @@
                 apiKey = newKey;
                 localStorage.setItem('deepseek_api_key', newKey);
                 updateApiStatus();
-                if (currentConversationId) addSystemMessage('✅ API key saved successfully!');
+                showPasteNotification('✅ API key saved!');
             } else {
                 alert('Please enter a valid DeepSeek API key (starts with "sk-")');
             }
@@ -1388,7 +1381,7 @@
                         <div class="history-item-date">${date}</div>
                     </div>
                     <div class="history-item-actions">
-                        <button class="action-btn" onclick="event.stopPropagation(); deleteConversation('${conv.id}')">🗑️</button>
+                        <button class="action-btn" onclick="event.stopPropagation(); deleteConversation('${conv.id}')" title="Delete">🗑️</button>
                     </div>
                 `;
                 historyEl.appendChild(item);
@@ -1399,7 +1392,6 @@
             const newId = 'chat_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             conversations.push({
                 id: newId,
-                title: 'New Chat',
                 messages: [],
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString()
@@ -1414,7 +1406,7 @@
             const conversation = conversations.find(c => c.id === conversationId);
             if (conversation) {
                 document.getElementById('currentChatTitle').textContent = 
-                    conversation.messages?.find(m => m.role === 'user')?.content?.substring(0, 30) + '...' || 'New Chat';
+                    conversation.messages?.find(m => m.role === 'user')?.content?.substring(0, 40) + '...' || 'New Chat';
                 
                 const messagesContainer = document.getElementById('messages');
                 messagesContainer.innerHTML = '';
@@ -1423,6 +1415,7 @@
                 }
             }
             renderChatHistory();
+            updateContinueButton();
         }
 
         function deleteConversation(conversationId) {
@@ -1435,19 +1428,20 @@
         }
 
         function addWelcomeMessage() {
-            addSystemMessage(`🌙 **DeepSeek Chat**
+            const msg = {
+                role: 'assistant',
+                content: `🎓 **QTI Canvas Quiz Generator Ready!**
 
-👋 Hello! I'm ready to help you create QTI Canvas quizzes and other code.
+I can create complete Canvas-compatible QTI quizzes with:
+• Multiple choice, fill-in-blanks, matching questions
+• Proper XML formatting with namespaces
+• HTML practice files with timers
+• Answer guides and ZIP packages
 
-**Tips for best results:**
-• Ask me to create complete Python scripts or QTI XML packages
-• I'll format code properly in code blocks with Copy/Download buttons
-• Use the Settings panel to adjust Temperature and Max Tokens
-• Temperature: ${temperature.toFixed(1)} | Max Tokens: ${maxTokens}`);
-        }
-
-        function addSystemMessage(content) {
-            const msg = { role: 'assistant', content, timestamp: new Date().toLocaleTimeString() };
+**Just describe the quiz you want!** Example:
+"Create a fill-in-multiple-blanks exercise for question formation with 8 prompts"`,
+                timestamp: new Date().toLocaleTimeString()
+            };
             addMessageToCurrentConversation(msg);
             displayMessage(msg);
         }
@@ -1480,7 +1474,7 @@
             if (message.role === 'assistant' && isMessageIncomplete(message.content)) {
                 const badge = document.createElement('span');
                 badge.className = 'incomplete-badge';
-                badge.innerHTML = '⚠️ May be incomplete - Type "continue"';
+                badge.innerHTML = '⚠️ May be incomplete';
                 nameSpan.appendChild(badge);
             }
             
@@ -1489,26 +1483,7 @@
             
             const contentDiv = document.createElement('div');
             contentDiv.className = 'message-content';
-            
-            // Display files
-            if (message.files && message.files.length > 0) {
-                message.files.forEach(file => {
-                    if (file.type?.startsWith('image/')) {
-                        const img = document.createElement('img');
-                        img.src = file.data;
-                        img.className = 'image-preview';
-                        img.onclick = () => openModal(file.data);
-                        contentDiv.appendChild(img);
-                    } else if (file.name) {
-                        const fileDiv = document.createElement('div');
-                        fileDiv.className = 'file-attachment';
-                        fileDiv.innerHTML = `<span>${file.icon || '📎'}</span><span>${escapeHtml(file.name)}</span>`;
-                        contentDiv.appendChild(fileDiv);
-                    }
-                });
-            }
-            
-            contentDiv.innerHTML += formatMessageContent(message.content);
+            contentDiv.innerHTML = formatMessageContent(message.content);
             
             const timeDiv = document.createElement('div');
             timeDiv.className = 'message-time';
@@ -1521,91 +1496,33 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        // ==================== File handling ====================
-        function handleFileSelect(event) {
-            processDroppedFiles(Array.from(event.target.files));
-            event.target.value = '';
-        }
-
-        function processDroppedFiles(files) {
-            files.forEach(file => {
-                if (file.size > 10 * 1024 * 1024) {
-                    showPasteNotification(`❌ File too large: ${file.name} (max 10MB)`);
-                    return;
-                }
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    attachedFiles.push({
-                        name: file.name,
-                        type: file.type,
-                        size: file.size,
-                        data: e.target.result,
-                        icon: getFileIcon(file.name)
-                    });
-                    displayAttachedFiles();
-                    showPasteNotification(`✅ Added: ${file.name}`);
-                };
-                reader.onerror = () => showPasteNotification(`❌ Failed to read: ${file.name}`);
-                if (file.type.startsWith('image/')) reader.readAsDataURL(file);
-                else reader.readAsText(file);
-            });
-        }
-
-        function handlePaste(event) {
-            const items = (event.clipboardData || window.clipboardData).items;
-            for (let item of items) {
-                if (item.type.indexOf('image') !== -1) {
-                    event.preventDefault();
-                    const file = item.getAsFile();
-                    if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (e) => {
-                            attachedFiles.push({
-                                name: `pasted_image_${Date.now()}.png`,
-                                type: 'image/png',
-                                size: file.size,
-                                data: e.target.result,
-                                icon: '📸'
-                            });
-                            displayAttachedFiles();
-                            showPasteNotification('✅ Image pasted!');
-                        };
-                        reader.readAsDataURL(file);
-                    }
-                    break;
-                }
+        // ==================== GLOBAL FUNCTIONS ====================
+        window.copyCode = function(elementId) {
+            const codeElement = document.getElementById(elementId);
+            if (codeElement) {
+                navigator.clipboard.writeText(codeElement.textContent).then(() => {
+                    showPasteNotification('✅ Code copied!');
+                }).catch(() => {
+                    showPasteNotification('❌ Failed to copy');
+                });
             }
-        }
+        };
 
-        function getFileIcon(fileName) {
-            const ext = fileName.split('.').pop().toLowerCase();
-            const icons = {
-                py: '🐍', txt: '📄', jpg: '📸', jpeg: '📸', png: '📸', gif: '📸', webp: '📸',
-                pdf: '📑', doc: '📝', docx: '📝', xls: '📊', xlsx: '📊', json: '📋',
-                js: '📜', html: '🌐', htm: '🌐', css: '🎨', md: '📘', xml: '📰'
-            };
-            return icons[ext] || '📎';
-        }
-
-        function displayAttachedFiles() {
-            const container = document.getElementById('attachedFiles');
-            container.innerHTML = '';
-            attachedFiles.forEach((file, index) => {
-                const fileDiv = document.createElement('div');
-                fileDiv.className = 'attached-file';
-                let preview = file.icon;
-                if (file.type?.startsWith('image/')) {
-                    preview = `<img src="${file.data}" style="width:20px;height:20px;border-radius:3px;object-fit:cover;">`;
-                }
-                fileDiv.innerHTML = `${preview} <span>${escapeHtml(file.name)}</span> <span class="remove-file" onclick="removeFile(${index})">✕</span>`;
-                container.appendChild(fileDiv);
-            });
-        }
-
-        function removeFile(index) {
-            attachedFiles.splice(index, 1);
-            displayAttachedFiles();
-        }
+        window.downloadCode = function(elementId, ext) {
+            const codeElement = document.getElementById(elementId);
+            if (codeElement) {
+                const blob = new Blob([codeElement.textContent], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `code_${Date.now()}.${ext}`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                showPasteNotification('✅ Downloaded!');
+            }
+        };
 
         function showPasteNotification(message) {
             const notification = document.getElementById('pasteNotification');
@@ -1619,7 +1536,7 @@
             }, 3000);
         }
 
-        // ==================== Message handling ====================
+        // ==================== MESSAGE HANDLING ====================
         function handleKeyDown(event) {
             if (event.key === 'Enter' && !event.shiftKey) {
                 event.preventDefault();
@@ -1667,6 +1584,18 @@
             document.getElementById('generationStatus').style.display = 'none';
         }
 
+        function updateContinueButton() {
+            const conversation = conversations.find(c => c.id === currentConversationId);
+            if (conversation && conversation.messages && conversation.messages.length > 0) {
+                const lastMsg = conversation.messages[conversation.messages.length - 1];
+                if (lastMsg.role === 'assistant' && isMessageIncomplete(lastMsg.content)) {
+                    lastIncompleteMessage = lastMsg;
+                } else {
+                    lastIncompleteMessage = null;
+                }
+            }
+        }
+
         function stopGeneration() {
             if (abortController) {
                 abortController.abort();
@@ -1677,7 +1606,37 @@
                 document.getElementById('userInput').disabled = false;
                 document.getElementById('sendBtn').style.display = 'flex';
                 document.getElementById('stopBtn').style.display = 'none';
+                document.getElementById('continueBtn').style.display = 'none';
+                updateContinueButton();
             }
+        }
+
+        function continueGeneration() {
+            const conversation = conversations.find(c => c.id === currentConversationId);
+            if (!conversation || !conversation.messages || conversation.messages.length === 0) return;
+            
+            const lastMsg = conversation.messages[conversation.messages.length - 1];
+            if (lastMsg.role !== 'assistant') return;
+            
+            // Remove the incomplete message
+            conversation.messages.pop();
+            
+            // Add a continuation prompt
+            const continuationMsg = {
+                role: 'user',
+                content: 'Please continue from where you left off. Complete the code/file/documentation you were working on.',
+                timestamp: new Date().toLocaleTimeString()
+            };
+            
+            addMessageToCurrentConversation(continuationMsg);
+            displayMessage(continuationMsg);
+            
+            // Hide continue button
+            document.getElementById('continueBtn').style.display = 'none';
+            lastIncompleteMessage = null;
+            
+            // Send the request
+            sendApiRequest([...conversation.messages]);
         }
 
         async function sendMessage() {
@@ -1685,26 +1644,13 @@
             
             const userInput = document.getElementById('userInput');
             const message = userInput.value.trim();
-            if (!message && attachedFiles.length === 0) return;
+            if (!message) return;
             if (!apiKey) { alert('Please enter your DeepSeek API key first!'); return; }
-            
-            let fullMessage = message;
-            if (attachedFiles.length > 0) {
-                fullMessage += '\n\n--- Attached Files ---\n';
-                for (const file of attachedFiles) {
-                    if (file.type?.startsWith('image/')) {
-                        fullMessage += `\n[Image: ${file.name}]`;
-                    } else {
-                        fullMessage += `\n\n--- File: ${file.name} ---\n${file.data}\n`;
-                    }
-                }
-            }
             
             const userMessage = {
                 role: 'user',
-                content: fullMessage,
-                timestamp: new Date().toLocaleTimeString(),
-                files: [...attachedFiles]
+                content: message,
+                timestamp: new Date().toLocaleTimeString()
             };
             
             addMessageToCurrentConversation(userMessage);
@@ -1712,23 +1658,32 @@
             
             userInput.value = '';
             userInput.style.height = 'auto';
-            attachedFiles = [];
-            displayAttachedFiles();
             
+            const conversation = conversations.find(c => c.id === currentConversationId);
+            if (!conversation) return;
+            
+            await sendApiRequest(conversation.messages);
+        }
+
+        async function sendApiRequest(messages) {
             showTypingIndicator();
             isProcessing = true;
             document.getElementById('userInput').disabled = true;
             document.getElementById('sendBtn').style.display = 'none';
             document.getElementById('stopBtn').style.display = 'flex';
+            document.getElementById('continueBtn').style.display = 'none';
             startGenerationTimer();
             abortController = new AbortController();
             
             try {
-                const conversation = conversations.find(c => c.id === currentConversationId);
-                const apiMessages = conversation.messages.map(msg => ({
-                    role: msg.role,
-                    content: msg.content
-                }));
+                // Build API messages with system prompt
+                const apiMessages = [
+                    { role: 'system', content: SYSTEM_PROMPT },
+                    ...messages.map(msg => ({
+                        role: msg.role,
+                        content: msg.content
+                    }))
+                ];
                 
                 const response = await fetch(DEEPSEEK_API_URL, {
                     method: 'POST',
@@ -1747,41 +1702,49 @@
                 });
                 
                 if (!response.ok) {
-                    const errorData = await response.json();
+                    const errorData = await response.json().catch(() => ({}));
                     throw new Error(errorData.error?.message || `API Error: ${response.status}`);
                 }
                 
                 const data = await response.json();
-                const assistantMessage = data.choices[0].message.content;
+                const assistantContent = data.choices[0].message.content;
                 
                 removeTypingIndicator();
                 stopGenerationTimer();
                 
                 const assistantResponse = {
                     role: 'assistant',
-                    content: assistantMessage,
+                    content: assistantContent,
                     timestamp: new Date().toLocaleTimeString()
                 };
                 
                 addMessageToCurrentConversation(assistantResponse);
                 displayMessage(assistantResponse);
                 
+                // Check if incomplete and show continue button
+                if (isMessageIncomplete(assistantContent)) {
+                    document.getElementById('continueBtn').style.display = 'flex';
+                    lastIncompleteMessage = assistantResponse;
+                }
+                
                 if (data.usage) {
                     document.getElementById('usageInfo').innerHTML = 
-                        `💰 Tokens - Prompt: ${data.usage.prompt_tokens}, Completion: ${data.usage.completion_tokens}, Total: ${data.usage.total_tokens} | 🌡️ ${temperature.toFixed(1)} 📦 ${maxTokens}`;
+                        `💰 Tokens: Prompt ${data.usage.prompt_tokens} | Completion ${data.usage.completion_tokens} | Total ${data.usage.total_tokens} | 🌡️ ${temperature.toFixed(1)} 📦 ${maxTokens}`;
                 }
             } catch (error) {
                 if (error.name === 'AbortError') {
-                    console.log('Generation stopped');
+                    console.log('Generation stopped by user');
                 } else {
                     console.error('Error:', error);
                     removeTypingIndicator();
                     stopGenerationTimer();
+                    
                     const errorMessage = {
                         role: 'assistant',
-                        content: `❌ Error: ${error.message}`,
+                        content: `❌ **Error:** ${error.message}\n\nPlease check your API key and try again.`,
                         timestamp: new Date().toLocaleTimeString()
                     };
+                    
                     addMessageToCurrentConversation(errorMessage);
                     displayMessage(errorMessage);
                 }
@@ -1791,11 +1754,11 @@
                 document.getElementById('sendBtn').style.display = 'flex';
                 document.getElementById('stopBtn').style.display = 'none';
                 abortController = null;
-                userInput.focus();
+                document.getElementById('userInput').focus();
             }
         }
 
-        // ==================== Gauge/Settings ====================
+        // ==================== SETTINGS ====================
         function loadSettings() {
             const savedTemp = localStorage.getItem('deepseek_temperature');
             if (savedTemp) { temperature = parseFloat(savedTemp); updateTemperatureDisplay(); }
@@ -1822,8 +1785,17 @@
             document.getElementById('currentTokens').textContent = maxTokens;
         }
 
-        function setTemperature(value) { temperature = Math.max(0, Math.min(2.0, value)); updateTemperatureDisplay(); saveSettings(); }
-        function setTokenLimit(value) { maxTokens = Math.max(100, Math.min(8000, Math.round(value / 100) * 100)); updateTokenDisplay(); saveSettings(); }
+        function setTemperature(value) { 
+            temperature = Math.max(0, Math.min(2.0, value)); 
+            updateTemperatureDisplay(); 
+            saveSettings(); 
+        }
+
+        function setTokenLimit(value) { 
+            maxTokens = Math.max(100, Math.min(8000, Math.round(value / 100) * 100)); 
+            updateTokenDisplay(); 
+            saveSettings(); 
+        }
 
         function setTemperatureFromClick(event) {
             const track = document.getElementById('tempTrack');
@@ -1842,7 +1814,7 @@
         function startDragTemp(event) { isDraggingTemp = true; event.preventDefault(); }
         function startDragToken(event) { isDraggingToken = true; event.preventDefault(); }
 
-        function onDragMove(event) {
+        document.addEventListener('mousemove', (event) => {
             if (isDraggingTemp) {
                 const track = document.getElementById('tempTrack');
                 const rect = track.getBoundingClientRect();
@@ -1855,15 +1827,24 @@
                 let x = Math.max(0, Math.min(rect.width, event.clientX - rect.left));
                 setTokenLimit(Math.round((x / rect.width) * 8000 / 100) * 100);
             }
+        });
+
+        document.addEventListener('mouseup', () => { 
+            isDraggingTemp = false; 
+            isDraggingToken = false; 
+        });
+
+        // ==================== MODAL ====================
+        function openModal(src) { 
+            document.getElementById('imageModal').style.display = 'flex'; 
+            document.getElementById('modalImage').src = src; 
         }
 
-        function onDragEnd() { isDraggingTemp = false; isDraggingToken = false; }
+        function closeModal() { 
+            document.getElementById('imageModal').style.display = 'none'; 
+        }
 
-        // ==================== Modal ====================
-        function openModal(src) { document.getElementById('imageModal').style.display = 'flex'; document.getElementById('modalImage').src = src; }
-        function closeModal() { document.getElementById('imageModal').style.display = 'none'; }
-
-        // ==================== Init ====================
+        // ==================== INIT ====================
         document.addEventListener('DOMContentLoaded', () => {
             loadApiKey();
             loadConversations();
@@ -1871,27 +1852,15 @@
             updateApiStatus();
             
             if (conversations.length === 0) createNewChat();
-            else loadConversation(conversations[0].id);
-            
-            // Drag and drop setup
-            const inputArea = document.getElementById('inputArea');
-            ['dragenter', 'dragover'].forEach(e => inputArea.addEventListener(e, () => inputArea.classList.add('drag-over')));
-            ['dragleave', 'drop'].forEach(e => inputArea.addEventListener(e, () => inputArea.classList.remove('drag-over')));
-            
-            inputArea.addEventListener('drop', (e) => {
-                e.preventDefault();
-                const files = Array.from(e.dataTransfer.files);
-                if (files.length) processDroppedFiles(files);
-            });
-            
-            // Gauge drag
-            document.addEventListener('mousemove', onDragMove);
-            document.addEventListener('mouseup', onDragEnd);
+            else {
+                loadConversation(conversations[0].id);
+                updateContinueButton();
+            }
             
             // Textarea auto-resize
             document.getElementById('userInput').addEventListener('input', function() {
                 this.style.height = 'auto';
-                this.style.height = this.scrollHeight + 'px';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
             });
         });
     </script>
