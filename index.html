@@ -195,7 +195,7 @@
         </div>
         <div id="new-chat-btn" onclick="newChat()">+ New Chat</div>
         <div id="chat-list"></div>
-        <div id="sidebar-footer" id="sidebarStatus">
+        <div id="sidebar-footer">
             <span id="syncInfo">💾 sync ready</span>
         </div>
     </div>
@@ -237,7 +237,7 @@
         let currentChatId = null;
         let isProcessing = false;
         let controller = null;
-        let attachedFiles = []; // Current attachment list
+        let attachedFiles = [];
 
         document.getElementById('apiKey').value = apiKey;
         updateStatus();
@@ -245,10 +245,9 @@
         if (!chats.length) newChat();
         else loadChat(chats[0].id);
 
-        // ============ DRAG & DROP (global drop on input-area) ============
+        // ============ DRAG & DROP ============
         const inputArea = document.getElementById('input-area');
         
-        // prevent default for whole document
         ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
             document.addEventListener(eventName, (e) => {
                 e.preventDefault();
@@ -256,7 +255,6 @@
             });
         });
         
-        // visual feedback
         ['dragenter', 'dragover'].forEach(eventName => {
             inputArea.addEventListener(eventName, () => {
                 inputArea.classList.add('drag-over');
@@ -268,7 +266,6 @@
             });
         });
         
-        // DROP handler
         inputArea.addEventListener('drop', (e) => {
             const files = Array.from(e.dataTransfer.files);
             if (files.length > 0) processFiles(files);
@@ -352,7 +349,7 @@
 
         function updateStatus() {
             const s = document.getElementById('status');
-            const ss = document.getElementById('sidebarStatus');
+            const ss = document.getElementById('syncInfo');
             if (apiKey) {
                 s.textContent = '✅ Ready · 8192 tokens';
                 s.style.color = '#4caf50';
@@ -418,7 +415,7 @@
             saveChats(); renderChatList();
         }
 
-        // ============ EXPORT / IMPORT (sync) ============
+        // ============ EXPORT / IMPORT ============
         function exportChats() {
             if (!chats.length) { alert('No chats to export.'); return; }
             const data = JSON.stringify({ version: 1, exportedAt: Date.now(), chats: chats }, null, 2);
@@ -443,11 +440,9 @@
                         alert('Invalid format: missing "chats" array.');
                         return;
                     }
-                    // merge: replace existing chats with same id, add new ones
                     const existingIds = new Set(chats.map(c => c.id));
                     parsed.chats.forEach(imported => {
                         if (existingIds.has(imported.id)) {
-                            // overwrite existing
                             const idx = chats.findIndex(c => c.id === imported.id);
                             if (idx !== -1) chats[idx] = imported;
                         } else {
@@ -463,46 +458,82 @@
                 }
             };
             reader.readAsText(file);
-            event.target.value = ''; // reset
+            event.target.value = '';
         }
 
-        // ============ FORMATTING ============
+        // ============ FORMATTING (FIXED) ============
         function escapeHtml(text) {
             const d = document.createElement('div');
             d.textContent = text;
             return d.innerHTML;
         }
 
+        function getFileExtension(lang) {
+            const extMap = {
+                'python': 'py', 'py': 'py',
+                'javascript': 'js', 'js': 'js',
+                'html': 'html',
+                'css': 'css',
+                'xml': 'xml',
+                'json': 'json',
+                'markdown': 'md', 'md': 'md',
+                'bash': 'sh', 'sh': 'sh',
+                'sql': 'sql',
+                'java': 'java',
+                'cpp': 'cpp', 'c++': 'cpp',
+                'c': 'c',
+                'typescript': 'ts', 'ts': 'ts',
+                'php': 'php',
+                'ruby': 'rb', 'rb': 'rb',
+                'go': 'go',
+                'rust': 'rs', 'rs': 'rs',
+                'yaml': 'yml', 'yml': 'yml',
+                'text': 'txt'
+            };
+            return extMap[lang.toLowerCase()] || 'txt';
+        }
+
         function formatContent(content) {
             if (!content) return '';
-            const parts = content.split('');
+            
+            // Split by markdown code blocks (```...```)
+            const codeBlockRegex = /```(\w*)\n?([\s\S]*?)```/g;
             let html = '';
-            for (let i = 0; i < parts.length; i++) {
-                if (i % 2 === 0) {
-                    if (parts[i].trim()) html += escapeHtml(parts[i]).replace(/\n/g, '<br>');
-                } else {
-                    const code = parts[i];
-                    const nl = code.indexOf('\n');
-                    const lang = nl > -1 ? code.substring(0, nl).trim() : 'code';
-                    const codeContent = nl > -1 ? code.substring(nl + 1) : code;
-                    const id = 'c' + Math.random().toString(36).substr(2, 10);
-                    const ext = lang === 'python' ? 'py' : lang === 'xml' ? 'xml' : lang === 'html' ? 'html' : 'txt';
-                    
-                    html += `
-                        <div class="code-block" data-code-id="${id}">
-                            <div class="code-header">
-                                <span>${escapeHtml(lang)} <span class="validation-badge" id="badge-${id}"></span></span>
-                                <span>
-                                    <button onclick="copyCode('${id}')">Copy</button>
-                                    <button onclick="downloadCode('${id}','${ext}')">Download</button>
-                                    <button onclick="validateCodeBlock('${id}')" style="background:#ff9800;">🔍 Check</button>
-                                </span>
-                            </div>
-                            <div class="code-content"><code id="${id}">${escapeHtml(codeContent.trim())}</code></div>
-                            <div class="validation-details" id="details-${id}"></div>
-                        </div>`;
-                }
+            let lastIndex = 0;
+            let match;
+            
+            while ((match = codeBlockRegex.exec(content)) !== null) {
+                // Add text before this code block
+                const textBefore = content.substring(lastIndex, match.index);
+                html += escapeHtml(textBefore).replace(/\n/g, '<br>');
+                
+                // Process code block
+                const lang = match[1] || 'code';
+                const codeContent = match[2].trim();
+                const id = 'c' + Math.random().toString(36).substr(2, 10);
+                const ext = getFileExtension(lang);
+                
+                html += `
+                    <div class="code-block" data-code-id="${id}">
+                        <div class="code-header">
+                            <span>${escapeHtml(lang)} <span class="validation-badge" id="badge-${id}"></span></span>
+                            <span>
+                                <button onclick="copyCode('${id}')">Copy</button>
+                                <button onclick="downloadCode('${id}','${ext}')">Download</button>
+                                <button onclick="validateCodeBlock('${id}')" style="background:#ff9800;">🔍 Check</button>
+                            </span>
+                        </div>
+                        <div class="code-content"><code id="${id}">${escapeHtml(codeContent)}</code></div>
+                        <div class="validation-details" id="details-${id}"></div>
+                    </div>`;
+                
+                lastIndex = codeBlockRegex.lastIndex;
             }
+            
+            // Add any remaining text after the last code block
+            const textAfter = content.substring(lastIndex);
+            html += escapeHtml(textAfter).replace(/\n/g, '<br>');
+            
             return html;
         }
 
@@ -517,7 +548,6 @@
                 const blob = new Blob([el.textContent], { type: 'text/plain' });
                 const a = document.createElement('a');
                 a.href = URL.createObjectURL(blob);
-                // unique filename: timestamp + random suffix
                 const timestamp = Date.now().toString(36);
                 const random = Math.random().toString(36).substr(2, 6);
                 a.download = `code_${timestamp}_${random}.${ext}`;
