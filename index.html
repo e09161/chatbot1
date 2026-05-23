@@ -206,6 +206,11 @@
     <span style="color:#888;">API Key:</span>
     <input type="password" id="apiKey" placeholder="sk-...">
     <button id="saveKeyBtn">Save</button>
+    <select id="modelSelect" style="background:#1a1a2e; color:#e0e0e0; border:1px solid #333; border-radius:6px; padding:8px; font-size:13px;">
+      <option value="deepseek-v4-pro">deepseek-v4-pro</option>
+      <option value="deepseek-chat">deepseek-chat</option>
+      <option value="deepseek-coder">deepseek-coder</option>
+    </select>
     <button id="validateAllBtn">🔍 Validate Code</button>
     <span id="status">⚪</span>
   </div>
@@ -242,6 +247,7 @@
 
     // DOM elements
     const apiKeyInput = document.getElementById('apiKey');
+    const modelSelect = document.getElementById('modelSelect');
     const statusEl = document.getElementById('status');
     const sidebarStatus = document.getElementById('sidebarStatus');
     const chatListEl = document.getElementById('chat-list');
@@ -261,6 +267,11 @@
 
     // Init
     apiKeyInput.value = apiKey;
+    
+    // Load saved model preference
+    const savedModel = localStorage.getItem('ds_model') || 'deepseek-v4-pro';
+    modelSelect.value = savedModel;
+    
     updateStatus();
 
     if (!chats.length) {
@@ -270,18 +281,24 @@
     }
     renderChatList();
 
-    // ----- API Key -----
+    // ----- API Key & Model -----
     saveKeyBtn.addEventListener('click', () => {
       apiKey = apiKeyInput.value.trim();
       localStorage.setItem('ds_key', apiKey);
       updateStatus();
     });
 
+    modelSelect.addEventListener('change', () => {
+      localStorage.setItem('ds_model', modelSelect.value);
+      updateStatus();
+    });
+
     function updateStatus() {
+      const model = modelSelect.value;
       if (apiKey) {
-        statusEl.textContent = '✅ Ready | 8192 tokens';
+        statusEl.textContent = `✅ Ready | ${model}`;
         statusEl.style.color = '#4caf50';
-        sidebarStatus.textContent = '✅ API Ready';
+        sidebarStatus.textContent = `✅ ${model}`;
         sidebarStatus.style.color = '#4caf50';
       } else {
         statusEl.textContent = '❌ Set API key';
@@ -647,15 +664,34 @@
       controller = new AbortController();
 
       try {
+        const selectedModel = modelSelect.value;
         const apiMessages = chat.messages.map(m => ({ role: m.role, content: m.content }));
+        
         const response = await fetch(API_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-          body: JSON.stringify({ model: 'deepseek-chat', messages: apiMessages, max_tokens: MAX_TOKENS, stream: false }),
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${apiKey}` 
+          },
+          body: JSON.stringify({ 
+            model: selectedModel,
+            messages: apiMessages, 
+            max_tokens: MAX_TOKENS, 
+            stream: false 
+          }),
           signal: controller.signal
         });
+        
         const data = await response.json();
-        if (!response.ok) throw new Error(data.error?.message || `HTTP ${response.status}`);
+        
+        if (!response.ok) {
+          throw new Error(data.error?.message || `HTTP ${response.status}: ${JSON.stringify(data)}`);
+        }
+        
+        if (!data.choices || !data.choices[0]?.message?.content) {
+          throw new Error('Unexpected API response format');
+        }
+        
         const content = data.choices[0].message.content;
         chat.messages.push({ role: 'assistant', content });
         chat.updatedAt = Date.now();
