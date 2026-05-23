@@ -15,7 +15,7 @@
       overflow: hidden;
     }
     #sidebar {
-      width: 260px; min-width: 260px;
+      width: 280px; min-width: 280px;
       background: #0d0d0d;
       display: flex; flex-direction: column;
       border-right: 1px solid #222;
@@ -23,6 +23,7 @@
     #sidebar-header {
       padding: 20px 15px; border-bottom: 1px solid #222;
       font-weight: bold; font-size: 18px;
+      display: flex; justify-content: space-between; align-items: center;
     }
     #new-chat-btn {
       margin: 15px; padding: 10px;
@@ -36,11 +37,35 @@
       padding: 12px; margin: 4px 0; border-radius: 8px;
       cursor: pointer; font-size: 13px; color: #999;
       display: flex; justify-content: space-between; align-items: center;
+      transition: all 0.2s;
     }
     .chat-item:hover { background: #1a1a2e; color: #e0e0e0; }
     .chat-item.active { background: #1a1a2e; border: 1px solid #4a90d9; color: #e0e0e0; }
-    .chat-item-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .chat-item-delete { color: #666; margin-left: 8px; cursor: pointer; font-weight: bold; }
+    .chat-item-content { flex: 1; min-width: 0; }
+    .chat-item-title { 
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      font-weight: 500; margin-bottom: 2px;
+    }
+    .chat-item-preview {
+      font-size: 11px; color: #666; overflow: hidden;
+      text-overflow: ellipsis; white-space: nowrap;
+    }
+    .chat-item-meta {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 4px;
+    }
+    .chat-item-date {
+      font-size: 10px; color: #555;
+    }
+    .chat-item-model {
+      font-size: 9px; background: #1a1a2e; padding: 1px 6px;
+      border-radius: 8px; color: #4a90d9;
+    }
+    .chat-item-delete { 
+      color: #666; margin-left: 8px; cursor: pointer; font-weight: bold;
+      opacity: 0; transition: opacity 0.2s;
+    }
+    .chat-item:hover .chat-item-delete { opacity: 1; }
     .chat-item-delete:hover { color: #f44; }
     #sidebar-footer {
       padding: 15px; border-top: 1px solid #222; font-size: 12px; color: #888;
@@ -53,7 +78,12 @@
       flex: 1; text-align: center;
     }
     .sync-btn:hover { background: #3a3a4a; }
-    #sidebarStatus { margin-top: 4px; }
+    #sidebarStatus { margin-top: 4px; font-size: 10px; }
+    .rename-input {
+      background: transparent; border: 1px solid #4a90d9;
+      color: #e0e0e0; padding: 2px 6px; border-radius: 4px;
+      font-size: 13px; width: 100%; outline: none;
+    }
 
     #main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #1a1a2e; }
     #header {
@@ -172,14 +202,17 @@
     #attachBtn:hover { background: #666; }
     .drag-hint { font-size: 11px; color: #666; text-align: center; }
     @media (max-width: 700px) {
-      #sidebar { width: 180px; min-width: 180px; }
+      #sidebar { width: 220px; min-width: 220px; }
       #header input { width: 140px; }
     }
   </style>
 </head>
 <body>
 <div id="sidebar">
-  <div id="sidebar-header">💬 DeepSeek Chat</div>
+  <div id="sidebar-header">
+    <span>💬 Chats</span>
+    <span style="font-size:11px; color:#666;" id="chatCount"></span>
+  </div>
   <div id="new-chat-btn">+ New Chat</div>
   <div id="chat-list"></div>
   <div id="sidebar-footer">
@@ -227,7 +260,6 @@
 
 <script>
   (function() {
-    // Official DeepSeek API endpoint (per documentation)
     const API_URL = 'https://api.deepseek.com/chat/completions';
     const MAX_TOKENS = 8192;
 
@@ -244,6 +276,7 @@
     const statusEl = document.getElementById('status');
     const sidebarStatus = document.getElementById('sidebarStatus');
     const chatListEl = document.getElementById('chat-list');
+    const chatCountEl = document.getElementById('chatCount');
     const messagesEl = document.getElementById('messages');
     const userInput = document.getElementById('userInput');
     const sendBtn = document.getElementById('sendBtn');
@@ -295,29 +328,195 @@
       }
     }
 
-    function saveChats() { localStorage.setItem('ds_chats', JSON.stringify(chats)); }
+    function saveChats() { 
+      localStorage.setItem('ds_chats', JSON.stringify(chats));
+      updateChatCount();
+    }
+
+    function updateChatCount() {
+      chatCountEl.textContent = `${chats.length} chat${chats.length !== 1 ? 's' : ''}`;
+    }
+
+    // Smart title generation from chat content
+    function generateChatTitle(chat) {
+      // If user has manually renamed, keep that name
+      if (chat.customTitle) return chat.customTitle;
+      
+      // Find first user message
+      const firstUserMsg = chat.messages.find(m => m.role === 'user');
+      if (!firstUserMsg) return 'New Chat';
+      
+      const content = firstUserMsg.content;
+      
+      // If it's a code-related query
+      if (content.match(/```|code|function|def |class |import |bug|error|fix|debug|test/i)) {
+        // Extract programming language if present
+        const langMatch = content.match(/```(\w+)/);
+        const codeContext = langMatch ? ` [${langMatch[1]}]` : '';
+        
+        // Look for key actions
+        if (content.match(/create|build|make|write|generate/i)) {
+          const action = content.match(/(create|build|make|write|generate)\s+(a\s+)?(\w+)/i);
+          if (action) return `✏️ ${action[3].charAt(0).toUpperCase() + action[3].slice(1)}${codeContext}`;
+        }
+        if (content.match(/fix|debug|solve|error|bug/i)) {
+          return `🐛 Debug${codeContext}`;
+        }
+        if (content.match(/explain|what is|how does|understand/i)) {
+          return `💡 Explanation${codeContext}`;
+        }
+        if (content.match(/optimize|improve|refactor|better/i)) {
+          return `⚡ Optimization${codeContext}`;
+        }
+        return `💻 Code${codeContext}`;
+      }
+      
+      // File attachments
+      if (firstUserMsg.files && firstUserMsg.files.length > 0) {
+        return `📎 ${firstUserMsg.files[0].name}`;
+      }
+      
+      // Questions
+      if (content.match(/\?$/)) {
+        const question = content.replace(/\?.*$/, '?').trim();
+        return `❓ ${question.substring(0, 40)}${question.length > 40 ? '...' : ''}`;
+      }
+      
+      // Data/analysis
+      if (content.match(/analyze|data|csv|json|xml|parse/i)) {
+        return '📊 Data Analysis';
+      }
+      
+      // General conversation
+      const cleanContent = content.replace(/\n/g, ' ').trim();
+      const words = cleanContent.split(' ');
+      
+      // Try to make a meaningful title from first few words
+      let title = '';
+      for (let i = 0; i < Math.min(words.length, 6); i++) {
+        if (words[i].length > 3 || i < 3) {
+          title += words[i] + ' ';
+        }
+      }
+      
+      title = title.trim();
+      if (title.length > 40) title = title.substring(0, 40) + '...';
+      
+      return title || 'New Chat';
+    }
+
+    function getPreviewText(chat) {
+      const lastMsg = chat.messages[chat.messages.length - 1];
+      if (!lastMsg) return 'Empty chat';
+      const preview = lastMsg.content.replace(/\n/g, ' ').trim();
+      return preview.substring(0, 60) + (preview.length > 60 ? '...' : '');
+    }
+
+    function formatDate(timestamp) {
+      const date = new Date(timestamp);
+      const now = new Date();
+      const diff = now - date;
+      
+      if (diff < 60000) return 'Just now';
+      if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`;
+      if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
+      if (diff < 604800000) return `${Math.floor(diff/86400000)}d ago`;
+      
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
 
     function renderChatList() {
       chatListEl.innerHTML = '';
       chats.sort((a, b) => b.updatedAt - a.updatedAt);
+      
       chats.forEach(chat => {
         const div = document.createElement('div');
         div.className = 'chat-item' + (chat.id === currentChatId ? ' active' : '');
-        div.onclick = () => loadChat(chat.id);
-        const first = chat.messages.find(m => m.role === 'user');
-        const title = first ? first.content.substring(0, 35) : 'New Chat';
-        div.innerHTML = `<span class="chat-item-title">${escapeHtml(title)}</span>
-          <span class="chat-item-delete">×</span>`;
-        div.querySelector('.chat-item-delete').addEventListener('click', (e) => {
-          e.stopPropagation(); deleteChat(chat.id);
+        div.onclick = (e) => {
+          if (!e.target.classList.contains('chat-item-delete') && 
+              !e.target.classList.contains('rename-input')) {
+            loadChat(chat.id);
+          }
+        };
+        
+        const title = generateChatTitle(chat);
+        const preview = getPreviewText(chat);
+        const date = formatDate(chat.updatedAt);
+        const model = chat.model || 'v4-pro';
+        
+        div.innerHTML = `
+          <div class="chat-item-content">
+            <div class="chat-item-title" title="${escapeHtml(title)}">${escapeHtml(title)}</div>
+            <div class="chat-item-preview">${escapeHtml(preview)}</div>
+            <div class="chat-item-meta">
+              <span class="chat-item-date">${date}</span>
+              <span class="chat-item-model">${model}</span>
+            </div>
+          </div>
+          <span class="chat-item-delete" title="Delete chat">×</span>
+        `;
+        
+        // Double-click to rename
+        const titleEl = div.querySelector('.chat-item-title');
+        titleEl.addEventListener('dblclick', (e) => {
+          e.stopPropagation();
+          startRename(chat, titleEl);
         });
+        
+        div.querySelector('.chat-item-delete').addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (confirm('Delete this chat?')) deleteChat(chat.id);
+        });
+        
         chatListEl.appendChild(div);
+      });
+      
+      updateChatCount();
+    }
+
+    function startRename(chat, titleElement) {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'rename-input';
+      input.value = chat.customTitle || generateChatTitle(chat);
+      
+      titleElement.innerHTML = '';
+      titleElement.appendChild(input);
+      input.focus();
+      input.select();
+      
+      const finishRename = () => {
+        const newTitle = input.value.trim();
+        if (newTitle && newTitle !== generateChatTitle(chat)) {
+          chat.customTitle = newTitle;
+        } else {
+          chat.customTitle = null; // Reset to auto-generated
+        }
+        saveChats();
+        renderChatList();
+      };
+      
+      input.addEventListener('blur', finishRename);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          finishRename();
+        } else if (e.key === 'Escape') {
+          chat.customTitle = chat.customTitle || null;
+          renderChatList();
+        }
       });
     }
 
     function newChat() {
       currentChatId = 'chat_' + Date.now();
-      chats.push({ id: currentChatId, messages: [], createdAt: Date.now(), updatedAt: Date.now() });
+      chats.push({ 
+        id: currentChatId, 
+        messages: [], 
+        createdAt: Date.now(), 
+        updatedAt: Date.now(),
+        model: modelSelect.value
+      });
       saveChats(); renderChatList();
       messagesEl.innerHTML = ''; attachedFiles = []; renderAttachedFiles();
     }
@@ -349,7 +548,7 @@
 
     document.getElementById('new-chat-btn').addEventListener('click', newChat);
 
-    // File handling
+    // File handling (unchanged)
     function processFiles(files) {
       const allowed = ['.py','.xml','.txt','.html','.js','.css','.json','.md','.csv'];
       Array.from(files).forEach(file => {
@@ -399,7 +598,7 @@
       fileInput.value = '';
     });
 
-    // Formatting
+    // Formatting (unchanged)
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
     function formatContent(content) {
@@ -444,7 +643,7 @@
       if (e.target.classList.contains('validate-btn')) validateCodeBlock(e.target.dataset.id);
     });
 
-    // Validation
+    // Validation (unchanged)
     function detectLang(c) {
       if (/^(import |from |def |class )/m.test(c)) return 'python';
       if (/^<\?xml|<manifest/i.test(c)) return 'xml';
@@ -500,7 +699,7 @@
     }
     document.getElementById('validateAllBtn').addEventListener('click', validateAllCodeBlocks);
 
-    // Send
+    // Send (updated to save model info)
     function stop() {
       if (controller) { controller.abort(); controller = null; }
       isProcessing = false;
@@ -522,8 +721,14 @@
       }
 
       const chat = chats.find(c => c.id === currentChatId);
-      chat.messages.push({ role: 'user', content: full });
-      chat.updatedAt = Date.now(); saveChats(); renderChatList();
+      chat.messages.push({ 
+        role: 'user', 
+        content: full,
+        files: attachedFiles.length > 0 ? attachedFiles.map(f => ({ name: f.name, type: f.type, size: f.size })) : undefined
+      });
+      chat.updatedAt = Date.now();
+      chat.model = modelSelect.value; // Save which model was used
+      saveChats(); renderChatList();
 
       const div = document.createElement('div'); div.className = 'msg user';
       div.innerHTML = escapeHtml(text) + (attachedFiles.length ? '<br><br>📎 '+attachedFiles.map(f=>f.name).join(', ') : '');
@@ -536,92 +741,4 @@
       controller = new AbortController();
 
       try {
-        const msgs = chat.messages.map(m => ({ role: m.role, content: m.content }));
-        
-        // Build request body per official documentation
-        const requestBody = {
-          model: modelSelect.value,
-          messages: msgs,
-          stream: false
-        };
-        
-        // Add thinking parameter if toggle is enabled
-        if (thinkingToggle.checked) {
-          requestBody.thinking = { type: "enabled" };
-          requestBody.reasoning_effort = "high";
-        }
-        
-        const res = await fetch(API_URL, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify(requestBody),
-          signal: controller.signal
-        });
-        
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
-        if (!data.choices?.[0]?.message?.content) throw new Error('Invalid response format');
-        
-        const content = data.choices[0].message.content;
-        chat.messages.push({ role: 'assistant', content }); chat.updatedAt = Date.now(); saveChats();
-
-        const adiv = document.createElement('div'); adiv.className = 'msg assistant';
-        adiv.innerHTML = formatContent(content);
-        messagesEl.appendChild(adiv); messagesEl.scrollTop = messagesEl.scrollHeight;
-        setTimeout(() => adiv.querySelectorAll('[data-code-id]').forEach(b => validateCodeBlock(b.dataset.codeId)), 100);
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          const ediv = document.createElement('div'); ediv.className = 'msg assistant';
-          ediv.textContent = '❌ ' + err.message; messagesEl.appendChild(ediv);
-        }
-      } finally {
-        isProcessing = false; sendBtn.disabled = false; attachBtn.disabled = false;
-        stopBtn.style.display = 'none'; userInput.disabled = false; controller = null;
-        userInput.focus();
-      }
-    }
-
-    sendBtn.addEventListener('click', send);
-    stopBtn.addEventListener('click', stop);
-    userInput.addEventListener('keydown', e => { if (e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); send(); } });
-    userInput.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 150) + 'px'; });
-
-    // Export/Import
-    document.getElementById('exportChatsBtn').addEventListener('click', () => {
-      const blob = new Blob([JSON.stringify(chats, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-      a.download = `deepseek_chats_${new Date().toISOString().slice(0,10)}.json`; a.click();
-      URL.revokeObjectURL(a.href);
-    });
-
-    document.getElementById('importChatsBtn').addEventListener('click', () => {
-      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json';
-      inp.onchange = e => {
-        const file = e.target.files[0]; if (!file) return;
-        const reader = new FileReader();
-        reader.onload = ev => {
-          try {
-            const imported = JSON.parse(ev.target.result);
-            if (!Array.isArray(imported)) throw new Error('Invalid format');
-            imported.forEach(c => { if (!c.id || !Array.isArray(c.messages)) throw new Error('Corrupted data'); });
-            if (confirm(`Replace with ${imported.length} chat(s)?`)) {
-              chats = imported; saveChats();
-              currentChatId = chats.length ? chats[0].id : null;
-              currentChatId ? loadChat(currentChatId) : (messagesEl.innerHTML = '', newChat());
-              renderChatList();
-            }
-          } catch (err) { alert('Import failed: ' + err.message); }
-        };
-        reader.readAsText(file);
-      };
-      inp.click();
-    });
-
-    window.addEventListener('load', () => { if (currentChatId) setTimeout(validateAllCodeBlocks, 600); });
-  })();
-</script>
-</body>
-</html>
+        const
