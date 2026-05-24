@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>DeepSeek Chat · draggable files & sync</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -85,11 +86,41 @@
     }
     .msg {
       margin-bottom: 20px; padding: 15px; border-radius: 10px;
-      max-width: 85%; white-space: pre-wrap; word-break: break-word;
+      max-width: 85%; word-break: break-word;
       font-size: 14px; line-height: 1.6;
     }
     .user { background: #16213e; margin-left: auto; }
     .assistant { background: #0f3460; margin-right: auto; }
+
+    /* Markdown rendered content styles */
+    .msg h1, .msg h2, .msg h3 { color: #4a90d9; margin: 15px 0 10px; }
+    .msg h1 { font-size: 1.5em; }
+    .msg h2 { font-size: 1.3em; }
+    .msg h3 { font-size: 1.1em; }
+    .msg table { 
+      border-collapse: collapse; width: 100%; 
+      margin: 15px 0; display: block; overflow-x: auto; 
+    }
+    .msg th, .msg td { 
+      border: 1px solid #444; padding: 8px 12px; 
+      text-align: left; white-space: normal; 
+    }
+    .msg th { background: #222; font-weight: bold; color: #4a90d9; }
+    .msg hr { border: 0; border-top: 1px solid #333; margin: 15px 0; }
+    .msg strong { color: #fff; font-weight: 600; }
+    .msg em { color: #ccc; }
+    .msg blockquote { 
+      border-left: 3px solid #4a90d9; padding-left: 15px; 
+      margin: 10px 0; color: #aaa; 
+    }
+    .msg ul, .msg ol { margin: 10px 0; padding-left: 25px; }
+    .msg li { margin: 5px 0; }
+    .msg code:not(pre code) { 
+      background: #222; padding: 2px 6px; 
+      border-radius: 3px; font-family: 'Courier New', monospace; 
+      color: #a8d8a8; font-size: 0.9em;
+    }
+    .msg p { margin: 8px 0; }
 
     .code-block {
       background: #0d0d0d; border: 1px solid #333;
@@ -171,6 +202,7 @@
     #attachBtn { background: #555; }
     #attachBtn:hover { background: #666; }
     .drag-hint { font-size: 11px; color: #666; text-align: center; }
+    
     @media (max-width: 700px) {
       #sidebar { width: 180px; min-width: 180px; }
       #header input { width: 140px; }
@@ -252,6 +284,16 @@
     const fileInput = document.getElementById('fileInput');
     const inputArea = document.getElementById('input-area');
     const attachedFilesContainer = document.getElementById('attachedFiles');
+
+    // Initialize marked.js if available
+    if (typeof marked !== 'undefined') {
+      marked.setOptions({
+        breaks: true,
+        gfm: true,
+        headerIds: false,
+        mangle: false
+      });
+    }
 
     // Init
     apiKeyInput.value = apiKey;
@@ -400,30 +442,52 @@
     });
 
     // Formatting
-    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+    function escapeHtml(t) { 
+      const d = document.createElement('div'); 
+      d.textContent = t; 
+      return d.innerHTML; 
+    }
 
     function formatContent(content) {
       if (!content) return '';
+      
+      // Split by code blocks to handle them separately
       const parts = content.split('```');
       let html = '';
+      
       for (let i = 0; i < parts.length; i++) {
         if (i % 2 === 0) {
-          if (parts[i].trim()) html += escapeHtml(parts[i]).replace(/\n/g, '<br>');
+          // Regular Markdown text
+          if (parts[i].trim()) {
+            // Use marked if available, otherwise fallback to basic formatting
+            html += typeof marked !== 'undefined' 
+              ? marked.parse(parts[i]) 
+              : escapeHtml(parts[i]).replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+          }
         } else {
-          const code = parts[i], nl = code.indexOf('\n');
+          // Code blocks - handle specially
+          const code = parts[i];
+          const nl = code.indexOf('\n');
           const lang = nl > -1 ? code.substring(0, nl).trim() : 'code';
-          const codeContent = nl > -1 ? code.substring(nl+1) : code;
-          const id = 'c' + Math.random().toString(36).substring(2,10);
+          const codeContent = nl > -1 ? code.substring(nl + 1) : code;
+          const id = 'c' + Math.random().toString(36).substring(2, 10);
           const ext = lang === 'python' ? 'py' : lang === 'xml' ? 'xml' : lang === 'html' ? 'html' : 'txt';
+          
           html += `<div class="code-block" data-code-id="${id}">
-            <div class="code-header"><span>${escapeHtml(lang)} <span class="validation-badge" id="badge-${id}"></span></span>
-              <span><button class="copy-btn" data-id="${id}">Copy</button>
-              <button class="download-btn" data-id="${id}" data-ext="${ext}">Download</button>
-              <button class="validate-btn" data-id="${id}" style="background:#ff9800;">🔍</button></span></div>
+            <div class="code-header">
+              <span>${escapeHtml(lang)} <span class="validation-badge" id="badge-${id}"></span></span>
+              <span>
+                <button class="copy-btn" data-id="${id}">Copy</button>
+                <button class="download-btn" data-id="${id}" data-ext="${ext}">Download</button>
+                <button class="validate-btn" data-id="${id}" style="background:#ff9800;">🔍</button>
+              </span>
+            </div>
             <div class="code-content"><code id="${id}">${escapeHtml(codeContent.trim())}</code></div>
-            <div class="validation-details" id="details-${id}"></div></div>`;
+            <div class="validation-details" id="details-${id}"></div>
+          </div>`;
         }
       }
+      
       return html;
     }
 
