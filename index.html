@@ -11,10 +11,11 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #1a1a2e;
       color: #e0e0e0;
-      height: 100vh;
+      height: 100vh;          /* fallback */
+      height: 100dvh;         /* dynamic viewport – fixes Android address bar */
       display: flex;
       overflow: hidden;
-      position: relative; /* for overlay sidebar */
+      position: relative;
     }
     #sidebar {
       width: 260px; min-width: 260px;
@@ -23,10 +24,8 @@
       border-right: 1px solid #222;
       transition: transform 0.3s ease;
       z-index: 100;
-      height: 100vh;
-      overflow-y: auto;
+      height: 100%;
     }
-    /* sidebar hidden state (for mobile / narrow panels) */
     #sidebar.hidden {
       transform: translateX(-100%);
     }
@@ -68,10 +67,12 @@
     #main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #1a1a2e; }
     #header {
       padding: 12px 20px; background: #0d0d0d;
-      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+      display: flex; gap: 10px; align-items: center;
       border-bottom: 1px solid #222;
+      flex-wrap: wrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
     }
-    /* Hamburger toggle button for sidebar */
     #toggleSidebarBtn {
       background: none;
       border: 1px solid #444;
@@ -80,7 +81,7 @@
       padding: 4px 8px;
       border-radius: 5px;
       cursor: pointer;
-      display: none; /* hidden on large screens */
+      display: none;
       line-height: 1;
     }
     #header input {
@@ -102,7 +103,10 @@
     #status { font-size: 12px; margin-left: auto; color: #4caf50; }
 
     #messages {
-      flex: 1; overflow-y: auto; padding: 20px;
+      flex: 1;
+      min-height: 0;          /* critical for flex shrinking */
+      overflow-y: auto;
+      padding: 20px;
       max-width: 850px; margin: 0 auto; width: 100%;
     }
     .msg {
@@ -226,35 +230,30 @@
     
     /* ── RESPONSIVE IMPROVEMENTS ── */
     @media (max-width: 600px) {
-      /* Sidebar becomes an overlay, hidden by default */
       #sidebar {
         position: absolute;
-        left: 0;
-        top: 0;
-        height: 100vh;
-        width: 260px;
-        min-width: 260px;
+        left: 0; top: 0; height: 100%;
+        width: 260px; min-width: 260px;
         transform: translateX(-100%);
         box-shadow: 2px 0 10px rgba(0,0,0,0.5);
       }
       #sidebar.visible {
         transform: translateX(0);
       }
-      /* Show hamburger button */
       #toggleSidebarBtn {
         display: inline-block;
       }
-      /* Main area takes full width */
       #main {
         width: 100%;
       }
-      /* Adjust header items */
-      #header input {
-        width: 120px;
-      }
       #header {
+        flex-wrap: nowrap;       /* prevent wrapping on mobile */
+        overflow-x: auto;
         gap: 6px;
         padding: 10px;
+      }
+      #header input {
+        width: 120px;
       }
       #messages {
         padding: 10px;
@@ -266,12 +265,11 @@
         padding: 10px;
       }
       .drag-hint {
-        display: none; /* save space */
+        display: none;
       }
     }
     
     @media (max-width: 400px) {
-      /* Even smaller – more compact */
       #header input {
         width: 80px;
         font-size: 11px;
@@ -307,7 +305,6 @@
 
 <div id="main">
   <div id="header">
-    <!-- Hamburger toggle for sidebar (visible only on small screens) -->
     <button id="toggleSidebarBtn" title="Toggle sidebar">☰</button>
     <span style="color:#888;">Key:</span>
     <input type="password" id="apiKey" placeholder="sk-...">
@@ -343,7 +340,6 @@
 
 <script>
   (function() {
-    // Official DeepSeek API endpoint (per documentation)
     const API_URL = 'https://api.deepseek.com/chat/completions';
     const MAX_TOKENS = 8192;
 
@@ -371,30 +367,17 @@
     const sidebar = document.getElementById('sidebar');
     const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
 
-    // Initialize marked.js if available
     if (typeof marked !== 'undefined') {
-      marked.setOptions({
-        breaks: true,
-        gfm: true,
-        headerIds: false,
-        mangle: false
-      });
+      marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
     }
 
-    // Sidebar toggle (for mobile / sidepanel)
-    function toggleSidebar() {
-      sidebar.classList.toggle('visible');
-    }
+    function toggleSidebar() { sidebar.classList.toggle('visible'); }
     toggleSidebarBtn.addEventListener('click', toggleSidebar);
 
-    // Close sidebar when a chat is selected on small screens
     function handleChatSelection() {
-      if (window.innerWidth <= 600) {
-        sidebar.classList.remove('visible');
-      }
+      if (window.innerWidth <= 600) sidebar.classList.remove('visible');
     }
 
-    // Init
     apiKeyInput.value = apiKey;
     const savedModel = localStorage.getItem('ds_model') || 'deepseek-v4-pro';
     modelSelect.value = savedModel;
@@ -405,12 +388,8 @@
     else loadChat(chats[0].id);
     renderChatList();
 
-    // On small screens, sidebar hidden initially
-    if (window.innerWidth <= 600) {
-      sidebar.classList.remove('visible');
-    }
+    if (window.innerWidth <= 600) sidebar.classList.remove('visible');
 
-    // Settings
     document.getElementById('saveKeyBtn').addEventListener('click', () => {
       apiKey = apiKeyInput.value.trim();
       localStorage.setItem('ds_key', apiKey);
@@ -494,11 +473,9 @@
     }
 
     document.getElementById('new-chat-btn').addEventListener('click', () => {
-      newChat();
-      handleChatSelection();
+      newChat(); handleChatSelection();
     });
 
-    // File handling
     function processFiles(files) {
       const allowed = ['.py','.xml','.txt','.html','.js','.css','.json','.md','.csv'];
       Array.from(files).forEach(file => {
@@ -548,38 +525,28 @@
       fileInput.value = '';
     });
 
-    // Formatting
     function escapeHtml(t) { 
-      const d = document.createElement('div'); 
-      d.textContent = t; 
-      return d.innerHTML; 
+      const d = document.createElement('div'); d.textContent = t; return d.innerHTML; 
     }
 
     function formatContent(content) {
       if (!content) return '';
-      
-      // Split by code blocks to handle them separately
       const parts = content.split('```');
       let html = '';
-      
       for (let i = 0; i < parts.length; i++) {
         if (i % 2 === 0) {
-          // Regular Markdown text
           if (parts[i].trim()) {
-            // Use marked if available, otherwise fallback to basic formatting
             html += typeof marked !== 'undefined' 
               ? marked.parse(parts[i]) 
               : escapeHtml(parts[i]).replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
           }
         } else {
-          // Code blocks - handle specially
           const code = parts[i];
           const nl = code.indexOf('\n');
           const lang = nl > -1 ? code.substring(0, nl).trim() : 'code';
           const codeContent = nl > -1 ? code.substring(nl + 1) : code;
           const id = 'c' + Math.random().toString(36).substring(2, 10);
           const ext = lang === 'python' ? 'py' : lang === 'xml' ? 'xml' : lang === 'html' ? 'html' : 'txt';
-          
           html += `<div class="code-block" data-code-id="${id}">
             <div class="code-header">
               <span>${escapeHtml(lang)} <span class="validation-badge" id="badge-${id}"></span></span>
@@ -594,7 +561,6 @@
           </div>`;
         }
       }
-      
       return html;
     }
 
@@ -615,7 +581,6 @@
       if (e.target.classList.contains('validate-btn')) validateCodeBlock(e.target.dataset.id);
     });
 
-    // Validation
     function detectLang(c) {
       if (/^(import |from |def |class )/m.test(c)) return 'python';
       if (/^<\?xml|<manifest/i.test(c)) return 'xml';
@@ -671,7 +636,6 @@
     }
     document.getElementById('validateAllBtn').addEventListener('click', validateAllCodeBlocks);
 
-    // Send
     function stop() {
       if (controller) { controller.abort(); controller = null; }
       isProcessing = false;
@@ -708,34 +672,24 @@
 
       try {
         const msgs = chat.messages.map(m => ({ role: m.role, content: m.content }));
-        
-        // Build request body per official documentation
         const requestBody = {
           model: modelSelect.value,
           messages: msgs,
           stream: false
         };
-        
-        // Add thinking parameter if toggle is enabled
         if (thinkingToggle.checked) {
           requestBody.thinking = { type: "enabled" };
           requestBody.reasoning_effort = "high";
         }
-        
         const res = await fetch(API_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
           body: JSON.stringify(requestBody),
           signal: controller.signal
         });
-        
         const data = await res.json();
         if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
         if (!data.choices?.[0]?.message?.content) throw new Error('Invalid response format');
-        
         const content = data.choices[0].message.content;
         chat.messages.push({ role: 'assistant', content }); chat.updatedAt = Date.now(); saveChats();
 
@@ -760,7 +714,6 @@
     userInput.addEventListener('keydown', e => { if (e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); send(); } });
     userInput.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 150) + 'px'; });
 
-    // Export/Import
     document.getElementById('exportChatsBtn').addEventListener('click', () => {
       const blob = new Blob([JSON.stringify(chats, null, 2)], { type: 'application/json' });
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
