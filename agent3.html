@@ -4,10 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>DeepSeek Chat · draggable files & sync</title>
-  <!-- Firebase SDKs (CDN compat) -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -15,15 +11,31 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #1a1a2e;
       color: #e0e0e0;
-      height: 100vh;
+      min-height: 100vh;
+      min-height: 100dvh;   /* dynamic viewport for mobile */
       display: flex;
-      overflow: hidden;
+      flex-direction: column;
+      overflow-y: auto;      /* allows root scrolling – address bar hides on scroll */
+      overflow-x: hidden;
+      position: relative;
     }
     #sidebar {
-      width: 260px; min-width: 260px;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 260px;
+      height: 100vh;
+      height: 100dvh;
       background: #0d0d0d;
-      display: flex; flex-direction: column;
+      display: flex;
+      flex-direction: column;
       border-right: 1px solid #222;
+      z-index: 100;
+      transition: transform 0.3s ease;
+      transform: translateX(0);
+    }
+    #sidebar.hidden {
+      transform: translateX(-100%);
     }
     #sidebar-header {
       padding: 20px 15px; border-bottom: 1px solid #222;
@@ -60,11 +72,44 @@
     .sync-btn:hover { background: #3a3a4a; }
     #sidebarStatus { margin-top: 4px; }
 
-    #main { flex: 1; display: flex; flex-direction: column; min-width: 0; background: #1a1a2e; }
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: #1a1a2e;
+      margin-left: 260px;   /* space for sidebar */
+      transition: margin-left 0.3s ease;
+    }
+    /* When sidebar is hidden, remove margin */
+    #main.full-width {
+      margin-left: 0;
+    }
+
     #header {
-      padding: 12px 20px; background: #0d0d0d;
-      display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      padding: 12px 20px;
+      background: #0d0d0d;
+      display: flex;
+      gap: 10px;
+      align-items: center;
       border-bottom: 1px solid #222;
+      flex-wrap: wrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    #toggleSidebarBtn {
+      background: none;
+      border: 1px solid #444;
+      color: #ccc;
+      font-size: 18px;
+      padding: 4px 8px;
+      border-radius: 5px;
+      cursor: pointer;
+      display: none;
+      line-height: 1;
     }
     #header input {
       background: #1a1a2e; border: 1px solid #333;
@@ -85,8 +130,12 @@
     #status { font-size: 12px; margin-left: auto; color: #4caf50; }
 
     #messages {
-      flex: 1; overflow-y: auto; padding: 20px;
-      max-width: 850px; margin: 0 auto; width: 100%;
+      flex: 1;
+      padding: 20px;
+      max-width: 850px;
+      margin: 0 auto;
+      width: 100%;
+      /* No overflow-y here – the body scrolls instead */
     }
     .msg {
       margin-bottom: 20px; padding: 15px; border-radius: 10px;
@@ -96,6 +145,7 @@
     .user { background: #16213e; margin-left: auto; }
     .assistant { background: #0f3460; margin-right: auto; }
 
+    /* Markdown rendered content styles */
     .msg h1, .msg h2, .msg h3 { color: #4a90d9; margin: 15px 0 10px; }
     .msg h1 { font-size: 1.5em; }
     .msg h2 { font-size: 1.3em; }
@@ -165,9 +215,17 @@
     .ok-line { color: #4caf50; }
 
     #input-area {
-      padding: 15px 20px; background: #0d0d0d;
-      display: flex; flex-direction: column; gap: 8px;
-      max-width: 850px; margin: 0 auto; width: 100%;
+      position: sticky;
+      bottom: 0;
+      z-index: 10;
+      background: #0d0d0d;
+      padding: 15px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 850px;
+      margin: 0 auto;
+      width: 100%;
       border-top: 1px solid #222;
       transition: background 0.2s, border 0.2s;
     }
@@ -206,9 +264,61 @@
     #attachBtn:hover { background: #666; }
     .drag-hint { font-size: 11px; color: #666; text-align: center; }
     
-    @media (max-width: 700px) {
-      #sidebar { width: 180px; min-width: 180px; }
-      #header input { width: 140px; }
+    /* ── RESPONSIVE IMPROVEMENTS ── */
+    @media (max-width: 600px) {
+      #sidebar {
+        transform: translateX(-100%);  /* hidden by default */
+      }
+      #sidebar.visible {
+        transform: translateX(0);
+        box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+      }
+      #main {
+        margin-left: 0;   /* full width when sidebar hidden */
+      }
+      #toggleSidebarBtn {
+        display: inline-block;
+      }
+      #header {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        gap: 6px;
+        padding: 10px;
+      }
+      #header input {
+        width: 120px;
+      }
+      #messages {
+        padding: 10px;
+      }
+      .msg {
+        max-width: 95%;
+      }
+      #input-area {
+        padding: 10px;
+      }
+      .drag-hint {
+        display: none;
+      }
+    }
+    
+    @media (max-width: 400px) {
+      #header input {
+        width: 80px;
+        font-size: 11px;
+      }
+      #header button, #header select {
+        padding: 6px 8px;
+        font-size: 11px;
+      }
+      #toggleSidebarBtn {
+        font-size: 16px;
+        padding: 3px 6px;
+      }
+      #sendBtn, #stopBtn, #attachBtn {
+        padding: 10px 12px;
+        font-size: 13px;
+      }
     }
   </style>
 </head>
@@ -228,6 +338,7 @@
 
 <div id="main">
   <div id="header">
+    <button id="toggleSidebarBtn" title="Toggle sidebar">☰</button>
     <span style="color:#888;">Key:</span>
     <input type="password" id="apiKey" placeholder="sk-...">
     <button id="saveKeyBtn">Save</button>
@@ -262,36 +373,15 @@
 
 <script>
   (function() {
-    // ================== YOUR FIREBASE CONFIG ==================
-    const firebaseConfig = {
-      apiKey: "AIzaSyAz7s6hOD14yz_y0nQPsXzPFj79eLVP9O0",
-      authDomain: "test1-ea629.firebaseapp.com",
-      databaseURL: "https://test1-ea629.firebaseio.com",
-      projectId: "test1-ea629",
-      storageBucket: "test1-ea629.firebasestorage.app",
-      messagingSenderId: "269959285439",
-      appId: "1:269959285439:web:41751ec83241fba060540a"
-    };
-    // ==========================================================
-
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-    const auth = firebase.auth();
-
-    const chatsDoc = db.collection("chats").doc("sharedHistory");
-
     const API_URL = 'https://api.deepseek.com/chat/completions';
     const MAX_TOKENS = 8192;
 
     let apiKey = localStorage.getItem('ds_key') || '';
-    let chats = [];
+    let chats = JSON.parse(localStorage.getItem('ds_chats') || '[]');
     let currentChatId = null;
     let isProcessing = false;
     let controller = null;
     let attachedFiles = [];
-    let firestoreReady = false;
-    let isLocalMode = false;
-    let syncUnsubscribe = null;
 
     const apiKeyInput = document.getElementById('apiKey');
     const modelSelect = document.getElementById('modelSelect');
@@ -307,109 +397,72 @@
     const fileInput = document.getElementById('fileInput');
     const inputArea = document.getElementById('input-area');
     const attachedFilesContainer = document.getElementById('attachedFiles');
+    const sidebar = document.getElementById('sidebar');
+    const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
+    const mainEl = document.getElementById('main');
 
     if (typeof marked !== 'undefined') {
       marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
     }
 
-    // ---------- Storage abstraction ----------
-    async function persistChats() {
-      if (isLocalMode) {
-        localStorage.setItem('ds_chats', JSON.stringify(chats));
-      } else if (firestoreReady) {
-        try {
-          await chatsDoc.set({ chats }, { merge: true });
-        } catch (err) {
-          console.error('Firestore save failed, switching to local mode:', err);
-          switchToLocalMode();
-        }
+    function toggleSidebar() {
+      sidebar.classList.toggle('visible');
+      // When sidebar is visible and we're on mobile, push main content
+      if (window.innerWidth <= 600) {
+        mainEl.classList.toggle('full-width', !sidebar.classList.contains('visible'));
+      }
+    }
+    toggleSidebarBtn.addEventListener('click', toggleSidebar);
+
+    function handleChatSelection() {
+      if (window.innerWidth <= 600) {
+        sidebar.classList.remove('visible');
+        mainEl.classList.add('full-width');
       }
     }
 
-    function switchToLocalMode() {
-      isLocalMode = true;
-      firestoreReady = false;
-      if (syncUnsubscribe) {
-        syncUnsubscribe();
-        syncUnsubscribe = null;
-      }
-      localStorage.setItem('ds_chats', JSON.stringify(chats));
+    // Scroll page to bottom (to see latest message and input area)
+    function scrollToBottom() {
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' });
     }
 
-    // ---------- Firebase sync ----------
-    function startFirestoreSync() {
-      if (syncUnsubscribe) syncUnsubscribe();
-      
-      syncUnsubscribe = chatsDoc.onSnapshot((doc) => {
-        if (!firestoreReady) return; // Ignore sync events if not ready
-        
-        if (!doc.exists) {
-          // Remote doesn't exist, push local if we have data
-          if (chats.length > 0) {
-            chatsDoc.set({ chats }, { merge: true }).catch(() => switchToLocalMode());
-          }
-          return;
-        }
-        
-        const remoteChats = doc.data().chats || [];
-        
-        // Ignore identical updates to prevent loops
-        if (JSON.stringify(remoteChats) === JSON.stringify(chats)) return;
-        
-        // Merge strategy: use the most recently updated version
-        const remoteLatest = remoteChats.reduce((max, c) => Math.max(max, c.updatedAt || 0), 0);
-        const localLatest = chats.reduce((max, c) => Math.max(max, c.updatedAt || 0), 0);
-        
-        if (remoteLatest >= localLatest) {
-          chats = remoteChats;
-        } else {
-          // Local is newer, push to remote
-          chatsDoc.set({ chats }, { merge: true }).catch(() => switchToLocalMode());
-          return;
-        }
+    apiKeyInput.value = apiKey;
+    const savedModel = localStorage.getItem('ds_model') || 'deepseek-v4-pro';
+    modelSelect.value = savedModel;
+    thinkingToggle.checked = localStorage.getItem('ds_thinking') === 'true';
+    updateStatus();
 
-        // Handle current chat state after remote update
-        if (currentChatId && !chats.find(c => c.id === currentChatId)) {
-          if (chats.length) {
-            loadChat(chats[0].id);
-          } else {
-            newChat();
-          }
-          return;
-        }
+    if (!chats.length) newChat();
+    else loadChat(chats[0].id);
+    renderChatList();
 
-        if (currentChatId) {
-          const current = chats.find(c => c.id === currentChatId);
-          if (current) loadChatView(current);
-        }
-        renderChatList();
-      }, (error) => {
-        console.error('Firestore sync error, switching to local mode:', error);
-        switchToLocalMode();
-      });
+    // On small screens, hide sidebar by default
+    if (window.innerWidth <= 600) {
+      sidebar.classList.remove('visible');
+      mainEl.classList.add('full-width');
     }
 
-    function loadChatView(chat) {
-      messagesEl.innerHTML = '';
-      if (chat?.messages) {
-        chat.messages.forEach(m => {
-          const div = document.createElement('div');
-          div.className = `msg ${m.role}`;
-          div.innerHTML = formatContent(m.content);
-          messagesEl.appendChild(div);
-        });
-        messagesEl.scrollTop = messagesEl.scrollHeight;
-        setTimeout(validateAllCodeBlocks, 400);
-      }
-    }
+    document.getElementById('saveKeyBtn').addEventListener('click', () => {
+      apiKey = apiKeyInput.value.trim();
+      localStorage.setItem('ds_key', apiKey);
+      updateStatus();
+    });
+
+    modelSelect.addEventListener('change', () => {
+      localStorage.setItem('ds_model', modelSelect.value);
+      updateStatus();
+    });
+
+    thinkingToggle.addEventListener('change', () => {
+      localStorage.setItem('ds_thinking', thinkingToggle.checked);
+    });
 
     function updateStatus() {
       const model = modelSelect.value;
-      const storageType = isLocalMode ? '(local)' : '(sync)';
       if (apiKey) {
-        statusEl.textContent = `✅ Ready | ${model} ${storageType}`;
+        statusEl.textContent = `✅ Ready | ${model}`;
         statusEl.style.color = '#4caf50';
-        sidebarStatus.textContent = `✅ ${model} ${storageType}`;
+        sidebarStatus.textContent = `✅ ${model}`;
         sidebarStatus.style.color = '#4caf50';
       } else {
         statusEl.textContent = '❌ Set API key';
@@ -419,13 +472,15 @@
       }
     }
 
+    function saveChats() { localStorage.setItem('ds_chats', JSON.stringify(chats)); }
+
     function renderChatList() {
       chatListEl.innerHTML = '';
       chats.sort((a, b) => b.updatedAt - a.updatedAt);
       chats.forEach(chat => {
         const div = document.createElement('div');
         div.className = 'chat-item' + (chat.id === currentChatId ? ' active' : '');
-        div.onclick = () => loadChat(chat.id);
+        div.onclick = () => { loadChat(chat.id); handleChatSelection(); };
         const first = chat.messages.find(m => m.role === 'user');
         const title = first ? first.content.substring(0, 35) : 'New Chat';
         div.innerHTML = `<span class="chat-item-title">${escapeHtml(title)}</span>
@@ -439,72 +494,50 @@
 
     function newChat() {
       currentChatId = 'chat_' + Date.now();
-      const obj = { 
-        id: currentChatId, 
-        messages: [], 
-        createdAt: Date.now(), 
-        updatedAt: Date.now() 
-      };
-      chats.push(obj);
-      persistChats();
-      renderChatList();
-      loadChatView(obj);
-      attachedFiles = []; 
-      renderAttachedFiles();
+      chats.push({ id: currentChatId, messages: [], createdAt: Date.now(), updatedAt: Date.now() });
+      saveChats(); renderChatList();
+      messagesEl.innerHTML = ''; attachedFiles = []; renderAttachedFiles();
     }
 
     function loadChat(id) {
       currentChatId = id;
       const chat = chats.find(c => c.id === id);
-      if (chat) {
-        loadChatView(chat);
-        renderChatList();
+      messagesEl.innerHTML = ''; attachedFiles = []; renderAttachedFiles();
+      if (chat?.messages) {
+        chat.messages.forEach(m => {
+          const div = document.createElement('div');
+          div.className = `msg ${m.role}`;
+          div.innerHTML = formatContent(m.content);
+          messagesEl.appendChild(div);
+        });
+        scrollToBottom();
+        setTimeout(validateAllCodeBlocks, 400);
       }
+      renderChatList();
     }
 
     function deleteChat(id) {
       chats = chats.filter(c => c.id !== id);
-      if (currentChatId === id) {
-        currentChatId = null;
-        messagesEl.innerHTML = '';
-      }
-      if (chats.length === 0) {
-        newChat();
-      } else if (!currentChatId) {
-        loadChat(chats[0].id);
-      }
-      persistChats();
-      renderChatList();
+      if (currentChatId === id) { currentChatId = null; messagesEl.innerHTML = ''; }
+      if (!chats.length) newChat();
+      else if (!currentChatId) loadChat(chats[0].id);
+      saveChats(); renderChatList();
     }
 
-    document.getElementById('new-chat-btn').addEventListener('click', newChat);
+    document.getElementById('new-chat-btn').addEventListener('click', () => {
+      newChat(); handleChatSelection();
+    });
 
-    // --- File handling ---
     function processFiles(files) {
       const allowed = ['.py','.xml','.txt','.html','.js','.css','.json','.md','.csv'];
       Array.from(files).forEach(file => {
         const ext = '.' + file.name.split('.').pop().toLowerCase();
-        if (!allowed.includes(ext)) { 
-          alert(`"${file.name}" not allowed`); 
-          return; 
-        }
-        if (file.size > 1024*1024) { 
-          alert(`"${file.name}" too large`); 
-          return; 
-        }
-        if (attachedFiles.find(f => f.name === file.name)) { 
-          alert(`"${file.name}" already attached`); 
-          return; 
-        }
+        if (!allowed.includes(ext)) { alert(`"${file.name}" not allowed`); return; }
+        if (file.size > 1024*1024) { alert(`"${file.name}" too large`); return; }
+        if (attachedFiles.find(f => f.name === file.name)) { alert(`"${file.name}" already attached`); return; }
         const reader = new FileReader();
         reader.onload = (e) => {
-          attachedFiles.push({ 
-            name: file.name, 
-            type: file.type, 
-            size: file.size, 
-            content: e.target.result, 
-            icon: getFileIcon(file.name) 
-          });
+          attachedFiles.push({ name: file.name, type: file.type, size: file.size, content: e.target.result, icon: getFileIcon(file.name) });
           renderAttachedFiles();
         };
         reader.onerror = () => alert(`Failed to read ${file.name}`);
@@ -513,10 +546,7 @@
     }
 
     function getFileIcon(name) {
-      const icons = { 
-        py:'🐍', xml:'📰', txt:'📄', html:'🌐', 
-        js:'📜', css:'🎨', json:'📋', md:'📘', csv:'📊' 
-      };
+      const icons = { py:'🐍', xml:'📰', txt:'📄', html:'🌐', js:'📜', css:'🎨', json:'📋', md:'📘', csv:'📊' };
       return icons[name.split('.').pop().toLowerCase()] || '📎';
     }
 
@@ -526,77 +556,49 @@
         const chip = document.createElement('div');
         chip.className = 'attached-file';
         chip.innerHTML = `${f.icon} ${f.name} (${(f.size/1024).toFixed(1)}KB) <span class="remove-file">×</span>`;
-        chip.querySelector('.remove-file').addEventListener('click', () => { 
-          attachedFiles.splice(i, 1); 
-          renderAttachedFiles(); 
-        });
+        chip.querySelector('.remove-file').addEventListener('click', () => { attachedFiles.splice(i,1); renderAttachedFiles(); });
         attachedFilesContainer.appendChild(chip);
       });
     }
 
     ['dragenter','dragover','dragleave','drop'].forEach(ev => {
-      document.addEventListener(ev, e => { 
-        e.preventDefault(); 
-        e.stopPropagation(); 
-      });
+      document.addEventListener(ev, e => { e.preventDefault(); e.stopPropagation(); });
     });
-    
     inputArea.addEventListener('dragenter', () => inputArea.classList.add('drag-over'));
     inputArea.addEventListener('dragover', () => inputArea.classList.add('drag-over'));
-    inputArea.addEventListener('dragleave', (e) => {
-      if (!inputArea.contains(e.relatedTarget)) {
-        inputArea.classList.remove('drag-over');
-      }
-    });
+    inputArea.addEventListener('dragleave', () => inputArea.classList.remove('drag-over'));
     inputArea.addEventListener('drop', e => {
       inputArea.classList.remove('drag-over');
       if (e.dataTransfer.files.length) processFiles(e.dataTransfer.files);
     });
-    
     attachBtn.addEventListener('click', () => fileInput.click());
     fileInput.addEventListener('change', e => {
       if (e.target.files.length) processFiles(e.target.files);
       fileInput.value = '';
     });
 
-    // --- Formatting (FIXED) ---
     function escapeHtml(t) { 
-      const d = document.createElement('div'); 
-      d.textContent = t; 
-      return d.innerHTML; 
+      const d = document.createElement('div'); d.textContent = t; return d.innerHTML; 
     }
 
     function formatContent(content) {
       if (!content) return '';
-      
-      // FIXED: Split by triple backticks, not by individual characters
       const parts = content.split('```');
       let html = '';
-
       for (let i = 0; i < parts.length; i++) {
         if (i % 2 === 0) {
-          // Even indices are regular text (outside code blocks)
           if (parts[i].trim()) {
             html += typeof marked !== 'undefined' 
               ? marked.parse(parts[i]) 
               : escapeHtml(parts[i]).replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
           }
         } else {
-          // Odd indices are code blocks
           const code = parts[i];
           const nl = code.indexOf('\n');
           const lang = nl > -1 ? code.substring(0, nl).trim() : 'code';
           const codeContent = nl > -1 ? code.substring(nl + 1) : code;
           const id = 'c' + Math.random().toString(36).substring(2, 10);
-          const ext = lang === 'python' ? 'py' : 
-                      lang === 'xml' ? 'xml' : 
-                      lang === 'html' ? 'html' : 
-                      lang === 'javascript' ? 'js' :
-                      lang === 'css' ? 'css' :
-                      lang === 'json' ? 'json' :
-                      lang === 'markdown' ? 'md' :
-                      lang === 'csv' ? 'csv' : 'txt';
-          
+          const ext = lang === 'python' ? 'py' : lang === 'xml' ? 'xml' : lang === 'html' ? 'html' : 'txt';
           html += `<div class="code-block" data-code-id="${id}">
             <div class="code-header">
               <span>${escapeHtml(lang)} <span class="validation-badge" id="badge-${id}"></span></span>
@@ -617,14 +619,7 @@
     document.addEventListener('click', e => {
       if (e.target.classList.contains('copy-btn')) {
         const el = document.getElementById(e.target.dataset.id);
-        if (el) {
-          navigator.clipboard.writeText(el.textContent).then(() => {
-            const btn = e.target;
-            const originalText = btn.textContent;
-            btn.textContent = 'Copied!';
-            setTimeout(() => btn.textContent = originalText, 2000);
-          });
-        }
+        if (el) navigator.clipboard.writeText(el.textContent);
       }
       if (e.target.classList.contains('download-btn')) {
         const el = document.getElementById(e.target.dataset.id);
@@ -632,115 +627,58 @@
           const name = `deepseek_${Date.now().toString(36)}_${Math.random().toString(36).substring(2,6)}.${e.target.dataset.ext}`;
           const a = document.createElement('a');
           a.href = URL.createObjectURL(new Blob([el.textContent], {type:'text/plain'}));
-          a.download = name; 
-          a.click(); 
-          URL.revokeObjectURL(a.href);
+          a.download = name; a.click(); URL.revokeObjectURL(a.href);
         }
       }
-      if (e.target.classList.contains('validate-btn')) {
-        validateCodeBlock(e.target.dataset.id);
-      }
+      if (e.target.classList.contains('validate-btn')) validateCodeBlock(e.target.dataset.id);
     });
 
-    // --- Validation ---
     function detectLang(c) {
       if (/^(import |from |def |class )/m.test(c)) return 'python';
-      if (/^<\?xml|<manifest|<html|<svg/i.test(c)) return 'xml';
-      if (/^[\[\{]/.test(c) && /[\[\]\{\}]/.test(c)) return 'json';
+      if (/^<\?xml|<manifest/i.test(c)) return 'xml';
       return 'text';
     }
 
     function validatePython(c) {
       const issues = [];
-      let p = 0, b = 0, br = 0;
-      const lines = c.split('\n');
-      
+      let p=0,b=0,br=0;
       for (const ch of c) {
-        if (ch === '(') p++; 
-        else if (ch === ')') p--;
-        else if (ch === '[') b++; 
-        else if (ch === ']') b--;
-        else if (ch === '{') br++; 
-        else if (ch === '}') br--;
+        if (ch==='(') p++; else if (ch===')') p--;
+        else if (ch==='[') b++; else if (ch===']') b--;
+        else if (ch==='{') br++; else if (ch==='}') br--;
       }
-      
-      if (p) issues.push({line:0, type:'error', msg:`Unmatched parentheses: ${p > 0 ? '+' + p : p}`});
-      if (b) issues.push({line:0, type:'error', msg:`Unmatched brackets: ${b > 0 ? '+' + b : b}`});
-      if (br) issues.push({line:0, type:'warn', msg:`Unmatched braces: ${br > 0 ? '+' + br : br}`});
-      
-      // Check for common Python syntax issues
-      lines.forEach((line, idx) => {
-        if (line.trim().startsWith('elif') && idx > 0 && !lines[idx-1].trim().startsWith('if') && !lines[idx-1].trim().startsWith('elif')) {
-          issues.push({line: idx + 1, type:'error', msg:'elif without preceding if'});
-        }
-        if (line.trim().startsWith('else:') && idx > 0) {
-          const prev = lines[idx-1].trim();
-          if (!prev.startsWith('if') && !prev.startsWith('elif') && !prev.startsWith('else') && !prev.startsWith('except') && !prev.startsWith('finally')) {
-            issues.push({line: idx + 1, type:'warn', msg:'else without clear preceding block'});
-          }
-        }
-      });
-      
-      const last = lines[lines.length - 1]?.trim();
-      if (last && /[=(,\\[\\]$/.test(last)) {
-        issues.push({line: lines.length, type:'warn', msg:'Possibly truncated line'});
-      }
-      
+      if (p) issues.push({line:0,type:'error',msg:`Parentheses: ${p}`});
+      if (b) issues.push({line:0,type:'error',msg:`Brackets: ${b}`});
+      if (br) issues.push({line:0,type:'warn',msg:`Braces: ${br}`});
+      const last = c.split('\n').pop()?.trim();
+      if (last && /[=(,\\]$/.test(last)) issues.push({line:c.split('\n').length,type:'warn',msg:'Possibly truncated'});
       return issues;
     }
 
     function validateGeneric(c) {
       const issues = [];
-      const count = (ch) => (c.match(new RegExp('\\' + ch, 'g')) || []).length;
-      const p = count('(') - count(')');
-      const b = count('[') - count(']');
-      const br = count('{') - count('}');
-      
-      if (p) issues.push({line:0, type:'error', msg:`Unmatched parentheses: ${p > 0 ? '+' + p : p}`});
-      if (b) issues.push({line:0, type:'error', msg:`Unmatched brackets: ${b > 0 ? '+' + b : b}`});
-      if (br) issues.push({line:0, type:'error', msg:`Unmatched braces: ${br > 0 ? '+' + br : br}`});
-      
-      // XML validation
-      if (/^<\?xml|<[a-z]+/i.test(c)) {
-        const tags = c.match(/<\/?[a-z]+[^>]*>/gi) || [];
-        const stack = [];
-        tags.forEach(tag => {
-          if (tag.startsWith('</')) {
-            const name = tag.match(/<\/([a-z]+)/i)?.[1];
-            if (stack.length && stack[stack.length-1] === name) stack.pop();
-            else issues.push({line:0, type:'warn', msg:`Possible mismatched closing tag: ${tag}`});
-          } else if (!tag.endsWith('/>')) {
-            const name = tag.match(/<([a-z]+)/i)?.[1];
-            if (name) stack.push(name);
-          }
-        });
-        if (stack.length) issues.push({line:0, type:'warn', msg:`Unclosed tags: ${stack.join(', ')}`});
-      }
-      
+      const count = (ch) => (c.match(new RegExp('\\'+ch,'g'))||[]).length;
+      const p = count('(')-count(')'), b = count('[')-count(']'), br = count('{')-count('}');
+      if (p) issues.push({line:0,type:'error',msg:`Parentheses: ${p}`});
+      if (b) issues.push({line:0,type:'error',msg:`Brackets: ${b}`});
+      if (br) issues.push({line:0,type:'error',msg:`Braces: ${br}`});
       return issues;
     }
 
     function validateCodeBlock(id) {
       const el = document.getElementById(id);
-      const badge = document.getElementById('badge-' + id);
-      const det = document.getElementById('details-' + id);
+      const badge = document.getElementById('badge-'+id);
+      const det = document.getElementById('details-'+id);
       if (!el) return;
-      
       const code = el.textContent;
-      const lang = detectLang(code);
-      const issues = lang === 'python' ? validatePython(code) : validateGeneric(code);
-      const errs = issues.filter(i => i.type === 'error');
-      const warns = issues.filter(i => i.type === 'warn');
-      
+      const issues = detectLang(code)==='python' ? validatePython(code) : validateGeneric(code);
+      const errs = issues.filter(i=>i.type==='error'), warns = issues.filter(i=>i.type==='warn');
       if (badge) {
         badge.textContent = errs.length ? `❌ ${errs.length}` : warns.length ? `⚠️ ${warns.length}` : '✅';
         badge.className = 'validation-badge ' + (errs.length ? 'validation-error' : warns.length ? 'validation-warn' : 'validation-pass');
       }
-      
       if (det) {
-        det.innerHTML = issues.length 
-          ? issues.map(i => `<div class="${i.type==='error'?'error-line':'warn-line'}">L${i.line}: ${i.msg}</div>`).join('') 
-          : '<div class="ok-line">✅ No issues detected</div>';
+        det.innerHTML = issues.length ? issues.map(i=>`<div class="${i.type==='error'?'error-line':'warn-line'}">L${i.line}: ${i.msg}</div>`).join('') : '<div class="ok-line">✅ No issues</div>';
         det.classList.add('show');
       }
     }
@@ -748,30 +686,18 @@
     function validateAllCodeBlocks() {
       document.querySelectorAll('[data-code-id]').forEach(b => validateCodeBlock(b.dataset.codeId));
     }
-    
     document.getElementById('validateAllBtn').addEventListener('click', validateAllCodeBlocks);
 
-    // --- Send/Stop ---
     function stop() {
-      if (controller) { 
-        controller.abort(); 
-        controller = null; 
-      }
+      if (controller) { controller.abort(); controller = null; }
       isProcessing = false;
-      sendBtn.disabled = false; 
-      stopBtn.style.display = 'none';
-      userInput.disabled = false; 
-      attachBtn.disabled = false;
+      sendBtn.disabled = false; stopBtn.style.display = 'none';
+      userInput.disabled = false; attachBtn.disabled = false;
     }
 
     async function send() {
-      if (isProcessing || !apiKey) {
-        if (!apiKey) alert('Please set your API key first');
-        return;
-      }
-      
+      if (isProcessing || !apiKey) return;
       if (!currentChatId) newChat();
-      
       const text = userInput.value.trim();
       if (!text && !attachedFiles.length) return;
 
@@ -783,29 +709,18 @@
       }
 
       const chat = chats.find(c => c.id === currentChatId);
-      if (!chat) return;
-      
       chat.messages.push({ role: 'user', content: full });
-      chat.updatedAt = Date.now();
-      persistChats();
-      renderChatList();
+      chat.updatedAt = Date.now(); saveChats(); renderChatList();
 
-      const div = document.createElement('div'); 
-      div.className = 'msg user';
-      div.innerHTML = escapeHtml(text) + (attachedFiles.length ? '<br><br>📎 ' + attachedFiles.map(f => f.name).join(', ') : '');
-      messagesEl.appendChild(div); 
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-      
-      userInput.value = ''; 
-      userInput.style.height = 'auto';
-      attachedFiles = []; 
-      renderAttachedFiles();
+      const div = document.createElement('div'); div.className = 'msg user';
+      div.innerHTML = escapeHtml(text) + (attachedFiles.length ? '<br><br>📎 '+attachedFiles.map(f=>f.name).join(', ') : '');
+      messagesEl.appendChild(div);
+      scrollToBottom();   // scroll to bottom after adding user message
+      userInput.value = ''; userInput.style.height = 'auto';
+      attachedFiles = []; renderAttachedFiles();
 
-      isProcessing = true; 
-      sendBtn.disabled = true; 
-      attachBtn.disabled = true;
-      stopBtn.style.display = 'inline'; 
-      userInput.disabled = true;
+      isProcessing = true; sendBtn.disabled = true; attachBtn.disabled = true;
+      stopBtn.style.display = 'inline'; userInput.disabled = true;
       controller = new AbortController();
 
       try {
@@ -815,212 +730,76 @@
           messages: msgs,
           stream: false
         };
-        
         if (thinkingToggle.checked) {
           requestBody.thinking = { type: "enabled" };
           requestBody.reasoning_effort = "high";
         }
-        
         const res = await fetch(API_URL, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
           body: JSON.stringify(requestBody),
           signal: controller.signal
         });
-        
         const data = await res.json();
         if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
         if (!data.choices?.[0]?.message?.content) throw new Error('Invalid response format');
-        
         const content = data.choices[0].message.content;
-        chat.messages.push({ role: 'assistant', content });
-        chat.updatedAt = Date.now();
-        persistChats();
+        chat.messages.push({ role: 'assistant', content }); chat.updatedAt = Date.now(); saveChats();
 
-        const adiv = document.createElement('div'); 
-        adiv.className = 'msg assistant';
+        const adiv = document.createElement('div'); adiv.className = 'msg assistant';
         adiv.innerHTML = formatContent(content);
-        messagesEl.appendChild(adiv); 
-        messagesEl.scrollTop = messagesEl.scrollHeight;
-        
-        setTimeout(() => {
-          adiv.querySelectorAll('[data-code-id]').forEach(b => validateCodeBlock(b.dataset.codeId));
-        }, 100);
-        
+        messagesEl.appendChild(adiv);
+        scrollToBottom();   // scroll to bottom after assistant reply
+        setTimeout(() => adiv.querySelectorAll('[data-code-id]').forEach(b => validateCodeBlock(b.dataset.codeId)), 100);
       } catch (err) {
         if (err.name !== 'AbortError') {
-          const ediv = document.createElement('div'); 
-          ediv.className = 'msg assistant';
-          ediv.textContent = '❌ Error: ' + err.message; 
-          messagesEl.appendChild(ediv);
-          messagesEl.scrollTop = messagesEl.scrollHeight;
+          const ediv = document.createElement('div'); ediv.className = 'msg assistant';
+          ediv.textContent = '❌ ' + err.message; messagesEl.appendChild(ediv);
+          scrollToBottom();
         }
       } finally {
-        isProcessing = false; 
-        sendBtn.disabled = false; 
-        attachBtn.disabled = false;
-        stopBtn.style.display = 'none'; 
-        userInput.disabled = false; 
-        controller = null;
+        isProcessing = false; sendBtn.disabled = false; attachBtn.disabled = false;
+        stopBtn.style.display = 'none'; userInput.disabled = false; controller = null;
         userInput.focus();
       }
     }
 
     sendBtn.addEventListener('click', send);
     stopBtn.addEventListener('click', stop);
-    userInput.addEventListener('keydown', e => { 
-      if (e.key === 'Enter' && !e.shiftKey) { 
-        e.preventDefault(); 
-        send(); 
-      } 
-    });
-    userInput.addEventListener('input', function() { 
-      this.style.height = 'auto'; 
-      this.style.height = Math.min(this.scrollHeight, 150) + 'px'; 
-    });
+    userInput.addEventListener('keydown', e => { if (e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); send(); } });
+    userInput.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 150) + 'px'; });
 
-    // --- Export/Import ---
     document.getElementById('exportChatsBtn').addEventListener('click', () => {
       const blob = new Blob([JSON.stringify(chats, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a'); 
-      a.href = URL.createObjectURL(blob);
-      a.download = `deepseek_chats_${new Date().toISOString().slice(0,10)}.json`; 
-      a.click();
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = `deepseek_chats_${new Date().toISOString().slice(0,10)}.json`; a.click();
       URL.revokeObjectURL(a.href);
     });
 
     document.getElementById('importChatsBtn').addEventListener('click', () => {
-      const inp = document.createElement('input'); 
-      inp.type = 'file'; 
-      inp.accept = '.json';
+      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json';
       inp.onchange = e => {
-        const file = e.target.files[0]; 
-        if (!file) return;
+        const file = e.target.files[0]; if (!file) return;
         const reader = new FileReader();
         reader.onload = ev => {
           try {
             const imported = JSON.parse(ev.target.result);
             if (!Array.isArray(imported)) throw new Error('Invalid format');
-            
-            imported.forEach(c => { 
-              if (!c.id || !Array.isArray(c.messages)) throw new Error('Corrupted data'); 
-            });
-            
+            imported.forEach(c => { if (!c.id || !Array.isArray(c.messages)) throw new Error('Corrupted data'); });
             if (confirm(`Replace with ${imported.length} chat(s)?`)) {
-              chats = imported;
-              persistChats();
+              chats = imported; saveChats();
               currentChatId = chats.length ? chats[0].id : null;
-              if (currentChatId) {
-                loadChat(currentChatId);
-              } else {
-                messagesEl.innerHTML = '';
-                newChat();
-              }
+              currentChatId ? loadChat(currentChatId) : (messagesEl.innerHTML = '', newChat());
               renderChatList();
             }
-          } catch (err) { 
-            alert('Import failed: ' + err.message); 
-          }
+          } catch (err) { alert('Import failed: ' + err.message); }
         };
         reader.readAsText(file);
       };
       inp.click();
     });
 
-    // ---------- Initialization ----------
-    async function initializeApp() {
-      apiKeyInput.value = apiKey;
-      const savedModel = localStorage.getItem('ds_model') || 'deepseek-v4-pro';
-      modelSelect.value = savedModel;
-      thinkingToggle.checked = localStorage.getItem('ds_thinking') === 'true';
-      updateStatus();
-
-      document.getElementById('saveKeyBtn').addEventListener('click', () => {
-        apiKey = apiKeyInput.value.trim();
-        localStorage.setItem('ds_key', apiKey);
-        updateStatus();
-      });
-      
-      modelSelect.addEventListener('change', () => {
-        localStorage.setItem('ds_model', modelSelect.value);
-        updateStatus();
-      });
-      
-      thinkingToggle.addEventListener('change', () => {
-        localStorage.setItem('ds_thinking', thinkingToggle.checked);
-      });
-
-      // Try Firebase authentication
-      try {
-        await auth.signInAnonymously();
-        console.log('Anonymous auth successful');
-        firestoreReady = true;
-        isLocalMode = false;
-        
-        // Load initial data from Firestore
-        const doc = await chatsDoc.get();
-        if (doc.exists) {
-          const remoteChats = doc.data().chats || [];
-          if (remoteChats.length > 0) {
-            chats = remoteChats;
-          }
-        }
-        
-        // Start real-time sync
-        startFirestoreSync();
-        
-        // Initialize UI
-        if (chats.length === 0) {
-          newChat();
-        } else {
-          renderChatList();
-          const targetId = currentChatId || chats[0].id;
-          if (targetId) loadChat(targetId);
-        }
-        
-      } catch (err) {
-        console.error('Auth error, falling back to localStorage', err);
-        switchToLocalMode();
-        
-        // Load from localStorage
-        try {
-          chats = JSON.parse(localStorage.getItem('ds_chats') || '[]');
-        } catch (e) {
-          chats = [];
-        }
-        
-        if (!Array.isArray(chats)) chats = [];
-        
-        if (chats.length === 0) {
-          newChat();
-        } else {
-          renderChatList();
-          loadChat(chats[0].id);
-        }
-      }
-      
-      updateStatus();
-    }
-
-    // Start the application
-    initializeApp().catch(err => {
-      console.error('Fatal initialization error:', err);
-      // Ultimate fallback
-      isLocalMode = true;
-      try {
-        chats = JSON.parse(localStorage.getItem('ds_chats') || '[]');
-      } catch (e) {
-        chats = [];
-      }
-      if (!Array.isArray(chats)) chats = [];
-      if (chats.length === 0) newChat();
-      else loadChat(chats[0].id);
-      renderChatList();
-      updateStatus();
-    });
+    window.addEventListener('load', () => { if (currentChatId) setTimeout(validateAllCodeBlocks, 600); });
   })();
 </script>
 </body>
