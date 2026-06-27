@@ -12,10 +12,10 @@
       background: #1a1a2e;
       color: #e0e0e0;
       min-height: 100vh;
-      min-height: 100dvh;   /* dynamic viewport for mobile */
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
-      overflow-y: auto;      /* allows root scrolling – address bar hides on scroll */
+      overflow-y: auto;
       overflow-x: hidden;
       position: relative;
     }
@@ -78,10 +78,9 @@
       flex-direction: column;
       min-width: 0;
       background: #1a1a2e;
-      margin-left: 260px;   /* space for sidebar */
+      margin-left: 260px;
       transition: margin-left 0.3s ease;
     }
-    /* When sidebar is hidden, remove margin */
     #main.full-width {
       margin-left: 0;
     }
@@ -135,7 +134,6 @@
       max-width: 850px;
       margin: 0 auto;
       width: 100%;
-      /* No overflow-y here – the body scrolls instead */
     }
     .msg {
       margin-bottom: 20px; padding: 15px; border-radius: 10px;
@@ -145,7 +143,6 @@
     .user { background: #16213e; margin-left: auto; }
     .assistant { background: #0f3460; margin-right: auto; }
 
-    /* Markdown rendered content styles */
     .msg h1, .msg h2, .msg h3 { color: #4a90d9; margin: 15px 0 10px; }
     .msg h1 { font-size: 1.5em; }
     .msg h2 { font-size: 1.3em; }
@@ -264,17 +261,16 @@
     #attachBtn:hover { background: #666; }
     .drag-hint { font-size: 11px; color: #666; text-align: center; }
     
-    /* ── RESPONSIVE IMPROVEMENTS ── */
     @media (max-width: 600px) {
       #sidebar {
-        transform: translateX(-100%);  /* hidden by default */
+        transform: translateX(-100%);
       }
       #sidebar.visible {
         transform: translateX(0);
         box-shadow: 2px 0 10px rgba(0,0,0,0.5);
       }
       #main {
-        margin-left: 0;   /* full width when sidebar hidden */
+        margin-left: 0;
       }
       #toggleSidebarBtn {
         display: inline-block;
@@ -332,6 +328,7 @@
       <button class="sync-btn" id="exportChatsBtn">📤 Export</button>
       <button class="sync-btn" id="importChatsBtn">📥 Import</button>
     </div>
+    <button id="clearAllBtn" class="sync-btn" style="background:#b71c1c;">🗑 Clear all</button>
     <div id="sidebarStatus">⚡ API status</div>
   </div>
 </div>
@@ -374,10 +371,54 @@
 <script>
   (function() {
     const API_URL = 'https://api.deepseek.com/chat/completions';
-    const MAX_TOKENS = 8192;
 
+    // ──────────────────────────────────
+    // IndexedDB wrapper for chat storage
+    // ──────────────────────────────────
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open('ds_chat_storage', 1);
+        request.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('chats')) {
+            db.createObjectStore('chats');
+          }
+        };
+        request.onsuccess = (e) => resolve(e.target.result);
+        request.onerror = (e) => reject(e.target.error);
+      });
+    }
+
+    async function loadChatsFromDB() {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('chats', 'readonly');
+        const store = tx.objectStore('chats');
+        const request = store.get('ds_chats');
+        request.onsuccess = () => {
+          const data = request.result;
+          resolve(data || []);
+        };
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    async function saveChatsToDB(chatsArray) {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('chats', 'readwrite');
+        const store = tx.objectStore('chats');
+        store.put(chatsArray, 'ds_chats');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    // ──────────────────────────────────
+    // App state
+    // ──────────────────────────────────
     let apiKey = localStorage.getItem('ds_key') || '';
-    let chats = JSON.parse(localStorage.getItem('ds_chats') || '[]');
+    let chats = [];  // loaded asynchronously
     let currentChatId = null;
     let isProcessing = false;
     let controller = null;
@@ -405,9 +446,9 @@
       marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
     }
 
+    // Sidebar toggle
     function toggleSidebar() {
       sidebar.classList.toggle('visible');
-      // When sidebar is visible and we're on mobile, push main content
       if (window.innerWidth <= 600) {
         mainEl.classList.toggle('full-width', !sidebar.classList.contains('visible'));
       }
@@ -421,26 +462,16 @@
       }
     }
 
-    // Scroll page to bottom (to see latest message and input area)
     function scrollToBottom() {
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' });
     }
 
+    // Settings (still in localStorage)
     apiKeyInput.value = apiKey;
     const savedModel = localStorage.getItem('ds_model') || 'deepseek-v4-pro';
     modelSelect.value = savedModel;
     thinkingToggle.checked = localStorage.getItem('ds_thinking') === 'true';
     updateStatus();
-
-    if (!chats.length) newChat();
-    else loadChat(chats[0].id);
-    renderChatList();
-
-    // On small screens, hide sidebar by default
-    if (window.innerWidth <= 600) {
-      sidebar.classList.remove('visible');
-      mainEl.classList.add('full-width');
-    }
 
     document.getElementById('saveKeyBtn').addEventListener('click', () => {
       apiKey = apiKeyInput.value.trim();
@@ -472,7 +503,16 @@
       }
     }
 
-    function saveChats() { localStorage.setItem('ds_chats', JSON.stringify(chats)); }
+    // ──────────────────────────────────
+    // Chat management (async saves)
+    // ──────────────────────────────────
+    async function saveChats() {
+      try {
+        await saveChatsToDB(chats);
+      } catch (e) {
+        alert('❌ Failed to save chats: ' + e.message);
+      }
+    }
 
     function renderChatList() {
       chatListEl.innerHTML = '';
@@ -516,18 +556,32 @@
       renderChatList();
     }
 
-    function deleteChat(id) {
+    async function deleteChat(id) {
       chats = chats.filter(c => c.id !== id);
       if (currentChatId === id) { currentChatId = null; messagesEl.innerHTML = ''; }
       if (!chats.length) newChat();
       else if (!currentChatId) loadChat(chats[0].id);
-      saveChats(); renderChatList();
+      await saveChats();
+      renderChatList();
     }
 
     document.getElementById('new-chat-btn').addEventListener('click', () => {
       newChat(); handleChatSelection();
     });
 
+    // Clear all chats
+    document.getElementById('clearAllBtn').addEventListener('click', async () => {
+      if (confirm('Delete all chats permanently? This cannot be undone.')) {
+        chats = [];
+        currentChatId = null;
+        messagesEl.innerHTML = '';
+        await saveChats();
+        newChat();
+        renderChatList();
+      }
+    });
+
+    // File handling (unchanged)
     function processFiles(files) {
       const allowed = ['.py','.xml','.txt','.html','.js','.css','.json','.md','.csv'];
       Array.from(files).forEach(file => {
@@ -710,12 +764,12 @@
 
       const chat = chats.find(c => c.id === currentChatId);
       chat.messages.push({ role: 'user', content: full });
-      chat.updatedAt = Date.now(); saveChats(); renderChatList();
+      chat.updatedAt = Date.now(); await saveChats(); renderChatList();
 
       const div = document.createElement('div'); div.className = 'msg user';
       div.innerHTML = escapeHtml(text) + (attachedFiles.length ? '<br><br>📎 '+attachedFiles.map(f=>f.name).join(', ') : '');
       messagesEl.appendChild(div);
-      scrollToBottom();   // scroll to bottom after adding user message
+      scrollToBottom();
       userInput.value = ''; userInput.style.height = 'auto';
       attachedFiles = []; renderAttachedFiles();
 
@@ -744,12 +798,12 @@
         if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
         if (!data.choices?.[0]?.message?.content) throw new Error('Invalid response format');
         const content = data.choices[0].message.content;
-        chat.messages.push({ role: 'assistant', content }); chat.updatedAt = Date.now(); saveChats();
+        chat.messages.push({ role: 'assistant', content }); chat.updatedAt = Date.now(); await saveChats();
 
         const adiv = document.createElement('div'); adiv.className = 'msg assistant';
         adiv.innerHTML = formatContent(content);
         messagesEl.appendChild(adiv);
-        scrollToBottom();   // scroll to bottom after assistant reply
+        scrollToBottom();
         setTimeout(() => adiv.querySelectorAll('[data-code-id]').forEach(b => validateCodeBlock(b.dataset.codeId)), 100);
       } catch (err) {
         if (err.name !== 'AbortError') {
@@ -769,6 +823,7 @@
     userInput.addEventListener('keydown', e => { if (e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); send(); } });
     userInput.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 150) + 'px'; });
 
+    // Export / Import (works with IndexedDB data)
     document.getElementById('exportChatsBtn').addEventListener('click', () => {
       const blob = new Blob([JSON.stringify(chats, null, 2)], { type: 'application/json' });
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
@@ -778,16 +833,16 @@
 
     document.getElementById('importChatsBtn').addEventListener('click', () => {
       const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json';
-      inp.onchange = e => {
+      inp.onchange = async (e) => {
         const file = e.target.files[0]; if (!file) return;
         const reader = new FileReader();
-        reader.onload = ev => {
+        reader.onload = async (ev) => {
           try {
             const imported = JSON.parse(ev.target.result);
             if (!Array.isArray(imported)) throw new Error('Invalid format');
             imported.forEach(c => { if (!c.id || !Array.isArray(c.messages)) throw new Error('Corrupted data'); });
             if (confirm(`Replace with ${imported.length} chat(s)?`)) {
-              chats = imported; saveChats();
+              chats = imported; await saveChats();
               currentChatId = chats.length ? chats[0].id : null;
               currentChatId ? loadChat(currentChatId) : (messagesEl.innerHTML = '', newChat());
               renderChatList();
@@ -799,7 +854,27 @@
       inp.click();
     });
 
-    window.addEventListener('load', () => { if (currentChatId) setTimeout(validateAllCodeBlocks, 600); });
+    // ──────────────────────────────────
+    // Initialise app (async)
+    // ──────────────────────────────────
+    async function initApp() {
+      try {
+        chats = await loadChatsFromDB();
+      } catch (e) {
+        alert('Failed to load chats from storage: ' + e.message);
+        chats = [];
+      }
+      if (!chats.length) newChat();
+      else loadChat(chats[0].id);
+      renderChatList();
+      if (window.innerWidth <= 600) {
+        sidebar.classList.remove('visible');
+        mainEl.classList.add('full-width');
+      }
+      if (currentChatId) setTimeout(validateAllCodeBlocks, 600);
+    }
+
+    initApp();
   })();
 </script>
 </body>
