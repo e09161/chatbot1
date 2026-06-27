@@ -58,7 +58,7 @@
     .chat-item.active { background: #1a1a2e; border: 1px solid #4a90d9; color: #e0e0e0; }
     .chat-item-title {
       flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-      cursor: pointer; user-select: none;
+      user-select: none;
     }
     .chat-item-title input {
       background: #0d0d0d; border: 1px solid #4a90d9;
@@ -379,7 +379,7 @@
   (function() {
     const API_URL = 'https://api.deepseek.com/chat/completions';
 
-    // IndexedDB wrapper
+    // ── IndexedDB ──
     function openDB() {
       return new Promise((resolve, reject) => {
         const request = indexedDB.open('ds_chat_storage', 1);
@@ -416,7 +416,7 @@
       });
     }
 
-    // App state
+    // ── App state ──
     let apiKey = localStorage.getItem('ds_key') || '';
     let chats = [];
     let currentChatId = null;
@@ -515,41 +515,59 @@
       return first ? first.content.substring(0, 35) : 'New Chat';
     }
 
+    // Track single-click timers per chat item
+    const clickTimers = {};
+
     function renderChatList() {
       chatListEl.innerHTML = '';
       chats.sort((a, b) => b.updatedAt - a.updatedAt);
       chats.forEach(chat => {
         const div = document.createElement('div');
         div.className = 'chat-item' + (chat.id === currentChatId ? ' active' : '');
+
         const titleSpan = document.createElement('span');
         titleSpan.className = 'chat-item-title';
         titleSpan.textContent = getChatTitle(chat);
-        // Click to load chat
-        titleSpan.addEventListener('click', (e) => {
-          e.stopPropagation(); // so parent onclick doesn't fire twice
-          loadChat(chat.id); handleChatSelection();
-        });
-        // Double click to rename
+
+        // Double-click to rename (works even if single-click is delayed)
         titleSpan.addEventListener('dblclick', (e) => {
+          e.preventDefault();
           e.stopPropagation();
+          // Clear any pending single-click timer
+          if (clickTimers[chat.id]) {
+            clearTimeout(clickTimers[chat.id]);
+            delete clickTimers[chat.id];
+          }
           startRename(chat, titleSpan);
         });
-        div.appendChild(titleSpan);
-        
+
+        // Single click with delay (so dblclick can cancel it)
+        titleSpan.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          // If there's already a timer, ignore (could be part of double-click)
+          if (clickTimers[chat.id]) return;
+          clickTimers[chat.id] = setTimeout(() => {
+            delete clickTimers[chat.id];
+            loadChat(chat.id);
+            handleChatSelection();
+          }, 300);
+        });
+
         const delSpan = document.createElement('span');
         delSpan.className = 'chat-item-delete';
         delSpan.textContent = '×';
         delSpan.addEventListener('click', (e) => {
           e.stopPropagation();
+          if (clickTimers[chat.id]) {
+            clearTimeout(clickTimers[chat.id]);
+            delete clickTimers[chat.id];
+          }
           deleteChat(chat.id);
         });
+
+        div.appendChild(titleSpan);
         div.appendChild(delSpan);
-        
-        // Also allow click on the whole div to load chat
-        div.addEventListener('click', () => {
-          loadChat(chat.id); handleChatSelection();
-        });
-        
         chatListEl.appendChild(div);
       });
     }
@@ -558,7 +576,6 @@
       const currentTitle = getChatTitle(chat);
       const input = document.createElement('input');
       input.value = currentTitle;
-      input.style.width = '100%';
       span.innerHTML = '';
       span.appendChild(input);
       input.focus();
@@ -568,7 +585,7 @@
         const newTitle = input.value.trim();
         if (newTitle && newTitle !== currentTitle) {
           chat.title = newTitle;
-        } else if (!newTitle && currentTitle !== 'New Chat') {
+        } else if (!newTitle) {
           // If user cleared the title, revert to auto
           delete chat.title;
         }
@@ -582,11 +599,10 @@
           e.preventDefault();
           input.blur();
         } else if (e.key === 'Escape') {
-          // Cancel: restore original
+          // Cancel
           span.innerHTML = '';
           span.textContent = currentTitle;
           input.removeEventListener('blur', onBlur);
-          // No save
         }
       });
 
@@ -597,7 +613,8 @@
     function newChat() {
       currentChatId = 'chat_' + Date.now();
       chats.push({ id: currentChatId, messages: [], createdAt: Date.now(), updatedAt: Date.now() });
-      saveChats(); renderChatList();
+      saveChats();
+      renderChatList();
       messagesEl.innerHTML = ''; attachedFiles = []; renderAttachedFiles();
     }
 
@@ -628,7 +645,8 @@
     }
 
     document.getElementById('new-chat-btn').addEventListener('click', () => {
-      newChat(); handleChatSelection();
+      newChat();
+      handleChatSelection();
     });
 
     function processFiles(files) {
@@ -902,7 +920,6 @@
       inp.click();
     });
 
-    // Init
     async function initApp() {
       try {
         chats = await loadChatsFromDB();
