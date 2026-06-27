@@ -56,7 +56,15 @@
     }
     .chat-item:hover { background: #1a1a2e; color: #e0e0e0; }
     .chat-item.active { background: #1a1a2e; border: 1px solid #4a90d9; color: #e0e0e0; }
-    .chat-item-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .chat-item-title {
+      flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      cursor: pointer; user-select: none;
+    }
+    .chat-item-title input {
+      background: #0d0d0d; border: 1px solid #4a90d9;
+      color: #e0e0e0; padding: 2px 6px; font-size: 13px;
+      border-radius: 4px; width: 100%; outline: none;
+    }
     .chat-item-delete { color: #666; margin-left: 8px; cursor: pointer; font-weight: bold; }
     .chat-item-delete:hover { color: #f44; }
     #sidebar-footer {
@@ -328,7 +336,6 @@
       <button class="sync-btn" id="exportChatsBtn">📤 Export</button>
       <button class="sync-btn" id="importChatsBtn">📥 Import</button>
     </div>
-    <button id="clearAllBtn" class="sync-btn" style="background:#b71c1c;">🗑 Clear all</button>
     <div id="sidebarStatus">⚡ API status</div>
   </div>
 </div>
@@ -372,9 +379,7 @@
   (function() {
     const API_URL = 'https://api.deepseek.com/chat/completions';
 
-    // ──────────────────────────────────
-    // IndexedDB wrapper for chat storage
-    // ──────────────────────────────────
+    // IndexedDB wrapper
     function openDB() {
       return new Promise((resolve, reject) => {
         const request = indexedDB.open('ds_chat_storage', 1);
@@ -395,10 +400,7 @@
         const tx = db.transaction('chats', 'readonly');
         const store = tx.objectStore('chats');
         const request = store.get('ds_chats');
-        request.onsuccess = () => {
-          const data = request.result;
-          resolve(data || []);
-        };
+        request.onsuccess = () => resolve(request.result || []);
         request.onerror = () => reject(request.error);
       });
     }
@@ -414,11 +416,9 @@
       });
     }
 
-    // ──────────────────────────────────
     // App state
-    // ──────────────────────────────────
     let apiKey = localStorage.getItem('ds_key') || '';
-    let chats = [];  // loaded asynchronously
+    let chats = [];
     let currentChatId = null;
     let isProcessing = false;
     let controller = null;
@@ -446,7 +446,6 @@
       marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
     }
 
-    // Sidebar toggle
     function toggleSidebar() {
       sidebar.classList.toggle('visible');
       if (window.innerWidth <= 600) {
@@ -466,7 +465,6 @@
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' });
     }
 
-    // Settings (still in localStorage)
     apiKeyInput.value = apiKey;
     const savedModel = localStorage.getItem('ds_model') || 'deepseek-v4-pro';
     modelSelect.value = savedModel;
@@ -503,9 +501,6 @@
       }
     }
 
-    // ──────────────────────────────────
-    // Chat management (async saves)
-    // ──────────────────────────────────
     async function saveChats() {
       try {
         await saveChatsToDB(chats);
@@ -514,22 +509,89 @@
       }
     }
 
+    function getChatTitle(chat) {
+      if (chat.title && chat.title.trim()) return chat.title;
+      const first = chat.messages.find(m => m.role === 'user');
+      return first ? first.content.substring(0, 35) : 'New Chat';
+    }
+
     function renderChatList() {
       chatListEl.innerHTML = '';
       chats.sort((a, b) => b.updatedAt - a.updatedAt);
       chats.forEach(chat => {
         const div = document.createElement('div');
         div.className = 'chat-item' + (chat.id === currentChatId ? ' active' : '');
-        div.onclick = () => { loadChat(chat.id); handleChatSelection(); };
-        const first = chat.messages.find(m => m.role === 'user');
-        const title = first ? first.content.substring(0, 35) : 'New Chat';
-        div.innerHTML = `<span class="chat-item-title">${escapeHtml(title)}</span>
-          <span class="chat-item-delete">×</span>`;
-        div.querySelector('.chat-item-delete').addEventListener('click', (e) => {
-          e.stopPropagation(); deleteChat(chat.id);
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'chat-item-title';
+        titleSpan.textContent = getChatTitle(chat);
+        // Click to load chat
+        titleSpan.addEventListener('click', (e) => {
+          e.stopPropagation(); // so parent onclick doesn't fire twice
+          loadChat(chat.id); handleChatSelection();
         });
+        // Double click to rename
+        titleSpan.addEventListener('dblclick', (e) => {
+          e.stopPropagation();
+          startRename(chat, titleSpan);
+        });
+        div.appendChild(titleSpan);
+        
+        const delSpan = document.createElement('span');
+        delSpan.className = 'chat-item-delete';
+        delSpan.textContent = '×';
+        delSpan.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deleteChat(chat.id);
+        });
+        div.appendChild(delSpan);
+        
+        // Also allow click on the whole div to load chat
+        div.addEventListener('click', () => {
+          loadChat(chat.id); handleChatSelection();
+        });
+        
         chatListEl.appendChild(div);
       });
+    }
+
+    async function startRename(chat, span) {
+      const currentTitle = getChatTitle(chat);
+      const input = document.createElement('input');
+      input.value = currentTitle;
+      input.style.width = '100%';
+      span.innerHTML = '';
+      span.appendChild(input);
+      input.focus();
+      input.select();
+
+      const finish = async () => {
+        const newTitle = input.value.trim();
+        if (newTitle && newTitle !== currentTitle) {
+          chat.title = newTitle;
+        } else if (!newTitle && currentTitle !== 'New Chat') {
+          // If user cleared the title, revert to auto
+          delete chat.title;
+        }
+        chat.updatedAt = Date.now();
+        await saveChats();
+        renderChatList();
+      };
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          input.blur();
+        } else if (e.key === 'Escape') {
+          // Cancel: restore original
+          span.innerHTML = '';
+          span.textContent = currentTitle;
+          input.removeEventListener('blur', onBlur);
+          // No save
+        }
+      });
+
+      const onBlur = () => finish();
+      input.addEventListener('blur', onBlur);
     }
 
     function newChat() {
@@ -569,19 +631,6 @@
       newChat(); handleChatSelection();
     });
 
-    // Clear all chats
-    document.getElementById('clearAllBtn').addEventListener('click', async () => {
-      if (confirm('Delete all chats permanently? This cannot be undone.')) {
-        chats = [];
-        currentChatId = null;
-        messagesEl.innerHTML = '';
-        await saveChats();
-        newChat();
-        renderChatList();
-      }
-    });
-
-    // File handling (unchanged)
     function processFiles(files) {
       const allowed = ['.py','.xml','.txt','.html','.js','.css','.json','.md','.csv'];
       Array.from(files).forEach(file => {
@@ -823,7 +872,6 @@
     userInput.addEventListener('keydown', e => { if (e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); send(); } });
     userInput.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 150) + 'px'; });
 
-    // Export / Import (works with IndexedDB data)
     document.getElementById('exportChatsBtn').addEventListener('click', () => {
       const blob = new Blob([JSON.stringify(chats, null, 2)], { type: 'application/json' });
       const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
@@ -854,9 +902,7 @@
       inp.click();
     });
 
-    // ──────────────────────────────────
-    // Initialise app (async)
-    // ──────────────────────────────────
+    // Init
     async function initApp() {
       try {
         chats = await loadChatsFromDB();
