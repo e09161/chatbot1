@@ -457,7 +457,6 @@
       <input type="checkbox" id="thinkingToggle"> Thinking
     </label>
     <button id="validateAllBtn">🔍 Validate</button>
-    <!-- Search toggle button -->
     <button id="searchToggle" title="Search messages">🔍</button>
     <div id="searchContainer">
       <input type="text" id="searchInput" placeholder="Search all chats...">
@@ -491,7 +490,7 @@
   (function() {
     const API_URL = 'https://api.deepseek.com/chat/completions';
 
-    // ── IndexedDB ──
+    // IndexedDB
     function openDB() {
       return new Promise((resolve, reject) => {
         const request = indexedDB.open('ds_chat_storage', 1);
@@ -528,16 +527,15 @@
       });
     }
 
-    // ── App state ──
+    // App state
     let apiKey = localStorage.getItem('ds_key') || '';
     let chats = [];
     let currentChatId = null;
     let isProcessing = false;
     let controller = null;
     let attachedFiles = [];
-    // Search state
     let searchQuery = '';
-    let allMatches = [];           // { chatId, msgIdx, element (DOM node), startOffset, endOffset }
+    let allMatches = [];
     let currentMatchIdx = -1;
 
     const apiKeyInput = document.getElementById('apiKey');
@@ -557,8 +555,6 @@
     const sidebar = document.getElementById('sidebar');
     const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
     const mainEl = document.getElementById('main');
-
-    // Search elements
     const searchToggle = document.getElementById('searchToggle');
     const searchContainer = document.getElementById('searchContainer');
     const searchInput = document.getElementById('searchInput');
@@ -571,7 +567,6 @@
       marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
     }
 
-    // ── Sidebar / UI ──
     function toggleSidebar() {
       sidebar.classList.toggle('visible');
       if (window.innerWidth <= 600) {
@@ -649,7 +644,6 @@
       chats.forEach(chat => {
         const div = document.createElement('div');
         div.className = 'chat-item' + (chat.id === currentChatId ? ' active' : '');
-
         const titleSpan = document.createElement('span');
         titleSpan.className = 'chat-item-title';
         titleSpan.textContent = getChatTitle(chat);
@@ -735,7 +729,6 @@
       saveChats();
       renderChatList();
       messagesEl.innerHTML = ''; attachedFiles = []; renderAttachedFiles();
-      // Clear search when creating new chat
       clearSearch();
     }
 
@@ -756,7 +749,6 @@
         setTimeout(validateAllCodeBlocks, 400);
       }
       renderChatList();
-      // If there's an active search, re-apply highlights to the newly loaded chat
       if (searchQuery) {
         applySearchHighlights();
       }
@@ -770,7 +762,6 @@
       await saveChats();
       renderChatList();
       if (searchQuery) {
-        // Update search results if chat deleted
         performSearch(searchQuery);
       }
     }
@@ -780,8 +771,8 @@
       handleChatSelection();
     });
 
-    // ── File handling (unchanged) ──
-    function processFiles(files) { /* ... same as before ... */
+    // File handling
+    function processFiles(files) {
       const allowed = ['.py','.xml','.txt','.html','.js','.css','.json','.md','.csv'];
       Array.from(files).forEach(file => {
         const ext = '.' + file.name.split('.').pop().toLowerCase();
@@ -869,7 +860,80 @@
       return html;
     }
 
-    // ── Search implementation ──
+    document.addEventListener('click', e => {
+      if (e.target.classList.contains('copy-btn')) {
+        const el = document.getElementById(e.target.dataset.id);
+        if (el) navigator.clipboard.writeText(el.textContent);
+      }
+      if (e.target.classList.contains('download-btn')) {
+        const el = document.getElementById(e.target.dataset.id);
+        if (el) {
+          const name = `deepseek_${Date.now().toString(36)}_${Math.random().toString(36).substring(2,6)}.${e.target.dataset.ext}`;
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(new Blob([el.textContent], {type:'text/plain'}));
+          a.download = name; a.click(); URL.revokeObjectURL(a.href);
+        }
+      }
+      if (e.target.classList.contains('validate-btn')) validateCodeBlock(e.target.dataset.id);
+    });
+
+    // Validation
+    function detectLang(c) {
+      if (/^(import |from |def |class )/m.test(c)) return 'python';
+      if (/^<\?xml|<manifest/i.test(c)) return 'xml';
+      return 'text';
+    }
+
+    function validatePython(c) {
+      const issues = [];
+      let p=0,b=0,br=0;
+      for (const ch of c) {
+        if (ch==='(') p++; else if (ch===')') p--;
+        else if (ch==='[') b++; else if (ch===']') b--;
+        else if (ch==='{') br++; else if (ch==='}') br--;
+      }
+      if (p) issues.push({line:0,type:'error',msg:`Parentheses: ${p}`});
+      if (b) issues.push({line:0,type:'error',msg:`Brackets: ${b}`});
+      if (br) issues.push({line:0,type:'warn',msg:`Braces: ${br}`});
+      const last = c.split('\n').pop()?.trim();
+      if (last && /[=(,\\]$/.test(last)) issues.push({line:c.split('\n').length,type:'warn',msg:'Possibly truncated'});
+      return issues;
+    }
+
+    function validateGeneric(c) {
+      const issues = [];
+      const count = (ch) => (c.match(new RegExp('\\'+ch,'g'))||[]).length;
+      const p = count('(')-count(')'), b = count('[')-count(']'), br = count('{')-count('}');
+      if (p) issues.push({line:0,type:'error',msg:`Parentheses: ${p}`});
+      if (b) issues.push({line:0,type:'error',msg:`Brackets: ${b}`});
+      if (br) issues.push({line:0,type:'error',msg:`Braces: ${br}`});
+      return issues;
+    }
+
+    function validateCodeBlock(id) {
+      const el = document.getElementById(id);
+      const badge = document.getElementById('badge-'+id);
+      const det = document.getElementById('details-'+id);
+      if (!el) return;
+      const code = el.textContent;
+      const issues = detectLang(code)==='python' ? validatePython(code) : validateGeneric(code);
+      const errs = issues.filter(i=>i.type==='error'), warns = issues.filter(i=>i.type==='warn');
+      if (badge) {
+        badge.textContent = errs.length ? `❌ ${errs.length}` : warns.length ? `⚠️ ${warns.length}` : '✅';
+        badge.className = 'validation-badge ' + (errs.length ? 'validation-error' : warns.length ? 'validation-warn' : 'validation-pass');
+      }
+      if (det) {
+        det.innerHTML = issues.length ? issues.map(i=>`<div class="${i.type==='error'?'error-line':'warn-line'}">L${i.line}: ${i.msg}</div>`).join('') : '<div class="ok-line">✅ No issues</div>';
+        det.classList.add('show');
+      }
+    }
+
+    function validateAllCodeBlocks() {
+      document.querySelectorAll('[data-code-id]').forEach(b => validateCodeBlock(b.dataset.codeId));
+    }
+    document.getElementById('validateAllBtn').addEventListener('click', validateAllCodeBlocks);
+
+    // Search
     function openSearch() {
       searchContainer.classList.add('visible');
       searchInput.focus();
@@ -903,21 +967,17 @@
       }
     });
 
-    // Perform search across all chats
     function performSearch(query) {
       searchQuery = query.toLowerCase();
       allMatches = [];
       currentMatchIdx = -1;
-
-      // Search in memory (chats array)
-      const results = []; // for dropdown: { chatId, chatTitle, snippet, msgIdx }
+      const results = [];
       chats.forEach(chat => {
         chat.messages.forEach((msg, msgIdx) => {
           const content = msg.content;
           const lowerContent = content.toLowerCase();
           let startIdx = 0;
           while ((startIdx = lowerContent.indexOf(searchQuery, startIdx)) !== -1) {
-            // We'll store a reference to the message element later when chat is loaded
             results.push({
               chatId: chat.id,
               msgIdx,
@@ -929,11 +989,7 @@
           }
         });
       });
-
-      // Show dropdown
       renderSearchDropdown(results);
-
-      // If currently loaded chat has matches, apply highlights
       applySearchHighlights();
     }
 
@@ -944,7 +1000,6 @@
         searchResults.classList.add('visible');
         return;
       }
-      // Group by chat, show first match per chat for brevity? Better to show each match as an item
       results.forEach((res, i) => {
         const chat = chats.find(c => c.id === res.chatId);
         const title = getChatTitle(chat);
@@ -955,16 +1010,12 @@
           <div class="search-result-snippet">...${escapeHtml(res.snippet)}...</div>
         `;
         item.addEventListener('click', () => {
-          // Load that chat and jump to the specific message
           if (currentChatId !== res.chatId) {
             loadChat(res.chatId);
           }
-          // After load, scroll to message and highlight first match in that message
           setTimeout(() => {
             scrollToMessage(res.chatId, res.msgIdx);
-            // Apply highlights again to make sure
             applySearchHighlights();
-            // Find the first match in that message and set as current
             const msgMatches = allMatches.filter(m => m.chatId === res.chatId && m.msgIdx === res.msgIdx);
             if (msgMatches.length > 0) {
               currentMatchIdx = allMatches.indexOf(msgMatches[0]);
@@ -989,7 +1040,6 @@
     }
 
     function applySearchHighlights() {
-      // Remove all existing highlights first
       removeHighlights();
       if (!searchQuery) return;
       allMatches = [];
@@ -1008,10 +1058,9 @@
     }
 
     function highlightTextInElement(element, query, chatId, msgIdx) {
-      // Walk through text nodes and wrap matches
       const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
         acceptNode: function(node) {
-          if (node.parentElement.tagName === 'MARK') return NodeFilter.FILTER_REJECT; // already highlighted
+          if (node.parentElement.tagName === 'MARK') return NodeFilter.FILTER_REJECT;
           return NodeFilter.FILTER_ACCEPT;
         }
       });
@@ -1026,21 +1075,14 @@
         const fragment = document.createDocumentFragment();
         let lastIdx = 0;
         while (idx !== -1) {
-          // Text before match
           if (idx > lastIdx) {
             fragment.appendChild(document.createTextNode(text.substring(lastIdx, idx)));
           }
-          // Create highlight mark
           const mark = document.createElement('mark');
           mark.className = 'search-highlight';
           mark.textContent = text.substring(idx, idx + query.length);
           fragment.appendChild(mark);
-          // Store match info
-          allMatches.push({
-            chatId,
-            msgIdx,
-            element: mark,
-          });
+          allMatches.push({ chatId, msgIdx, element: mark });
           lastIdx = idx + query.length;
           idx = lowerText.indexOf(query, lastIdx);
         }
@@ -1056,7 +1098,7 @@
       marks.forEach(mark => {
         const parent = mark.parentNode;
         parent.replaceChild(document.createTextNode(mark.textContent), mark);
-        parent.normalize(); // merge adjacent text nodes
+        parent.normalize();
       });
       allMatches = [];
       currentMatchIdx = -1;
@@ -1072,7 +1114,6 @@
     }
 
     function updateCurrentHighlight() {
-      // Remove current highlight class from all marks
       messagesEl.querySelectorAll('mark.search-current-highlight').forEach(m => {
         m.classList.remove('search-current-highlight');
         m.classList.add('search-highlight');
@@ -1114,25 +1155,20 @@
       scrollToMatch(currentMatchIdx);
     });
 
-    // Close dropdown when clicking outside
     document.addEventListener('click', (e) => {
       if (!searchContainer.contains(e.target) && e.target !== searchToggle) {
         searchResults.classList.remove('visible');
       }
     });
 
-    // ── Validation (unchanged) ──
-    function detectLang(c) { /* ... */ }
-    function validatePython(c) { /* ... */ }
-    function validateGeneric(c) { /* ... */ }
-    function validateCodeBlock(id) { /* ... */ }
-    function validateAllCodeBlocks() {
-      document.querySelectorAll('[data-code-id]').forEach(b => validateCodeBlock(b.dataset.codeId));
+    // Send / Stop
+    function stop() {
+      if (controller) { controller.abort(); controller = null; }
+      isProcessing = false;
+      sendBtn.disabled = false; stopBtn.style.display = 'none';
+      userInput.disabled = false; attachBtn.disabled = false;
     }
-    document.getElementById('validateAllBtn').addEventListener('click', validateAllCodeBlocks);
 
-    // ── Send / stop (unchanged, but remember to clear search on new message) ──
-    function stop() { /* ... */ }
     async function send() {
       if (isProcessing || !apiKey) return;
       if (!currentChatId) newChat();
@@ -1197,7 +1233,7 @@
         if (err.name !== 'AbortError') {
           const ediv = document.createElement('div'); ediv.className = 'msg assistant';
           ediv.dataset.chatId = currentChatId;
-          ediv.dataset.msgIdx = chat.messages.length - 1; // error message is also a message
+          ediv.dataset.msgIdx = chat.messages.length - 1;
           ediv.textContent = '❌ ' + err.message; messagesEl.appendChild(ediv);
           scrollToBottom();
         }
@@ -1206,7 +1242,6 @@
         stopBtn.style.display = 'none'; userInput.disabled = false; controller = null;
         userInput.focus();
       }
-      // Re-apply search highlights if search is active
       if (searchQuery) {
         applySearchHighlights();
       }
@@ -1217,9 +1252,42 @@
     userInput.addEventListener('keydown', e => { if (e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); send(); } });
     userInput.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 150) + 'px'; });
 
-    // Export / Import (unchanged)
-    document.getElementById('exportChatsBtn').addEventListener('click', () => { /* ... */ });
-    document.getElementById('importChatsBtn').addEventListener('click', () => { /* ... */ });
+    // Export / Import (restored)
+    document.getElementById('exportChatsBtn').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(chats, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `deepseek_chats_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    document.getElementById('importChatsBtn').addEventListener('click', () => {
+      const inp = document.createElement('input');
+      inp.type = 'file';
+      inp.accept = '.json';
+      inp.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (ev) => {
+          try {
+            const imported = JSON.parse(ev.target.result);
+            if (!Array.isArray(imported)) throw new Error('Invalid format');
+            imported.forEach(c => { if (!c.id || !Array.isArray(c.messages)) throw new Error('Corrupted data'); });
+            if (confirm(`Replace with ${imported.length} chat(s)?`)) {
+              chats = imported;
+              await saveChats();
+              currentChatId = chats.length ? chats[0].id : null;
+              currentChatId ? loadChat(currentChatId) : (messagesEl.innerHTML = '', newChat());
+              renderChatList();
+            }
+          } catch (err) { alert('Import failed: ' + err.message); }
+        };
+        reader.readAsText(file);
+      };
+      inp.click();
+    });
 
     async function initApp() {
       try {
