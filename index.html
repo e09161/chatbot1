@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>DeepSeek Chat · draggable files & sync</title>
+  <title>Educasa Chat · draggable files & sync</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -38,8 +38,18 @@
       transform: translateX(-100%);
     }
     #sidebar-header {
-      padding: 20px 15px; border-bottom: 1px solid #222;
-      font-weight: bold; font-size: 18px;
+      padding: 20px 15px;
+      border-bottom: 1px solid #222;
+      font-weight: bold;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #sidebar-header img {
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
     }
     #new-chat-btn {
       margin: 15px; padding: 10px;
@@ -136,7 +146,6 @@
     #validateAllBtn:hover { background: #f57c00; }
     #status { font-size: 12px; margin-left: auto; color: #4caf50; }
 
-    /* Search styles */
     #searchToggle {
       background: none;
       border: 1px solid #555;
@@ -152,9 +161,7 @@
       gap: 4px;
       position: relative;
     }
-    #searchContainer.visible {
-      display: flex;
-    }
+    #searchContainer.visible { display: flex; }
     #searchInput {
       background: #1a1a2e;
       border: 1px solid #4a90d9;
@@ -164,18 +171,11 @@
       font-size: 13px;
       width: 180px;
     }
-    #searchNav {
-      display: flex;
-      gap: 2px;
-    }
+    #searchNav { display: flex; gap: 2px; }
     #searchNav button {
-      background: #333;
-      color: #ccc;
-      border: none;
-      padding: 4px 8px;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 12px;
+      background: #333; color: #ccc;
+      border: none; padding: 4px 8px;
+      border-radius: 4px; cursor: pointer; font-size: 12px;
     }
     #searchNav button:hover { background: #444; }
     #searchResults {
@@ -192,54 +192,36 @@
       z-index: 20;
       font-size: 12px;
     }
-    #searchResults.visible {
-      display: block;
-    }
+    #searchResults.visible { display: block; }
     .search-result-item {
-      padding: 8px 10px;
-      cursor: pointer;
+      padding: 8px 10px; cursor: pointer;
       border-bottom: 1px solid #222;
-      display: flex;
-      flex-direction: column;
+      display: flex; flex-direction: column;
     }
     .search-result-item:hover { background: #1a1a2e; }
     .search-result-chat {
-      font-weight: bold;
-      color: #4a90d9;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      font-weight: bold; color: #4a90d9;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .search-result-snippet {
       color: #aaa;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
     .search-highlight {
-      background: #ff9800;
-      color: #000;
-      border-radius: 2px;
-      padding: 0 2px;
+      background: #ff9800; color: #000;
+      border-radius: 2px; padding: 0 2px;
     }
     .search-current-highlight {
-      background: #f44336;
-      color: white;
-      border-radius: 2px;
-      padding: 0 2px;
+      background: #f44336; color: white;
+      border-radius: 2px; padding: 0 2px;
     }
     #matchCounter {
-      font-size: 12px;
-      color: #ccc;
-      margin-left: 5px;
+      font-size: 12px; color: #ccc; margin-left: 5px;
     }
 
     #messages {
-      flex: 1;
-      padding: 20px;
-      max-width: 850px;
-      margin: 0 auto;
-      width: 100%;
+      flex: 1; padding: 20px;
+      max-width: 850px; margin: 0 auto; width: 100%;
     }
     .msg {
       margin-bottom: 20px; padding: 15px; border-radius: 10px;
@@ -318,17 +300,10 @@
     .ok-line { color: #4caf50; }
 
     #input-area {
-      position: sticky;
-      bottom: 0;
-      z-index: 10;
-      background: #0d0d0d;
-      padding: 15px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      max-width: 850px;
-      margin: 0 auto;
-      width: 100%;
+      position: sticky; bottom: 0; z-index: 10;
+      background: #0d0d0d; padding: 15px 20px;
+      display: flex; flex-direction: column; gap: 8px;
+      max-width: 850px; margin: 0 auto; width: 100%;
       border-top: 1px solid #222;
       transition: background 0.2s, border 0.2s;
     }
@@ -375,61 +350,38 @@
         transform: translateX(0);
         box-shadow: 2px 0 10px rgba(0,0,0,0.5);
       }
-      #main {
-        margin-left: 0;
-      }
-      #toggleSidebarBtn {
-        display: inline-block;
-      }
+      #main { margin-left: 0; }
+      #toggleSidebarBtn { display: inline-block; }
       #header {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        gap: 6px;
-        padding: 10px;
+        flex-wrap: nowrap; overflow-x: auto;
+        gap: 6px; padding: 10px;
       }
-      #header input {
-        width: 120px;
-      }
-      #searchInput {
-        width: 120px;
-      }
-      #messages {
-        padding: 10px;
-      }
-      .msg {
-        max-width: 95%;
-      }
-      #input-area {
-        padding: 10px;
-      }
-      .drag-hint {
-        display: none;
-      }
+      #header input { width: 120px; }
+      #searchInput { width: 120px; }
+      #messages { padding: 10px; }
+      .msg { max-width: 95%; }
+      #input-area { padding: 10px; }
+      .drag-hint { display: none; }
     }
     
     @media (max-width: 400px) {
-      #header input {
-        width: 80px;
-        font-size: 11px;
-      }
+      #header input { width: 80px; font-size: 11px; }
       #header button, #header select {
-        padding: 6px 8px;
-        font-size: 11px;
+        padding: 6px 8px; font-size: 11px;
       }
-      #toggleSidebarBtn {
-        font-size: 16px;
-        padding: 3px 6px;
-      }
+      #toggleSidebarBtn { font-size: 16px; padding: 3px 6px; }
       #sendBtn, #stopBtn, #attachBtn {
-        padding: 10px 12px;
-        font-size: 13px;
+        padding: 10px 12px; font-size: 13px;
       }
     }
   </style>
 </head>
 <body>
 <div id="sidebar">
-  <div id="sidebar-header">💬 DeepSeek Chat</div>
+  <div id="sidebar-header">
+    <img src="https://educasa.pe/wp-content/uploads/2025/05/cropped-educasa_chamilo_big-1.png" alt="Educasa logo">
+    Educasa Chat
+  </div>
   <div id="new-chat-btn">+ New Chat</div>
   <div id="chat-list"></div>
   <div id="sidebar-footer">
@@ -475,7 +427,7 @@
   <div id="input-area">
     <div class="attached-files" id="attachedFiles"></div>
     <div class="input-row">
-      <textarea id="userInput" rows="1" placeholder="Message DeepSeek... Drag & drop files here"></textarea>
+      <textarea id="userInput" rows="1" placeholder="Message Educasa Chat... Drag & drop files here"></textarea>
       <button id="attachBtn" title="Attach files">📎</button>
       <button id="sendBtn">Send</button>
       <button id="stopBtn" style="display:none;">Stop</button>
@@ -1252,12 +1204,12 @@
     userInput.addEventListener('keydown', e => { if (e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); send(); } });
     userInput.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 150) + 'px'; });
 
-    // Export / Import (restored)
+    // Export / Import
     document.getElementById('exportChatsBtn').addEventListener('click', () => {
       const blob = new Blob([JSON.stringify(chats, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `deepseek_chats_${new Date().toISOString().slice(0,10)}.json`;
+      a.download = `educasa_chats_${new Date().toISOString().slice(0,10)}.json`;
       a.click();
       URL.revokeObjectURL(a.href);
     });
