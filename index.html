@@ -4,8 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>Educasa Chat · draggable files & sync</title>
-  <!-- Added favicon for the browser tab -->
-  <link rel="icon" type="image/png" href="https://educasa.pe/wp-content/uploads/2025/05/cropped-educasa_chamilo_big-1.png">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -147,6 +145,49 @@
     #validateAllBtn { background: #ff9800; }
     #validateAllBtn:hover { background: #f57c00; }
     #status { font-size: 12px; margin-left: auto; color: #4caf50; }
+
+    /* Toggle switch for web search */
+    .toggle-switch {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: 12px;
+      color: #ccc;
+      user-select: none;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: relative;
+      display: inline-block;
+      width: 36px;
+      height: 20px;
+      background: #444;
+      border-radius: 20px;
+      transition: background 0.3s;
+    }
+    .toggle-slider::before {
+      content: "";
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      left: 2px;
+      bottom: 2px;
+      background: white;
+      border-radius: 50%;
+      transition: transform 0.3s;
+    }
+    .toggle-switch input:checked + .toggle-slider {
+      background: #4caf50;
+    }
+    .toggle-switch input:checked + .toggle-slider::before {
+      transform: translateX(16px);
+    }
 
     #searchToggle {
       background: none;
@@ -343,6 +384,18 @@
     #attachBtn { background: #555; }
     #attachBtn:hover { background: #666; }
     .drag-hint { font-size: 11px; color: #666; text-align: center; }
+
+    /* Web search badge on messages */
+    .web-search-badge {
+      display: inline-block;
+      background: #1b5e20;
+      color: #4caf50;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: bold;
+      margin-left: 8px;
+    }
     
     @media (max-width: 600px) {
       #sidebar {
@@ -409,6 +462,12 @@
     </select>
     <label style="color:#888; font-size:12px; display:flex; align-items:center; gap:4px;">
       <input type="checkbox" id="thinkingToggle"> Thinking
+    </label>
+    <!-- Web Search Toggle -->
+    <label class="toggle-switch" title="Enable internet search">
+      <input type="checkbox" id="webSearchToggle">
+      <span class="toggle-slider"></span>
+      <span>🌐 Web</span>
     </label>
     <button id="validateAllBtn">🔍 Validate</button>
     <button id="searchToggle" title="Search messages">🔍</button>
@@ -495,6 +554,7 @@
     const apiKeyInput = document.getElementById('apiKey');
     const modelSelect = document.getElementById('modelSelect');
     const thinkingToggle = document.getElementById('thinkingToggle');
+    const webSearchToggle = document.getElementById('webSearchToggle');
     const statusEl = document.getElementById('status');
     const sidebarStatus = document.getElementById('sidebarStatus');
     const chatListEl = document.getElementById('chat-list');
@@ -544,6 +604,7 @@
     const savedModel = localStorage.getItem('ds_model') || 'deepseek-v4-pro';
     modelSelect.value = savedModel;
     thinkingToggle.checked = localStorage.getItem('ds_thinking') === 'true';
+    webSearchToggle.checked = localStorage.getItem('ds_web_search') === 'true';
     updateStatus();
 
     document.getElementById('saveKeyBtn').addEventListener('click', () => {
@@ -561,12 +622,20 @@
       localStorage.setItem('ds_thinking', thinkingToggle.checked);
     });
 
+    webSearchToggle.addEventListener('change', () => {
+      localStorage.setItem('ds_web_search', webSearchToggle.checked);
+      updateStatus();
+    });
+
     function updateStatus() {
       const model = modelSelect.value;
+      const webSearchEnabled = webSearchToggle.checked;
       if (apiKey) {
-        statusEl.textContent = `✅ Ready | ${model}`;
+        let statusText = `✅ Ready | ${model}`;
+        if (webSearchEnabled) statusText += ' 🌐';
+        statusEl.textContent = statusText;
         statusEl.style.color = '#4caf50';
-        sidebarStatus.textContent = `✅ ${model}`;
+        sidebarStatus.textContent = `✅ ${model}${webSearchEnabled ? ' 🌐' : ''}`;
         sidebarStatus.style.color = '#4caf50';
       } else {
         statusEl.textContent = '❌ Set API key';
@@ -696,7 +765,13 @@
           div.className = `msg ${m.role}`;
           div.dataset.chatId = chat.id;
           div.dataset.msgIdx = idx;
-          div.innerHTML = formatContent(m.content);
+          // Check if this message was created with web search
+          const content = m.webSearch ? 
+            `<span style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+              <span class="web-search-badge">🌐 Web Search</span>
+            </span>${formatContent(m.content)}` : 
+            formatContent(m.content);
+          div.innerHTML = content;
           messagesEl.appendChild(div);
         });
         scrollToBottom();
@@ -1015,6 +1090,7 @@
       const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
         acceptNode: function(node) {
           if (node.parentElement.tagName === 'MARK') return NodeFilter.FILTER_REJECT;
+          if (node.parentElement.classList.contains('web-search-badge')) return NodeFilter.FILTER_REJECT;
           return NodeFilter.FILTER_ACCEPT;
         }
       });
@@ -1137,7 +1213,8 @@
       }
 
       const chat = chats.find(c => c.id === currentChatId);
-      chat.messages.push({ role: 'user', content: full });
+      const webSearchEnabled = webSearchToggle.checked;
+      chat.messages.push({ role: 'user', content: full, webSearch: webSearchEnabled });
       chat.updatedAt = Date.now(); await saveChats(); renderChatList();
 
       const div = document.createElement('div'); div.className = 'msg user';
@@ -1164,6 +1241,10 @@
           requestBody.thinking = { type: "enabled" };
           requestBody.reasoning_effort = "high";
         }
+        // Add web search if enabled
+        if (webSearchEnabled) {
+          requestBody.web_search = true;
+        }
         const res = await fetch(API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
@@ -1174,12 +1255,19 @@
         if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
         if (!data.choices?.[0]?.message?.content) throw new Error('Invalid response format');
         const content = data.choices[0].message.content;
-        chat.messages.push({ role: 'assistant', content }); chat.updatedAt = Date.now(); await saveChats();
+        chat.messages.push({ role: 'assistant', content, webSearch: webSearchEnabled }); 
+        chat.updatedAt = Date.now(); await saveChats();
 
         const adiv = document.createElement('div'); adiv.className = 'msg assistant';
         adiv.dataset.chatId = currentChatId;
         adiv.dataset.msgIdx = chat.messages.length - 1;
-        adiv.innerHTML = formatContent(content);
+        // Add web search badge if enabled
+        const displayContent = webSearchEnabled ? 
+          `<span style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+            <span class="web-search-badge">🌐 Web Search</span>
+          </span>${formatContent(content)}` : 
+          formatContent(content);
+        adiv.innerHTML = displayContent;
         messagesEl.appendChild(adiv);
         scrollToBottom();
         setTimeout(() => adiv.querySelectorAll('[data-code-id]').forEach(b => validateCodeBlock(b.dataset.codeId)), 100);
