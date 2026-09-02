@@ -270,9 +270,39 @@
       margin-bottom: 20px; padding: 15px; border-radius: 10px;
       max-width: 85%; word-break: break-word;
       font-size: 14px; line-height: 1.6;
+      position: relative; /* for delete button positioning */
     }
     .user { background: #16213e; margin-left: auto; }
     .assistant { background: #0f3460; margin-right: auto; }
+
+    /* NEW: delete message button */
+    .msg .delete-msg {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(0,0,0,0.6);
+      color: #ccc;
+      border: 1px solid #444;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 5;
+    }
+    .msg:hover .delete-msg {
+      opacity: 1;
+    }
+    .msg .delete-msg:hover {
+      background: #d94a4a;
+      color: white;
+      border-color: #d94a4a;
+    }
 
     .msg h1, .msg h2, .msg h3 { color: #4a90d9; margin: 15px 0 10px; }
     .msg h1 { font-size: 1.5em; }
@@ -761,18 +791,13 @@
       messagesEl.innerHTML = ''; attachedFiles = []; renderAttachedFiles();
       if (chat?.messages) {
         chat.messages.forEach((m, idx) => {
-          const div = document.createElement('div');
-          div.className = `msg ${m.role}`;
-          div.dataset.chatId = chat.id;
-          div.dataset.msgIdx = idx;
-          // Check if this message was created with web search
           const content = m.webSearch ? 
             `<span style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
               <span class="web-search-badge">🌐 Web Search</span>
             </span>${formatContent(m.content)}` : 
             formatContent(m.content);
-          div.innerHTML = content;
-          messagesEl.appendChild(div);
+          const msgDiv = createMessageElement(chat.id, idx, m.role, content);
+          messagesEl.appendChild(msgDiv);
         });
         scrollToBottom();
         setTimeout(validateAllCodeBlocks, 400);
@@ -887,6 +912,49 @@
         }
       }
       return html;
+    }
+
+    /* ========== NEW: Delete message functionality ========== */
+    function createMessageElement(chatId, msgIdx, role, contentHTML) {
+      const div = document.createElement('div');
+      div.className = `msg ${role}`;
+      div.dataset.chatId = chatId;
+      div.dataset.msgIdx = msgIdx;
+      div.style.position = 'relative';
+      div.innerHTML = contentHTML;
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'delete-msg';
+      delBtn.innerHTML = '✕';
+      delBtn.title = 'Delete message';
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteMessage(chatId, msgIdx);
+      });
+      div.appendChild(delBtn);
+      return div;
+    }
+
+    async function deleteMessage(chatId, msgIdx) {
+      if (isProcessing) {
+        alert('Please wait for the current response to finish before deleting messages.');
+        return;
+      }
+      const chat = chats.find(c => c.id === chatId);
+      if (!chat || msgIdx < 0 || msgIdx >= chat.messages.length) return;
+      if (!confirm('Delete this message?')) return;
+
+      chat.messages.splice(msgIdx, 1);
+      chat.updatedAt = Date.now();
+      await saveChats();
+      
+      if (currentChatId === chatId) {
+        loadChat(chatId);
+      }
+      renderChatList();
+      if (searchQuery) {
+        applySearchHighlights();
+      }
     }
 
     document.addEventListener('click', e => {
@@ -1217,11 +1285,11 @@
       chat.messages.push({ role: 'user', content: full, webSearch: webSearchEnabled });
       chat.updatedAt = Date.now(); await saveChats(); renderChatList();
 
-      const div = document.createElement('div'); div.className = 'msg user';
-      div.dataset.chatId = currentChatId;
-      div.dataset.msgIdx = chat.messages.length - 1;
-      div.innerHTML = escapeHtml(text) + (attachedFiles.length ? '<br><br>📎 '+attachedFiles.map(f=>f.name).join(', ') : '');
-      messagesEl.appendChild(div);
+      // Use createMessageElement for user message
+      const userMsgDiv = createMessageElement(currentChatId, chat.messages.length - 1, 'user',
+        escapeHtml(text) + (attachedFiles.length ? '<br><br>📎 '+attachedFiles.map(f=>f.name).join(', ') : '')
+      );
+      messagesEl.appendChild(userMsgDiv);
       scrollToBottom();
       userInput.value = ''; userInput.style.height = 'auto';
       attachedFiles = []; renderAttachedFiles();
@@ -1241,7 +1309,6 @@
           requestBody.thinking = { type: "enabled" };
           requestBody.reasoning_effort = "high";
         }
-        // Add web search if enabled
         if (webSearchEnabled) {
           requestBody.web_search = true;
         }
@@ -1258,25 +1325,21 @@
         chat.messages.push({ role: 'assistant', content, webSearch: webSearchEnabled }); 
         chat.updatedAt = Date.now(); await saveChats();
 
-        const adiv = document.createElement('div'); adiv.className = 'msg assistant';
-        adiv.dataset.chatId = currentChatId;
-        adiv.dataset.msgIdx = chat.messages.length - 1;
-        // Add web search badge if enabled
+        // Use createMessageElement for assistant success message
         const displayContent = webSearchEnabled ? 
           `<span style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
             <span class="web-search-badge">🌐 Web Search</span>
           </span>${formatContent(content)}` : 
           formatContent(content);
-        adiv.innerHTML = displayContent;
-        messagesEl.appendChild(adiv);
+        const assistantMsgDiv = createMessageElement(currentChatId, chat.messages.length - 1, 'assistant', displayContent);
+        messagesEl.appendChild(assistantMsgDiv);
         scrollToBottom();
-        setTimeout(() => adiv.querySelectorAll('[data-code-id]').forEach(b => validateCodeBlock(b.dataset.codeId)), 100);
+        setTimeout(() => assistantMsgDiv.querySelectorAll('[data-code-id]').forEach(b => validateCodeBlock(b.dataset.codeId)), 100);
       } catch (err) {
         if (err.name !== 'AbortError') {
-          const ediv = document.createElement('div'); ediv.className = 'msg assistant';
-          ediv.dataset.chatId = currentChatId;
-          ediv.dataset.msgIdx = chat.messages.length - 1;
-          ediv.textContent = '❌ ' + err.message; messagesEl.appendChild(ediv);
+          // Use createMessageElement for error message
+          const errorMsgDiv = createMessageElement(currentChatId, chat.messages.length - 1, 'assistant', '❌ ' + escapeHtml(err.message));
+          messagesEl.appendChild(errorMsgDiv);
           scrollToBottom();
         }
       } finally {
