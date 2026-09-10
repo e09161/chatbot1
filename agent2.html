@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>DeepSeek Chat · draggable files & sync</title>
+  <title>Educasa Chat · DeepInfra</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -12,10 +12,10 @@
       background: #1a1a2e;
       color: #e0e0e0;
       min-height: 100vh;
-      min-height: 100dvh;   /* dynamic viewport for mobile */
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
-      overflow-y: auto;      /* allows root scrolling – address bar hides on scroll */
+      overflow-y: auto;
       overflow-x: hidden;
       position: relative;
     }
@@ -38,8 +38,18 @@
       transform: translateX(-100%);
     }
     #sidebar-header {
-      padding: 20px 15px; border-bottom: 1px solid #222;
-      font-weight: bold; font-size: 18px;
+      padding: 20px 15px;
+      border-bottom: 1px solid #222;
+      font-weight: bold;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    #sidebar-header img {
+      width: 32px;
+      height: 32px;
+      border-radius: 4px;
     }
     #new-chat-btn {
       margin: 15px; padding: 10px;
@@ -56,7 +66,15 @@
     }
     .chat-item:hover { background: #1a1a2e; color: #e0e0e0; }
     .chat-item.active { background: #1a1a2e; border: 1px solid #4a90d9; color: #e0e0e0; }
-    .chat-item-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .chat-item-title {
+      flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      user-select: none;
+    }
+    .chat-item-title input {
+      background: #0d0d0d; border: 1px solid #4a90d9;
+      color: #e0e0e0; padding: 2px 6px; font-size: 13px;
+      border-radius: 4px; width: 100%; outline: none;
+    }
     .chat-item-delete { color: #666; margin-left: 8px; cursor: pointer; font-weight: bold; }
     .chat-item-delete:hover { color: #f44; }
     #sidebar-footer {
@@ -78,10 +96,9 @@
       flex-direction: column;
       min-width: 0;
       background: #1a1a2e;
-      margin-left: 260px;   /* space for sidebar */
+      margin-left: 260px;
       transition: margin-left 0.3s ease;
     }
-    /* When sidebar is hidden, remove margin */
     #main.full-width {
       margin-left: 0;
     }
@@ -129,23 +146,120 @@
     #validateAllBtn:hover { background: #f57c00; }
     #status { font-size: 12px; margin-left: auto; color: #4caf50; }
 
-    #messages {
-      flex: 1;
-      padding: 20px;
-      max-width: 850px;
-      margin: 0 auto;
+    #searchToggle {
+      background: none;
+      border: 1px solid #555;
+      color: #ccc;
+      font-size: 16px;
+      padding: 4px 8px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #searchContainer {
+      display: none;
+      align-items: center;
+      gap: 4px;
+      position: relative;
+    }
+    #searchContainer.visible { display: flex; }
+    #searchInput {
+      background: #1a1a2e;
+      border: 1px solid #4a90d9;
+      color: #e0e0e0;
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 13px;
+      width: 180px;
+    }
+    #searchNav { display: flex; gap: 2px; }
+    #searchNav button {
+      background: #333; color: #ccc;
+      border: none; padding: 4px 8px;
+      border-radius: 4px; cursor: pointer; font-size: 12px;
+    }
+    #searchNav button:hover { background: #444; }
+    #searchResults {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
       width: 100%;
-      /* No overflow-y here – the body scrolls instead */
+      max-height: 200px;
+      overflow-y: auto;
+      background: #0d0d0d;
+      border: 1px solid #333;
+      border-radius: 0 0 6px 6px;
+      z-index: 20;
+      font-size: 12px;
+    }
+    #searchResults.visible { display: block; }
+    .search-result-item {
+      padding: 8px 10px; cursor: pointer;
+      border-bottom: 1px solid #222;
+      display: flex; flex-direction: column;
+    }
+    .search-result-item:hover { background: #1a1a2e; }
+    .search-result-chat {
+      font-weight: bold; color: #4a90d9;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .search-result-snippet {
+      color: #aaa;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .search-highlight {
+      background: #ff9800; color: #000;
+      border-radius: 2px; padding: 0 2px;
+    }
+    .search-current-highlight {
+      background: #f44336; color: white;
+      border-radius: 2px; padding: 0 2px;
+    }
+    #matchCounter {
+      font-size: 12px; color: #ccc; margin-left: 5px;
+    }
+
+    #messages {
+      flex: 1; padding: 20px;
+      max-width: 850px; margin: 0 auto; width: 100%;
     }
     .msg {
       margin-bottom: 20px; padding: 15px; border-radius: 10px;
       max-width: 85%; word-break: break-word;
       font-size: 14px; line-height: 1.6;
+      position: relative;
     }
     .user { background: #16213e; margin-left: auto; }
     .assistant { background: #0f3460; margin-right: auto; }
 
-    /* Markdown rendered content styles */
+    .msg .delete-msg {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      background: rgba(0,0,0,0.6);
+      color: #ccc;
+      border: 1px solid #444;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s;
+      z-index: 5;
+    }
+    .msg:hover .delete-msg {
+      opacity: 1;
+    }
+    .msg .delete-msg:hover {
+      background: #d94a4a;
+      color: white;
+      border-color: #d94a4a;
+    }
+
     .msg h1, .msg h2, .msg h3 { color: #4a90d9; margin: 15px 0 10px; }
     .msg h1 { font-size: 1.5em; }
     .msg h2 { font-size: 1.3em; }
@@ -215,17 +329,10 @@
     .ok-line { color: #4caf50; }
 
     #input-area {
-      position: sticky;
-      bottom: 0;
-      z-index: 10;
-      background: #0d0d0d;
-      padding: 15px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      max-width: 850px;
-      margin: 0 auto;
-      width: 100%;
+      position: sticky; bottom: 0; z-index: 10;
+      background: #0d0d0d; padding: 15px 20px;
+      display: flex; flex-direction: column; gap: 8px;
+      max-width: 850px; margin: 0 auto; width: 100%;
       border-top: 1px solid #222;
       transition: background 0.2s, border 0.2s;
     }
@@ -263,68 +370,47 @@
     #attachBtn { background: #555; }
     #attachBtn:hover { background: #666; }
     .drag-hint { font-size: 11px; color: #666; text-align: center; }
-    
-    /* ── RESPONSIVE IMPROVEMENTS ── */
+
     @media (max-width: 600px) {
       #sidebar {
-        transform: translateX(-100%);  /* hidden by default */
+        transform: translateX(-100%);
       }
       #sidebar.visible {
         transform: translateX(0);
         box-shadow: 2px 0 10px rgba(0,0,0,0.5);
       }
-      #main {
-        margin-left: 0;   /* full width when sidebar hidden */
-      }
-      #toggleSidebarBtn {
-        display: inline-block;
-      }
+      #main { margin-left: 0; }
+      #toggleSidebarBtn { display: inline-block; }
       #header {
-        flex-wrap: nowrap;
-        overflow-x: auto;
-        gap: 6px;
-        padding: 10px;
+        flex-wrap: nowrap; overflow-x: auto;
+        gap: 6px; padding: 10px;
       }
-      #header input {
-        width: 120px;
-      }
-      #messages {
-        padding: 10px;
-      }
-      .msg {
-        max-width: 95%;
-      }
-      #input-area {
-        padding: 10px;
-      }
-      .drag-hint {
-        display: none;
-      }
+      #header input { width: 120px; }
+      #searchInput { width: 120px; }
+      #messages { padding: 10px; }
+      .msg { max-width: 95%; }
+      #input-area { padding: 10px; }
+      .drag-hint { display: none; }
     }
     
     @media (max-width: 400px) {
-      #header input {
-        width: 80px;
-        font-size: 11px;
-      }
+      #header input { width: 80px; font-size: 11px; }
       #header button, #header select {
-        padding: 6px 8px;
-        font-size: 11px;
+        padding: 6px 8px; font-size: 11px;
       }
-      #toggleSidebarBtn {
-        font-size: 16px;
-        padding: 3px 6px;
-      }
+      #toggleSidebarBtn { font-size: 16px; padding: 3px 6px; }
       #sendBtn, #stopBtn, #attachBtn {
-        padding: 10px 12px;
-        font-size: 13px;
+        padding: 10px 12px; font-size: 13px;
       }
     }
   </style>
 </head>
 <body>
 <div id="sidebar">
-  <div id="sidebar-header">💬 DeepSeek Chat</div>
+  <div id="sidebar-header">
+    <img src="https://educasa.pe/wp-content/uploads/2025/05/cropped-educasa_chamilo_big-1.png" alt="Educasa logo">
+    Educasa Chat
+  </div>
   <div id="new-chat-btn">+ New Chat</div>
   <div id="chat-list"></div>
   <div id="sidebar-footer">
@@ -340,18 +426,26 @@
   <div id="header">
     <button id="toggleSidebarBtn" title="Toggle sidebar">☰</button>
     <span style="color:#888;">Key:</span>
-    <input type="password" id="apiKey" placeholder="sk-...">
+    <input type="password" id="apiKey" placeholder="deepinfra_api_key...">
     <button id="saveKeyBtn">Save</button>
     <select id="modelSelect">
-      <option value="deepseek-v4-pro">deepseek-v4-pro</option>
-      <option value="deepseek-v4-flash">deepseek-v4-flash</option>
-      <option value="deepseek-chat">deepseek-chat (legacy)</option>
-      <option value="deepseek-reasoner">deepseek-reasoner (legacy)</option>
+      <option value="deepseek-ai/DeepSeek-V4-Pro-0813">DeepSeek V4 Pro (DeepInfra)</option>
+      <option value="deepseek-ai/DeepSeek-V4-Flash-0731">DeepSeek V4 Flash (DeepInfra)</option>
     </select>
     <label style="color:#888; font-size:12px; display:flex; align-items:center; gap:4px;">
-      <input type="checkbox" id="thinkingToggle"> Thinking
+      <input type="checkbox" id="thinkingToggle"> High Effort
     </label>
     <button id="validateAllBtn">🔍 Validate</button>
+    <button id="searchToggle" title="Search messages">🔍</button>
+    <div id="searchContainer">
+      <input type="text" id="searchInput" placeholder="Search all chats...">
+      <div id="searchNav">
+        <button id="prevMatch" title="Previous match">▲</button>
+        <button id="nextMatch" title="Next match">▼</button>
+      </div>
+      <span id="matchCounter"></span>
+      <div id="searchResults"></div>
+    </div>
     <span id="status">⚪</span>
   </div>
 
@@ -360,7 +454,7 @@
   <div id="input-area">
     <div class="attached-files" id="attachedFiles"></div>
     <div class="input-row">
-      <textarea id="userInput" rows="1" placeholder="Message DeepSeek... Drag & drop files here"></textarea>
+      <textarea id="userInput" rows="1" placeholder="Message Educasa Chat... Drag & drop files here"></textarea>
       <button id="attachBtn" title="Attach files">📎</button>
       <button id="sendBtn">Send</button>
       <button id="stopBtn" style="display:none;">Stop</button>
@@ -373,15 +467,57 @@
 
 <script>
   (function() {
-    const API_URL = 'https://api.deepseek.com/chat/completions';
-    const MAX_TOKENS = 8192;
+    // ===== DEEPINFRA CONFIGURATION =====
+    const API_URL = 'https://api.deepinfra.com/v1/openai/chat/completions';
+    const DEFAULT_MODEL = 'deepseek-ai/DeepSeek-V4-Pro-0813';
 
+    // IndexedDB
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open('ds_chat_storage', 1);
+        request.onupgradeneeded = (e) => {
+          const db = e.target.result;
+          if (!db.objectStoreNames.contains('chats')) {
+            db.createObjectStore('chats');
+          }
+        };
+        request.onsuccess = (e) => resolve(e.target.result);
+        request.onerror = (e) => reject(e.target.error);
+      });
+    }
+
+    async function loadChatsFromDB() {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('chats', 'readonly');
+        const store = tx.objectStore('chats');
+        const request = store.get('ds_chats');
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    async function saveChatsToDB(chatsArray) {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('chats', 'readwrite');
+        const store = tx.objectStore('chats');
+        store.put(chatsArray, 'ds_chats');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    // App state
     let apiKey = localStorage.getItem('ds_key') || '';
-    let chats = JSON.parse(localStorage.getItem('ds_chats') || '[]');
+    let chats = [];
     let currentChatId = null;
     let isProcessing = false;
     let controller = null;
     let attachedFiles = [];
+    let searchQuery = '';
+    let allMatches = [];
+    let currentMatchIdx = -1;
 
     const apiKeyInput = document.getElementById('apiKey');
     const modelSelect = document.getElementById('modelSelect');
@@ -400,6 +536,13 @@
     const sidebar = document.getElementById('sidebar');
     const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
     const mainEl = document.getElementById('main');
+    const searchToggle = document.getElementById('searchToggle');
+    const searchContainer = document.getElementById('searchContainer');
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    const prevMatchBtn = document.getElementById('prevMatch');
+    const nextMatchBtn = document.getElementById('nextMatch');
+    const matchCounter = document.getElementById('matchCounter');
 
     if (typeof marked !== 'undefined') {
       marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
@@ -407,7 +550,6 @@
 
     function toggleSidebar() {
       sidebar.classList.toggle('visible');
-      // When sidebar is visible and we're on mobile, push main content
       if (window.innerWidth <= 600) {
         mainEl.classList.toggle('full-width', !sidebar.classList.contains('visible'));
       }
@@ -421,26 +563,20 @@
       }
     }
 
-    // Scroll page to bottom (to see latest message and input area)
     function scrollToBottom() {
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' });
     }
 
     apiKeyInput.value = apiKey;
-    const savedModel = localStorage.getItem('ds_model') || 'deepseek-v4-pro';
+    // Reset saved model if it's an old Together AI or DeepSeek model ID
+    let savedModel = localStorage.getItem('ds_model') || DEFAULT_MODEL;
+    if (!savedModel.startsWith('deepseek-ai/DeepSeek-V4')) {
+      savedModel = DEFAULT_MODEL;
+      localStorage.setItem('ds_model', savedModel);
+    }
     modelSelect.value = savedModel;
     thinkingToggle.checked = localStorage.getItem('ds_thinking') === 'true';
     updateStatus();
-
-    if (!chats.length) newChat();
-    else loadChat(chats[0].id);
-    renderChatList();
-
-    // On small screens, hide sidebar by default
-    if (window.innerWidth <= 600) {
-      sidebar.classList.remove('visible');
-      mainEl.classList.add('full-width');
-    }
 
     document.getElementById('saveKeyBtn').addEventListener('click', () => {
       apiKey = apiKeyInput.value.trim();
@@ -472,7 +608,21 @@
       }
     }
 
-    function saveChats() { localStorage.setItem('ds_chats', JSON.stringify(chats)); }
+    async function saveChats() {
+      try {
+        await saveChatsToDB(chats);
+      } catch (e) {
+        alert('❌ Failed to save chats: ' + e.message);
+      }
+    }
+
+    function getChatTitle(chat) {
+      if (chat.title && chat.title.trim()) return chat.title;
+      const first = chat.messages.find(m => m.role === 'user');
+      return first ? first.content.substring(0, 35) : 'New Chat';
+    }
+
+    const clickTimers = {};
 
     function renderChatList() {
       chatListEl.innerHTML = '';
@@ -480,23 +630,92 @@
       chats.forEach(chat => {
         const div = document.createElement('div');
         div.className = 'chat-item' + (chat.id === currentChatId ? ' active' : '');
-        div.onclick = () => { loadChat(chat.id); handleChatSelection(); };
-        const first = chat.messages.find(m => m.role === 'user');
-        const title = first ? first.content.substring(0, 35) : 'New Chat';
-        div.innerHTML = `<span class="chat-item-title">${escapeHtml(title)}</span>
-          <span class="chat-item-delete">×</span>`;
-        div.querySelector('.chat-item-delete').addEventListener('click', (e) => {
-          e.stopPropagation(); deleteChat(chat.id);
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'chat-item-title';
+        titleSpan.textContent = getChatTitle(chat);
+
+        titleSpan.addEventListener('dblclick', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (clickTimers[chat.id]) {
+            clearTimeout(clickTimers[chat.id]);
+            delete clickTimers[chat.id];
+          }
+          startRename(chat, titleSpan);
         });
+
+        titleSpan.addEventListener('click', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (clickTimers[chat.id]) return;
+          clickTimers[chat.id] = setTimeout(() => {
+            delete clickTimers[chat.id];
+            loadChat(chat.id);
+            handleChatSelection();
+          }, 300);
+        });
+
+        const delSpan = document.createElement('span');
+        delSpan.className = 'chat-item-delete';
+        delSpan.textContent = '×';
+        delSpan.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (clickTimers[chat.id]) {
+            clearTimeout(clickTimers[chat.id]);
+            delete clickTimers[chat.id];
+          }
+          deleteChat(chat.id);
+        });
+
+        div.appendChild(titleSpan);
+        div.appendChild(delSpan);
         chatListEl.appendChild(div);
       });
+    }
+
+    async function startRename(chat, span) {
+      const currentTitle = getChatTitle(chat);
+      const input = document.createElement('input');
+      input.value = currentTitle;
+      span.innerHTML = '';
+      span.appendChild(input);
+      input.focus();
+      input.select();
+
+      const finish = async () => {
+        const newTitle = input.value.trim();
+        if (newTitle && newTitle !== currentTitle) {
+          chat.title = newTitle;
+        } else if (!newTitle) {
+          delete chat.title;
+        }
+        chat.updatedAt = Date.now();
+        await saveChats();
+        renderChatList();
+      };
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          input.blur();
+        } else if (e.key === 'Escape') {
+          span.innerHTML = '';
+          span.textContent = currentTitle;
+          input.removeEventListener('blur', onBlur);
+        }
+      });
+
+      const onBlur = () => finish();
+      input.addEventListener('blur', onBlur);
     }
 
     function newChat() {
       currentChatId = 'chat_' + Date.now();
       chats.push({ id: currentChatId, messages: [], createdAt: Date.now(), updatedAt: Date.now() });
-      saveChats(); renderChatList();
+      saveChats();
+      renderChatList();
       messagesEl.innerHTML = ''; attachedFiles = []; renderAttachedFiles();
+      clearSearch();
     }
 
     function loadChat(id) {
@@ -504,30 +723,38 @@
       const chat = chats.find(c => c.id === id);
       messagesEl.innerHTML = ''; attachedFiles = []; renderAttachedFiles();
       if (chat?.messages) {
-        chat.messages.forEach(m => {
-          const div = document.createElement('div');
-          div.className = `msg ${m.role}`;
-          div.innerHTML = formatContent(m.content);
-          messagesEl.appendChild(div);
+        chat.messages.forEach((m, idx) => {
+          const content = formatContent(m.content);
+          const msgDiv = createMessageElement(chat.id, idx, m.role, content);
+          messagesEl.appendChild(msgDiv);
         });
         scrollToBottom();
         setTimeout(validateAllCodeBlocks, 400);
       }
       renderChatList();
+      if (searchQuery) {
+        applySearchHighlights();
+      }
     }
 
-    function deleteChat(id) {
+    async function deleteChat(id) {
       chats = chats.filter(c => c.id !== id);
       if (currentChatId === id) { currentChatId = null; messagesEl.innerHTML = ''; }
       if (!chats.length) newChat();
       else if (!currentChatId) loadChat(chats[0].id);
-      saveChats(); renderChatList();
+      await saveChats();
+      renderChatList();
+      if (searchQuery) {
+        performSearch(searchQuery);
+      }
     }
 
     document.getElementById('new-chat-btn').addEventListener('click', () => {
-      newChat(); handleChatSelection();
+      newChat();
+      handleChatSelection();
     });
 
+    // File handling
     function processFiles(files) {
       const allowed = ['.py','.xml','.txt','.html','.js','.css','.json','.md','.csv'];
       Array.from(files).forEach(file => {
@@ -616,6 +843,48 @@
       return html;
     }
 
+    function createMessageElement(chatId, msgIdx, role, contentHTML) {
+      const div = document.createElement('div');
+      div.className = `msg ${role}`;
+      div.dataset.chatId = chatId;
+      div.dataset.msgIdx = msgIdx;
+      div.style.position = 'relative';
+      div.innerHTML = contentHTML;
+
+      const delBtn = document.createElement('button');
+      delBtn.className = 'delete-msg';
+      delBtn.innerHTML = '✕';
+      delBtn.title = 'Delete message';
+      delBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteMessage(chatId, msgIdx);
+      });
+      div.appendChild(delBtn);
+      return div;
+    }
+
+    async function deleteMessage(chatId, msgIdx) {
+      if (isProcessing) {
+        alert('Please wait for the current response to finish before deleting messages.');
+        return;
+      }
+      const chat = chats.find(c => c.id === chatId);
+      if (!chat || msgIdx < 0 || msgIdx >= chat.messages.length) return;
+      if (!confirm('Delete this message?')) return;
+
+      chat.messages.splice(msgIdx, 1);
+      chat.updatedAt = Date.now();
+      await saveChats();
+      
+      if (currentChatId === chatId) {
+        loadChat(chatId);
+      }
+      renderChatList();
+      if (searchQuery) {
+        applySearchHighlights();
+      }
+    }
+
     document.addEventListener('click', e => {
       if (e.target.classList.contains('copy-btn')) {
         const el = document.getElementById(e.target.dataset.id);
@@ -624,7 +893,7 @@
       if (e.target.classList.contains('download-btn')) {
         const el = document.getElementById(e.target.dataset.id);
         if (el) {
-          const name = `deepseek_${Date.now().toString(36)}_${Math.random().toString(36).substring(2,6)}.${e.target.dataset.ext}`;
+          const name = `deepinfra_${Date.now().toString(36)}_${Math.random().toString(36).substring(2,6)}.${e.target.dataset.ext}`;
           const a = document.createElement('a');
           a.href = URL.createObjectURL(new Blob([el.textContent], {type:'text/plain'}));
           a.download = name; a.click(); URL.revokeObjectURL(a.href);
@@ -633,6 +902,7 @@
       if (e.target.classList.contains('validate-btn')) validateCodeBlock(e.target.dataset.id);
     });
 
+    // Validation
     function detectLang(c) {
       if (/^(import |from |def |class )/m.test(c)) return 'python';
       if (/^<\?xml|<manifest/i.test(c)) return 'xml';
@@ -688,6 +958,235 @@
     }
     document.getElementById('validateAllBtn').addEventListener('click', validateAllCodeBlocks);
 
+    // Search
+    function openSearch() {
+      searchContainer.classList.add('visible');
+      searchInput.focus();
+    }
+    function closeSearch() {
+      searchContainer.classList.remove('visible');
+      searchResults.classList.remove('visible');
+      searchInput.value = '';
+      clearSearch();
+    }
+
+    searchToggle.addEventListener('click', () => {
+      if (searchContainer.classList.contains('visible')) {
+        closeSearch();
+      } else {
+        openSearch();
+      }
+    });
+
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const query = searchInput.value.trim();
+        if (query) {
+          performSearch(query);
+        } else {
+          clearSearch();
+        }
+      } else if (e.key === 'Escape') {
+        closeSearch();
+      }
+    });
+
+    function performSearch(query) {
+      searchQuery = query.toLowerCase();
+      allMatches = [];
+      currentMatchIdx = -1;
+      const results = [];
+      chats.forEach(chat => {
+        chat.messages.forEach((msg, msgIdx) => {
+          const content = msg.content;
+          const lowerContent = content.toLowerCase();
+          let startIdx = 0;
+          while ((startIdx = lowerContent.indexOf(searchQuery, startIdx)) !== -1) {
+            results.push({
+              chatId: chat.id,
+              msgIdx,
+              startIdx,
+              endIdx: startIdx + searchQuery.length,
+              snippet: content.substring(Math.max(0, startIdx - 20), startIdx + searchQuery.length + 20)
+            });
+            startIdx += searchQuery.length;
+          }
+        });
+      });
+      renderSearchDropdown(results);
+      applySearchHighlights();
+    }
+
+    function renderSearchDropdown(results) {
+      searchResults.innerHTML = '';
+      if (results.length === 0) {
+        searchResults.innerHTML = '<div style="padding:8px;color:#888;">No matches found</div>';
+        searchResults.classList.add('visible');
+        return;
+      }
+      results.forEach((res, i) => {
+        const chat = chats.find(c => c.id === res.chatId);
+        const title = getChatTitle(chat);
+        const item = document.createElement('div');
+        item.className = 'search-result-item';
+        item.innerHTML = `
+          <div class="search-result-chat">${escapeHtml(title)}</div>
+          <div class="search-result-snippet">...${escapeHtml(res.snippet)}...</div>
+        `;
+        item.addEventListener('click', () => {
+          if (currentChatId !== res.chatId) {
+            loadChat(res.chatId);
+          }
+          setTimeout(() => {
+            scrollToMessage(res.chatId, res.msgIdx);
+            applySearchHighlights();
+            const msgMatches = allMatches.filter(m => m.chatId === res.chatId && m.msgIdx === res.msgIdx);
+            if (msgMatches.length > 0) {
+              currentMatchIdx = allMatches.indexOf(msgMatches[0]);
+              updateCurrentHighlight();
+            }
+          }, 100);
+          searchResults.classList.remove('visible');
+        });
+        searchResults.appendChild(item);
+      });
+      searchResults.classList.add('visible');
+    }
+
+    function scrollToMessage(chatId, msgIdx) {
+      const msgEl = messagesEl.querySelector(`.msg[data-chat-id="${chatId}"][data-msg-idx="${msgIdx}"]`);
+      if (msgEl) {
+        msgEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        msgEl.style.transition = 'box-shadow 0.5s';
+        msgEl.style.boxShadow = '0 0 15px #4a90d9';
+        setTimeout(() => { msgEl.style.boxShadow = ''; }, 1500);
+      }
+    }
+
+    function applySearchHighlights() {
+      removeHighlights();
+      if (!searchQuery) return;
+      allMatches = [];
+      const msgs = messagesEl.querySelectorAll('.msg');
+      msgs.forEach(msgEl => {
+        const chatId = msgEl.dataset.chatId;
+        const msgIdx = parseInt(msgEl.dataset.msgIdx);
+        highlightTextInElement(msgEl, searchQuery, chatId, msgIdx);
+      });
+      updateMatchCounter();
+      if (allMatches.length > 0) {
+        currentMatchIdx = 0;
+        updateCurrentHighlight();
+        scrollToMatch(currentMatchIdx);
+      }
+    }
+
+    function highlightTextInElement(element, query, chatId, msgIdx) {
+      const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
+        acceptNode: function(node) {
+          if (node.parentElement.tagName === 'MARK') return NodeFilter.FILTER_REJECT;
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      });
+      const textNodes = [];
+      while (walker.nextNode()) textNodes.push(walker.currentNode);
+
+      textNodes.forEach(node => {
+        const text = node.textContent;
+        const lowerText = text.toLowerCase();
+        let idx = lowerText.indexOf(query);
+        if (idx === -1) return;
+        const fragment = document.createDocumentFragment();
+        let lastIdx = 0;
+        while (idx !== -1) {
+          if (idx > lastIdx) {
+            fragment.appendChild(document.createTextNode(text.substring(lastIdx, idx)));
+          }
+          const mark = document.createElement('mark');
+          mark.className = 'search-highlight';
+          mark.textContent = text.substring(idx, idx + query.length);
+          fragment.appendChild(mark);
+          allMatches.push({ chatId, msgIdx, element: mark });
+          lastIdx = idx + query.length;
+          idx = lowerText.indexOf(query, lastIdx);
+        }
+        if (lastIdx < text.length) {
+          fragment.appendChild(document.createTextNode(text.substring(lastIdx)));
+        }
+        node.parentNode.replaceChild(fragment, node);
+      });
+    }
+
+    function removeHighlights() {
+      const marks = messagesEl.querySelectorAll('mark.search-highlight, mark.search-current-highlight');
+      marks.forEach(mark => {
+        const parent = mark.parentNode;
+        parent.replaceChild(document.createTextNode(mark.textContent), mark);
+        parent.normalize();
+      });
+      allMatches = [];
+      currentMatchIdx = -1;
+      updateMatchCounter();
+    }
+
+    function clearSearch() {
+      searchQuery = '';
+      searchInput.value = '';
+      removeHighlights();
+      searchResults.classList.remove('visible');
+      matchCounter.textContent = '';
+    }
+
+    function updateCurrentHighlight() {
+      messagesEl.querySelectorAll('mark.search-current-highlight').forEach(m => {
+        m.classList.remove('search-current-highlight');
+        m.classList.add('search-highlight');
+      });
+      if (currentMatchIdx >= 0 && currentMatchIdx < allMatches.length) {
+        const currentMark = allMatches[currentMatchIdx].element;
+        currentMark.classList.remove('search-highlight');
+        currentMark.classList.add('search-current-highlight');
+      }
+      updateMatchCounter();
+    }
+
+    function updateMatchCounter() {
+      if (allMatches.length === 0) {
+        matchCounter.textContent = '';
+      } else {
+        const current = currentMatchIdx >= 0 ? currentMatchIdx + 1 : 0;
+        matchCounter.textContent = `${current}/${allMatches.length}`;
+      }
+    }
+
+    function scrollToMatch(index) {
+      if (index < 0 || index >= allMatches.length) return;
+      const mark = allMatches[index].element;
+      mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    prevMatchBtn.addEventListener('click', () => {
+      if (allMatches.length === 0) return;
+      currentMatchIdx = (currentMatchIdx - 1 + allMatches.length) % allMatches.length;
+      updateCurrentHighlight();
+      scrollToMatch(currentMatchIdx);
+    });
+
+    nextMatchBtn.addEventListener('click', () => {
+      if (allMatches.length === 0) return;
+      currentMatchIdx = (currentMatchIdx + 1) % allMatches.length;
+      updateCurrentHighlight();
+      scrollToMatch(currentMatchIdx);
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!searchContainer.contains(e.target) && e.target !== searchToggle) {
+        searchResults.classList.remove('visible');
+      }
+    });
+
+    // Send / Stop
     function stop() {
       if (controller) { controller.abort(); controller = null; }
       isProcessing = false;
@@ -710,12 +1209,13 @@
 
       const chat = chats.find(c => c.id === currentChatId);
       chat.messages.push({ role: 'user', content: full });
-      chat.updatedAt = Date.now(); saveChats(); renderChatList();
+      chat.updatedAt = Date.now(); await saveChats(); renderChatList();
 
-      const div = document.createElement('div'); div.className = 'msg user';
-      div.innerHTML = escapeHtml(text) + (attachedFiles.length ? '<br><br>📎 '+attachedFiles.map(f=>f.name).join(', ') : '');
-      messagesEl.appendChild(div);
-      scrollToBottom();   // scroll to bottom after adding user message
+      const userMsgDiv = createMessageElement(currentChatId, chat.messages.length - 1, 'user',
+        escapeHtml(text) + (attachedFiles.length ? '<br><br>📎 '+attachedFiles.map(f=>f.name).join(', ') : '')
+      );
+      messagesEl.appendChild(userMsgDiv);
+      scrollToBottom();
       userInput.value = ''; userInput.style.height = 'auto';
       attachedFiles = []; renderAttachedFiles();
 
@@ -728,15 +1228,19 @@
         const requestBody = {
           model: modelSelect.value,
           messages: msgs,
+          temperature: 1.0,
           stream: false
         };
+        // DeepInfra: reasoning_effort controls thinking depth
         if (thinkingToggle.checked) {
-          requestBody.thinking = { type: "enabled" };
           requestBody.reasoning_effort = "high";
         }
         const res = await fetch(API_URL, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${apiKey}` 
+          },
           body: JSON.stringify(requestBody),
           signal: controller.signal
         });
@@ -744,23 +1248,27 @@
         if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
         if (!data.choices?.[0]?.message?.content) throw new Error('Invalid response format');
         const content = data.choices[0].message.content;
-        chat.messages.push({ role: 'assistant', content }); chat.updatedAt = Date.now(); saveChats();
+        console.log('API returned model:', data.model);
+        chat.messages.push({ role: 'assistant', content }); 
+        chat.updatedAt = Date.now(); await saveChats();
 
-        const adiv = document.createElement('div'); adiv.className = 'msg assistant';
-        adiv.innerHTML = formatContent(content);
-        messagesEl.appendChild(adiv);
-        scrollToBottom();   // scroll to bottom after assistant reply
-        setTimeout(() => adiv.querySelectorAll('[data-code-id]').forEach(b => validateCodeBlock(b.dataset.codeId)), 100);
+        const assistantMsgDiv = createMessageElement(currentChatId, chat.messages.length - 1, 'assistant', formatContent(content));
+        messagesEl.appendChild(assistantMsgDiv);
+        scrollToBottom();
+        setTimeout(() => assistantMsgDiv.querySelectorAll('[data-code-id]').forEach(b => validateCodeBlock(b.dataset.codeId)), 100);
       } catch (err) {
         if (err.name !== 'AbortError') {
-          const ediv = document.createElement('div'); ediv.className = 'msg assistant';
-          ediv.textContent = '❌ ' + err.message; messagesEl.appendChild(ediv);
+          const errorMsgDiv = createMessageElement(currentChatId, chat.messages.length - 1, 'assistant', '❌ ' + escapeHtml(err.message));
+          messagesEl.appendChild(errorMsgDiv);
           scrollToBottom();
         }
       } finally {
         isProcessing = false; sendBtn.disabled = false; attachBtn.disabled = false;
         stopBtn.style.display = 'none'; userInput.disabled = false; controller = null;
         userInput.focus();
+      }
+      if (searchQuery) {
+        applySearchHighlights();
       }
     }
 
@@ -769,25 +1277,32 @@
     userInput.addEventListener('keydown', e => { if (e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); send(); } });
     userInput.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 150) + 'px'; });
 
+    // Export / Import
     document.getElementById('exportChatsBtn').addEventListener('click', () => {
       const blob = new Blob([JSON.stringify(chats, null, 2)], { type: 'application/json' });
-      const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-      a.download = `deepseek_chats_${new Date().toISOString().slice(0,10)}.json`; a.click();
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `educasa_chats_${new Date().toISOString().slice(0,10)}.json`;
+      a.click();
       URL.revokeObjectURL(a.href);
     });
 
     document.getElementById('importChatsBtn').addEventListener('click', () => {
-      const inp = document.createElement('input'); inp.type = 'file'; inp.accept = '.json';
-      inp.onchange = e => {
-        const file = e.target.files[0]; if (!file) return;
+      const inp = document.createElement('input');
+      inp.type = 'file';
+      inp.accept = '.json';
+      inp.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
         const reader = new FileReader();
-        reader.onload = ev => {
+        reader.onload = async (ev) => {
           try {
             const imported = JSON.parse(ev.target.result);
             if (!Array.isArray(imported)) throw new Error('Invalid format');
             imported.forEach(c => { if (!c.id || !Array.isArray(c.messages)) throw new Error('Corrupted data'); });
             if (confirm(`Replace with ${imported.length} chat(s)?`)) {
-              chats = imported; saveChats();
+              chats = imported;
+              await saveChats();
               currentChatId = chats.length ? chats[0].id : null;
               currentChatId ? loadChat(currentChatId) : (messagesEl.innerHTML = '', newChat());
               renderChatList();
@@ -799,7 +1314,24 @@
       inp.click();
     });
 
-    window.addEventListener('load', () => { if (currentChatId) setTimeout(validateAllCodeBlocks, 600); });
+    async function initApp() {
+      try {
+        chats = await loadChatsFromDB();
+      } catch (e) {
+        alert('Failed to load chats from storage: ' + e.message);
+        chats = [];
+      }
+      if (!chats.length) newChat();
+      else loadChat(chats[0].id);
+      renderChatList();
+      if (window.innerWidth <= 600) {
+        sidebar.classList.remove('visible');
+        mainEl.classList.add('full-width');
+      }
+      if (currentChatId) setTimeout(validateAllCodeBlocks, 600);
+    }
+
+    initApp();
   })();
 </script>
 </body>
