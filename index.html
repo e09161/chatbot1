@@ -485,8 +485,9 @@
     <input type="password" id="apiKey" placeholder="sk-...">
     <button id="saveKeyBtn">Save</button>
     <select id="modelSelect">
+      <option value="deepseek-v4-flash-4.1">deepseek-v4-flash-4.1 (Flash 4.1)</option>
       <option value="deepseek-v4-pro">deepseek-v4-pro</option>
-      <option value="deepseek-v4-flash">deepseek-v4-flash</option>
+      <option value="deepseek-v4-flash">deepseek-v4-flash (legacy)</option>
       <option value="deepseek-chat">deepseek-chat (legacy)</option>
       <option value="deepseek-reasoner">deepseek-reasoner (legacy)</option>
     </select>
@@ -532,6 +533,7 @@
 <script>
   (function() {
     const API_URL = 'https://api.deepseek.com/chat/completions';
+    const DEFAULT_MODEL = 'deepseek-v4-flash-4.1';
 
     // IndexedDB
     function openDB() {
@@ -631,7 +633,7 @@
     }
 
     apiKeyInput.value = apiKey;
-    const savedModel = localStorage.getItem('ds_model') || 'deepseek-v4-pro';
+    const savedModel = localStorage.getItem('ds_model') || DEFAULT_MODEL;
     modelSelect.value = savedModel;
     thinkingToggle.checked = localStorage.getItem('ds_thinking') === 'true';
     webSearchToggle.checked = localStorage.getItem('ds_web_search') === 'true';
@@ -1322,6 +1324,7 @@
         if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
         if (!data.choices?.[0]?.message?.content) throw new Error('Invalid response format');
         const content = data.choices[0].message.content;
+        console.log('API returned model:', data.model); // debug: confirms actual model
         chat.messages.push({ role: 'assistant', content, webSearch: webSearchEnabled }); 
         chat.updatedAt = Date.now(); await saveChats();
 
