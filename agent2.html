@@ -403,10 +403,13 @@
         keyStorage: 'ds_key_deepseek',
         modelStorage: 'ds_model_deepseek',
         keyPlaceholder: 'sk-...',
-        defaultModel: 'deepseek-chat',
+        defaultModel: 'deepseek-v4-pro',
         models: [
-          { id: 'deepseek-chat',     label: 'deepseek-chat' },
-          { id: 'deepseek-reasoner', label: 'deepseek-reasoner' }
+          { id: 'deepseek-v4-pro',       label: 'DeepSeek V4 Pro' },
+          { id: 'deepseek-v4-flash-4.1', label: 'DeepSeek V4 Flash 4.1' },
+          { id: 'deepseek-v4-flash',     label: 'DeepSeek V4 Flash (legacy)' },
+          { id: 'deepseek-chat',         label: 'deepseek-chat (legacy)' },
+          { id: 'deepseek-reasoner',     label: 'deepseek-reasoner (legacy)' }
         ],
         // DeepSeek uses the "thinking" object; reasoning_effort is a hint
         buildBody(base, { thinking }) {
