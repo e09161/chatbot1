@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
-  <title>Educasa Chat · DeepInfra</title>
+  <title>Educasa Chat · DeepSeek + DeepInfra</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -21,8 +21,7 @@
     }
     #sidebar {
       position: fixed;
-      top: 0;
-      left: 0;
+      top: 0; left: 0;
       width: 260px;
       height: 100vh;
       height: 100dvh;
@@ -34,9 +33,7 @@
       transition: transform 0.3s ease;
       transform: translateX(0);
     }
-    #sidebar.hidden {
-      transform: translateX(-100%);
-    }
+    #sidebar.hidden { transform: translateX(-100%); }
     #sidebar-header {
       padding: 20px 15px;
       border-bottom: 1px solid #222;
@@ -46,11 +43,7 @@
       align-items: center;
       gap: 10px;
     }
-    #sidebar-header img {
-      width: 32px;
-      height: 32px;
-      border-radius: 4px;
-    }
+    #sidebar-header img { width: 32px; height: 32px; border-radius: 4px; }
     #new-chat-btn {
       margin: 15px; padding: 10px;
       background: #1a1a2e; border: 1px solid #333;
@@ -99,9 +92,7 @@
       margin-left: 260px;
       transition: margin-left 0.3s ease;
     }
-    #main.full-width {
-      margin-left: 0;
-    }
+    #main.full-width { margin-left: 0; }
 
     #header {
       position: sticky;
@@ -141,6 +132,10 @@
     #header button:hover { background: #357abd; }
     #header select {
       background: #1a1a2e; color: #e0e0e0; border: 1px solid #333;
+    }
+    #providerSelect {
+      border: 1px solid #4a90d9 !important;
+      font-weight: bold;
     }
     #validateAllBtn { background: #ff9800; }
     #validateAllBtn:hover { background: #f57c00; }
@@ -215,9 +210,7 @@
       background: #f44336; color: white;
       border-radius: 2px; padding: 0 2px;
     }
-    #matchCounter {
-      font-size: 12px; color: #ccc; margin-left: 5px;
-    }
+    #matchCounter { font-size: 12px; color: #ccc; margin-left: 5px; }
 
     #messages {
       flex: 1; padding: 20px;
@@ -234,14 +227,12 @@
 
     .msg .delete-msg {
       position: absolute;
-      top: 6px;
-      right: 6px;
+      top: 6px; right: 6px;
       background: rgba(0,0,0,0.6);
       color: #ccc;
       border: 1px solid #444;
       border-radius: 50%;
-      width: 22px;
-      height: 22px;
+      width: 22px; height: 22px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -251,9 +242,7 @@
       transition: opacity 0.2s;
       z-index: 5;
     }
-    .msg:hover .delete-msg {
-      opacity: 1;
-    }
+    .msg:hover .delete-msg { opacity: 1; }
     .msg .delete-msg:hover {
       background: #d94a4a;
       color: white;
@@ -264,65 +253,28 @@
     .msg h1 { font-size: 1.5em; }
     .msg h2 { font-size: 1.3em; }
     .msg h3 { font-size: 1.1em; }
-    .msg table { 
-      border-collapse: collapse; width: 100%; 
-      margin: 15px 0; display: block; overflow-x: auto; 
-    }
-    .msg th, .msg td { 
-      border: 1px solid #444; padding: 8px 12px; 
-      text-align: left; white-space: normal; 
-    }
+    .msg table { border-collapse: collapse; width: 100%; margin: 15px 0; display: block; overflow-x: auto; }
+    .msg th, .msg td { border: 1px solid #444; padding: 8px 12px; text-align: left; white-space: normal; }
     .msg th { background: #222; font-weight: bold; color: #4a90d9; }
     .msg hr { border: 0; border-top: 1px solid #333; margin: 15px 0; }
     .msg strong { color: #fff; font-weight: 600; }
     .msg em { color: #ccc; }
-    .msg blockquote { 
-      border-left: 3px solid #4a90d9; padding-left: 15px; 
-      margin: 10px 0; color: #aaa; 
-    }
+    .msg blockquote { border-left: 3px solid #4a90d9; padding-left: 15px; margin: 10px 0; color: #aaa; }
     .msg ul, .msg ol { margin: 10px 0; padding-left: 25px; }
     .msg li { margin: 5px 0; }
-    .msg code:not(pre code) { 
-      background: #222; padding: 2px 6px; 
-      border-radius: 3px; font-family: 'Courier New', monospace; 
-      color: #a8d8a8; font-size: 0.9em;
-    }
+    .msg code:not(pre code) { background: #222; padding: 2px 6px; border-radius: 3px; font-family: 'Courier New', monospace; color: #a8d8a8; font-size: 0.9em; }
     .msg p { margin: 8px 0; }
 
-    .code-block {
-      background: #0d0d0d; border: 1px solid #333;
-      border-radius: 8px; margin: 10px 0; overflow: hidden;
-    }
-    .code-header {
-      background: #222; padding: 8px 15px;
-      display: flex; justify-content: space-between;
-      align-items: center; font-size: 12px; color: #888; flex-wrap: wrap;
-    }
-    .code-header button {
-      background: #333; color: #ccc; border: none;
-      padding: 4px 10px; border-radius: 4px;
-      cursor: pointer; font-size: 11px; margin-left: 5px;
-    }
+    .code-block { background: #0d0d0d; border: 1px solid #333; border-radius: 8px; margin: 10px 0; overflow: hidden; }
+    .code-header { background: #222; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #888; flex-wrap: wrap; }
+    .code-header button { background: #333; color: #ccc; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-left: 5px; }
     .code-header button:hover { background: #444; }
-    .code-content {
-      padding: 15px;
-      font-family: 'Courier New', monospace;
-      font-size: 13px; line-height: 1.5;
-      white-space: pre-wrap; word-break: break-word;
-      overflow-x: auto; color: #a8d8a8;
-    }
-    .validation-badge {
-      display: inline-block; padding: 2px 8px;
-      border-radius: 10px; font-size: 10px; font-weight: bold; margin-left: 8px;
-    }
+    .code-content { padding: 15px; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; overflow-x: auto; color: #a8d8a8; }
+    .validation-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; margin-left: 8px; }
     .validation-pass { background: #1b5e20; color: #4caf50; }
     .validation-warn { background: #e65100; color: #ff9800; }
     .validation-error { background: #b71c1c; color: #f44336; }
-    .validation-details {
-      background: #1a1a1a; border: 1px solid #333;
-      border-radius: 6px; padding: 10px; margin-top: 8px;
-      font-size: 12px; font-family: 'Courier New', monospace; display: none;
-    }
+    .validation-details { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 10px; margin-top: 8px; font-size: 12px; font-family: 'Courier New', monospace; display: none; }
     .validation-details.show { display: block; }
     .error-line { color: #f44336; }
     .warn-line { color: #ff9800; }
@@ -336,32 +288,15 @@
       border-top: 1px solid #222;
       transition: background 0.2s, border 0.2s;
     }
-    #input-area.drag-over {
-      background: #1a1a3e;
-      border-top: 2px dashed #4a90d9;
-    }
+    #input-area.drag-over { background: #1a1a3e; border-top: 2px dashed #4a90d9; }
     .attached-files { display: flex; flex-wrap: wrap; gap: 6px; }
-    .attached-file {
-      background: #1a1a2e; border: 1px solid #333;
-      border-radius: 16px; padding: 4px 12px;
-      font-size: 12px; display: flex; align-items: center; gap: 6px;
-      color: #ccc;
-    }
+    .attached-file { background: #1a1a2e; border: 1px solid #333; border-radius: 16px; padding: 4px 12px; font-size: 12px; display: flex; align-items: center; gap: 6px; color: #ccc; }
     .attached-file .remove-file { cursor: pointer; color: #888; font-weight: bold; }
     .attached-file .remove-file:hover { color: #f44; }
     .input-row { display: flex; gap: 10px; align-items: center; }
-    #userInput {
-      flex: 1; padding: 12px;
-      border: 1px solid #333; border-radius: 8px;
-      background: #1a1a2e; color: #e0e0e0;
-      font-family: inherit; font-size: 14px;
-      resize: none; outline: none;
-    }
+    #userInput { flex: 1; padding: 12px; border: 1px solid #333; border-radius: 8px; background: #1a1a2e; color: #e0e0e0; font-family: inherit; font-size: 14px; resize: none; outline: none; }
     #userInput:focus { border-color: #4a90d9; }
-    #sendBtn, #stopBtn, #attachBtn {
-      padding: 12px 16px; color: white; border: none;
-      border-radius: 8px; cursor: pointer; font-size: 14px;
-    }
+    #sendBtn, #stopBtn, #attachBtn { padding: 12px 16px; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
     #sendBtn { background: #4a90d9; }
     #sendBtn:hover { background: #357abd; }
     #sendBtn:disabled { opacity: 0.5; }
@@ -372,19 +307,11 @@
     .drag-hint { font-size: 11px; color: #666; text-align: center; }
 
     @media (max-width: 600px) {
-      #sidebar {
-        transform: translateX(-100%);
-      }
-      #sidebar.visible {
-        transform: translateX(0);
-        box-shadow: 2px 0 10px rgba(0,0,0,0.5);
-      }
+      #sidebar { transform: translateX(-100%); }
+      #sidebar.visible { transform: translateX(0); box-shadow: 2px 0 10px rgba(0,0,0,0.5); }
       #main { margin-left: 0; }
       #toggleSidebarBtn { display: inline-block; }
-      #header {
-        flex-wrap: nowrap; overflow-x: auto;
-        gap: 6px; padding: 10px;
-      }
+      #header { flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding: 10px; }
       #header input { width: 120px; }
       #searchInput { width: 120px; }
       #messages { padding: 10px; }
@@ -392,16 +319,11 @@
       #input-area { padding: 10px; }
       .drag-hint { display: none; }
     }
-    
     @media (max-width: 400px) {
       #header input { width: 80px; font-size: 11px; }
-      #header button, #header select {
-        padding: 6px 8px; font-size: 11px;
-      }
+      #header button, #header select { padding: 6px 8px; font-size: 11px; }
       #toggleSidebarBtn { font-size: 16px; padding: 3px 6px; }
-      #sendBtn, #stopBtn, #attachBtn {
-        padding: 10px 12px; font-size: 13px;
-      }
+      #sendBtn, #stopBtn, #attachBtn { padding: 10px 12px; font-size: 13px; }
     }
   </style>
 </head>
@@ -425,16 +347,22 @@
 <div id="main">
   <div id="header">
     <button id="toggleSidebarBtn" title="Toggle sidebar">☰</button>
-    <span style="color:#888;">Key:</span>
-    <input type="password" id="apiKey" placeholder="deepinfra_api_key...">
-    <button id="saveKeyBtn">Save</button>
-    <select id="modelSelect">
-      <option value="deepseek-ai/DeepSeek-V4-Pro-0813">DeepSeek V4 Pro (DeepInfra)</option>
-      <option value="deepseek-ai/DeepSeek-V4-Flash-0731">DeepSeek V4 Flash (DeepInfra)</option>
+
+    <select id="providerSelect" title="Choose API provider">
+      <option value="deepseek">🧠 DeepSeek API</option>
+      <option value="deepinfra">☁️ DeepInfra</option>
     </select>
+
+    <span style="color:#888;">Key:</span>
+    <input type="password" id="apiKey" placeholder="API key...">
+    <button id="saveKeyBtn">Save</button>
+
+    <select id="modelSelect"></select>
+
     <label style="color:#888; font-size:12px; display:flex; align-items:center; gap:4px;">
       <input type="checkbox" id="thinkingToggle"> High Effort
     </label>
+
     <button id="validateAllBtn">🔍 Validate</button>
     <button id="searchToggle" title="Search messages">🔍</button>
     <div id="searchContainer">
@@ -467,9 +395,48 @@
 
 <script>
   (function() {
-    // ===== DEEPINFRA CONFIGURATION =====
-    const API_URL = 'https://api.deepinfra.com/v1/openai/chat/completions';
-    const DEFAULT_MODEL = 'deepseek-ai/DeepSeek-V4-Pro-0813';
+    // ===== PROVIDER CONFIGURATION =====
+    const PROVIDERS = {
+      deepseek: {
+        name: 'DeepSeek',
+        url: 'https://api.deepseek.com/chat/completions',
+        keyStorage: 'ds_key_deepseek',
+        modelStorage: 'ds_model_deepseek',
+        keyPlaceholder: 'sk-...',
+        defaultModel: 'deepseek-chat',
+        models: [
+          { id: 'deepseek-chat',     label: 'deepseek-chat' },
+          { id: 'deepseek-reasoner', label: 'deepseek-reasoner' }
+        ],
+        // DeepSeek uses the "thinking" object; reasoning_effort is a hint
+        buildBody(base, { thinking }) {
+          const body = { ...base };
+          if (thinking) {
+            body.thinking = { type: 'enabled' };
+            body.reasoning_effort = 'high';
+          }
+          return body;
+        }
+      },
+      deepinfra: {
+        name: 'DeepInfra',
+        url: 'https://api.deepinfra.com/v1/openai/chat/completions',
+        keyStorage: 'ds_key_deepinfra',
+        modelStorage: 'ds_model_deepinfra',
+        keyPlaceholder: 'deepinfra key...',
+        defaultModel: 'deepseek-ai/DeepSeek-V4-Pro-0813',
+        models: [
+          { id: 'deepseek-ai/DeepSeek-V4-Pro-0813',   label: 'DeepSeek V4 Pro' },
+          { id: 'deepseek-ai/DeepSeek-V4-Flash-0731', label: 'DeepSeek V4 Flash' }
+        ],
+        // DeepInfra uses top-level reasoning_effort only
+        buildBody(base, { thinking }) {
+          const body = { ...base };
+          if (thinking) body.reasoning_effort = 'high';
+          return body;
+        }
+      }
+    };
 
     // IndexedDB
     function openDB() {
@@ -477,15 +444,12 @@
         const request = indexedDB.open('ds_chat_storage', 1);
         request.onupgradeneeded = (e) => {
           const db = e.target.result;
-          if (!db.objectStoreNames.contains('chats')) {
-            db.createObjectStore('chats');
-          }
+          if (!db.objectStoreNames.contains('chats')) db.createObjectStore('chats');
         };
         request.onsuccess = (e) => resolve(e.target.result);
         request.onerror = (e) => reject(e.target.error);
       });
     }
-
     async function loadChatsFromDB() {
       const db = await openDB();
       return new Promise((resolve, reject) => {
@@ -496,7 +460,6 @@
         request.onerror = () => reject(request.error);
       });
     }
-
     async function saveChatsToDB(chatsArray) {
       const db = await openDB();
       return new Promise((resolve, reject) => {
@@ -509,7 +472,8 @@
     }
 
     // App state
-    let apiKey = localStorage.getItem('ds_key') || '';
+    let provider = localStorage.getItem('ds_provider') || 'deepseek';
+    let apiKey = '';
     let chats = [];
     let currentChatId = null;
     let isProcessing = false;
@@ -519,30 +483,31 @@
     let allMatches = [];
     let currentMatchIdx = -1;
 
-    const apiKeyInput = document.getElementById('apiKey');
-    const modelSelect = document.getElementById('modelSelect');
-    const thinkingToggle = document.getElementById('thinkingToggle');
-    const statusEl = document.getElementById('status');
-    const sidebarStatus = document.getElementById('sidebarStatus');
-    const chatListEl = document.getElementById('chat-list');
-    const messagesEl = document.getElementById('messages');
-    const userInput = document.getElementById('userInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const stopBtn = document.getElementById('stopBtn');
-    const attachBtn = document.getElementById('attachBtn');
-    const fileInput = document.getElementById('fileInput');
-    const inputArea = document.getElementById('input-area');
+    const providerSelect   = document.getElementById('providerSelect');
+    const apiKeyInput      = document.getElementById('apiKey');
+    const modelSelect      = document.getElementById('modelSelect');
+    const thinkingToggle   = document.getElementById('thinkingToggle');
+    const statusEl         = document.getElementById('status');
+    const sidebarStatus    = document.getElementById('sidebarStatus');
+    const chatListEl       = document.getElementById('chat-list');
+    const messagesEl       = document.getElementById('messages');
+    const userInput        = document.getElementById('userInput');
+    const sendBtn          = document.getElementById('sendBtn');
+    const stopBtn          = document.getElementById('stopBtn');
+    const attachBtn        = document.getElementById('attachBtn');
+    const fileInput        = document.getElementById('fileInput');
+    const inputArea        = document.getElementById('input-area');
     const attachedFilesContainer = document.getElementById('attachedFiles');
-    const sidebar = document.getElementById('sidebar');
+    const sidebar          = document.getElementById('sidebar');
     const toggleSidebarBtn = document.getElementById('toggleSidebarBtn');
-    const mainEl = document.getElementById('main');
-    const searchToggle = document.getElementById('searchToggle');
-    const searchContainer = document.getElementById('searchContainer');
-    const searchInput = document.getElementById('searchInput');
-    const searchResults = document.getElementById('searchResults');
-    const prevMatchBtn = document.getElementById('prevMatch');
-    const nextMatchBtn = document.getElementById('nextMatch');
-    const matchCounter = document.getElementById('matchCounter');
+    const mainEl           = document.getElementById('main');
+    const searchToggle     = document.getElementById('searchToggle');
+    const searchContainer  = document.getElementById('searchContainer');
+    const searchInput      = document.getElementById('searchInput');
+    const searchResults    = document.getElementById('searchResults');
+    const prevMatchBtn     = document.getElementById('prevMatch');
+    const nextMatchBtn     = document.getElementById('nextMatch');
+    const matchCounter     = document.getElementById('matchCounter');
 
     if (typeof marked !== 'undefined') {
       marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
@@ -562,30 +527,54 @@
         mainEl.classList.add('full-width');
       }
     }
-
     function scrollToBottom() {
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' });
     }
 
-    apiKeyInput.value = apiKey;
-    // Reset saved model if it's an old Together AI or DeepSeek model ID
-    let savedModel = localStorage.getItem('ds_model') || DEFAULT_MODEL;
-    if (!savedModel.startsWith('deepseek-ai/DeepSeek-V4')) {
-      savedModel = DEFAULT_MODEL;
-      localStorage.setItem('ds_model', savedModel);
+    // ===== PROVIDER LOGIC =====
+    function getProvider() { return PROVIDERS[provider]; }
+
+    function populateModels() {
+      const p = getProvider();
+      modelSelect.innerHTML = '';
+      p.models.forEach(m => {
+        const opt = document.createElement('option');
+        opt.value = m.id;
+        opt.textContent = m.label;
+        modelSelect.appendChild(opt);
+      });
+      const saved = localStorage.getItem(p.modelStorage);
+      const valid = p.models.some(m => m.id === saved);
+      modelSelect.value = valid ? saved : p.defaultModel;
+      localStorage.setItem(p.modelStorage, modelSelect.value);
     }
-    modelSelect.value = savedModel;
-    thinkingToggle.checked = localStorage.getItem('ds_thinking') === 'true';
-    updateStatus();
+
+    function loadApiKeyForProvider() {
+      apiKey = localStorage.getItem(getProvider().keyStorage) || '';
+      apiKeyInput.value = apiKey;
+      apiKeyInput.placeholder = getProvider().keyPlaceholder;
+    }
+
+    function switchProvider(newProvider) {
+      if (!PROVIDERS[newProvider]) return;
+      provider = newProvider;
+      localStorage.setItem('ds_provider', provider);
+      providerSelect.value = provider;
+      populateModels();
+      loadApiKeyForProvider();
+      updateStatus();
+    }
+
+    providerSelect.addEventListener('change', () => switchProvider(providerSelect.value));
 
     document.getElementById('saveKeyBtn').addEventListener('click', () => {
       apiKey = apiKeyInput.value.trim();
-      localStorage.setItem('ds_key', apiKey);
+      localStorage.setItem(getProvider().keyStorage, apiKey);
       updateStatus();
     });
 
     modelSelect.addEventListener('change', () => {
-      localStorage.setItem('ds_model', modelSelect.value);
+      localStorage.setItem(getProvider().modelStorage, modelSelect.value);
       updateStatus();
     });
 
@@ -594,26 +583,24 @@
     });
 
     function updateStatus() {
+      const p = getProvider();
       const model = modelSelect.value;
       if (apiKey) {
-        statusEl.textContent = `✅ Ready | ${model}`;
+        statusEl.textContent = `✅ ${p.name} | ${model}`;
         statusEl.style.color = '#4caf50';
-        sidebarStatus.textContent = `✅ ${model}`;
+        sidebarStatus.textContent = `✅ ${p.name}`;
         sidebarStatus.style.color = '#4caf50';
       } else {
-        statusEl.textContent = '❌ Set API key';
+        statusEl.textContent = `❌ Set ${p.name} key`;
         statusEl.style.color = '#f44';
-        sidebarStatus.textContent = '❌ No API key';
+        sidebarStatus.textContent = `❌ No ${p.name} key`;
         sidebarStatus.style.color = '#f44';
       }
     }
 
     async function saveChats() {
-      try {
-        await saveChatsToDB(chats);
-      } catch (e) {
-        alert('❌ Failed to save chats: ' + e.message);
-      }
+      try { await saveChatsToDB(chats); }
+      catch (e) { alert('❌ Failed to save chats: ' + e.message); }
     }
 
     function getChatTitle(chat) {
@@ -623,7 +610,6 @@
     }
 
     const clickTimers = {};
-
     function renderChatList() {
       chatListEl.innerHTML = '';
       chats.sort((a, b) => b.updatedAt - a.updatedAt);
@@ -633,40 +619,27 @@
         const titleSpan = document.createElement('span');
         titleSpan.className = 'chat-item-title';
         titleSpan.textContent = getChatTitle(chat);
-
         titleSpan.addEventListener('dblclick', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          if (clickTimers[chat.id]) {
-            clearTimeout(clickTimers[chat.id]);
-            delete clickTimers[chat.id];
-          }
+          e.preventDefault(); e.stopPropagation();
+          if (clickTimers[chat.id]) { clearTimeout(clickTimers[chat.id]); delete clickTimers[chat.id]; }
           startRename(chat, titleSpan);
         });
-
         titleSpan.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
+          e.preventDefault(); e.stopPropagation();
           if (clickTimers[chat.id]) return;
           clickTimers[chat.id] = setTimeout(() => {
             delete clickTimers[chat.id];
-            loadChat(chat.id);
-            handleChatSelection();
+            loadChat(chat.id); handleChatSelection();
           }, 300);
         });
-
         const delSpan = document.createElement('span');
         delSpan.className = 'chat-item-delete';
         delSpan.textContent = '×';
         delSpan.addEventListener('click', (e) => {
           e.stopPropagation();
-          if (clickTimers[chat.id]) {
-            clearTimeout(clickTimers[chat.id]);
-            delete clickTimers[chat.id];
-          }
+          if (clickTimers[chat.id]) { clearTimeout(clickTimers[chat.id]); delete clickTimers[chat.id]; }
           deleteChat(chat.id);
         });
-
         div.appendChild(titleSpan);
         div.appendChild(delSpan);
         chatListEl.appendChild(div);
@@ -679,32 +652,22 @@
       input.value = currentTitle;
       span.innerHTML = '';
       span.appendChild(input);
-      input.focus();
-      input.select();
-
+      input.focus(); input.select();
       const finish = async () => {
         const newTitle = input.value.trim();
-        if (newTitle && newTitle !== currentTitle) {
-          chat.title = newTitle;
-        } else if (!newTitle) {
-          delete chat.title;
-        }
+        if (newTitle && newTitle !== currentTitle) chat.title = newTitle;
+        else if (!newTitle) delete chat.title;
         chat.updatedAt = Date.now();
         await saveChats();
         renderChatList();
       };
-
       input.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          input.blur();
-        } else if (e.key === 'Escape') {
-          span.innerHTML = '';
-          span.textContent = currentTitle;
+        if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+        else if (e.key === 'Escape') {
+          span.innerHTML = ''; span.textContent = currentTitle;
           input.removeEventListener('blur', onBlur);
         }
       });
-
       const onBlur = () => finish();
       input.addEventListener('blur', onBlur);
     }
@@ -724,17 +687,14 @@
       messagesEl.innerHTML = ''; attachedFiles = []; renderAttachedFiles();
       if (chat?.messages) {
         chat.messages.forEach((m, idx) => {
-          const content = formatContent(m.content);
-          const msgDiv = createMessageElement(chat.id, idx, m.role, content);
+          const msgDiv = createMessageElement(chat.id, idx, m.role, formatContent(m.content));
           messagesEl.appendChild(msgDiv);
         });
         scrollToBottom();
         setTimeout(validateAllCodeBlocks, 400);
       }
       renderChatList();
-      if (searchQuery) {
-        applySearchHighlights();
-      }
+      if (searchQuery) applySearchHighlights();
     }
 
     async function deleteChat(id) {
@@ -744,14 +704,11 @@
       else if (!currentChatId) loadChat(chats[0].id);
       await saveChats();
       renderChatList();
-      if (searchQuery) {
-        performSearch(searchQuery);
-      }
+      if (searchQuery) performSearch(searchQuery);
     }
 
     document.getElementById('new-chat-btn').addEventListener('click', () => {
-      newChat();
-      handleChatSelection();
+      newChat(); handleChatSelection();
     });
 
     // File handling
@@ -771,12 +728,10 @@
         reader.readAsText(file);
       });
     }
-
     function getFileIcon(name) {
       const icons = { py:'🐍', xml:'📰', txt:'📄', html:'🌐', js:'📜', css:'🎨', json:'📋', md:'📘', csv:'📊' };
       return icons[name.split('.').pop().toLowerCase()] || '📎';
     }
-
     function renderAttachedFiles() {
       attachedFilesContainer.innerHTML = '';
       attachedFiles.forEach((f, i) => {
@@ -804,9 +759,7 @@
       fileInput.value = '';
     });
 
-    function escapeHtml(t) { 
-      const d = document.createElement('div'); d.textContent = t; return d.innerHTML; 
-    }
+    function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
     function formatContent(content) {
       if (!content) return '';
@@ -815,8 +768,8 @@
       for (let i = 0; i < parts.length; i++) {
         if (i % 2 === 0) {
           if (parts[i].trim()) {
-            html += typeof marked !== 'undefined' 
-              ? marked.parse(parts[i]) 
+            html += typeof marked !== 'undefined'
+              ? marked.parse(parts[i])
               : escapeHtml(parts[i]).replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
           }
         } else {
@@ -850,7 +803,6 @@
       div.dataset.msgIdx = msgIdx;
       div.style.position = 'relative';
       div.innerHTML = contentHTML;
-
       const delBtn = document.createElement('button');
       delBtn.className = 'delete-msg';
       delBtn.innerHTML = '✕';
@@ -871,18 +823,12 @@
       const chat = chats.find(c => c.id === chatId);
       if (!chat || msgIdx < 0 || msgIdx >= chat.messages.length) return;
       if (!confirm('Delete this message?')) return;
-
       chat.messages.splice(msgIdx, 1);
       chat.updatedAt = Date.now();
       await saveChats();
-      
-      if (currentChatId === chatId) {
-        loadChat(chatId);
-      }
+      if (currentChatId === chatId) loadChat(chatId);
       renderChatList();
-      if (searchQuery) {
-        applySearchHighlights();
-      }
+      if (searchQuery) applySearchHighlights();
     }
 
     document.addEventListener('click', e => {
@@ -893,7 +839,7 @@
       if (e.target.classList.contains('download-btn')) {
         const el = document.getElementById(e.target.dataset.id);
         if (el) {
-          const name = `deepinfra_${Date.now().toString(36)}_${Math.random().toString(36).substring(2,6)}.${e.target.dataset.ext}`;
+          const name = `chat_${Date.now().toString(36)}_${Math.random().toString(36).substring(2,6)}.${e.target.dataset.ext}`;
           const a = document.createElement('a');
           a.href = URL.createObjectURL(new Blob([el.textContent], {type:'text/plain'}));
           a.download = name; a.click(); URL.revokeObjectURL(a.href);
@@ -908,7 +854,6 @@
       if (/^<\?xml|<manifest/i.test(c)) return 'xml';
       return 'text';
     }
-
     function validatePython(c) {
       const issues = [];
       let p=0,b=0,br=0;
@@ -924,7 +869,6 @@
       if (last && /[=(,\\]$/.test(last)) issues.push({line:c.split('\n').length,type:'warn',msg:'Possibly truncated'});
       return issues;
     }
-
     function validateGeneric(c) {
       const issues = [];
       const count = (ch) => (c.match(new RegExp('\\'+ch,'g'))||[]).length;
@@ -934,7 +878,6 @@
       if (br) issues.push({line:0,type:'error',msg:`Braces: ${br}`});
       return issues;
     }
-
     function validateCodeBlock(id) {
       const el = document.getElementById(id);
       const badge = document.getElementById('badge-'+id);
@@ -948,54 +891,38 @@
         badge.className = 'validation-badge ' + (errs.length ? 'validation-error' : warns.length ? 'validation-warn' : 'validation-pass');
       }
       if (det) {
-        det.innerHTML = issues.length ? issues.map(i=>`<div class="${i.type==='error'?'error-line':'warn-line'}">L${i.line}: ${i.msg}</div>`).join('') : '<div class="ok-line">✅ No issues</div>';
+        det.innerHTML = issues.length
+          ? issues.map(i=>`<div class="${i.type==='error'?'error-line':'warn-line'}">L${i.line}: ${i.msg}</div>`).join('')
+          : '<div class="ok-line">✅ No issues</div>';
         det.classList.add('show');
       }
     }
-
     function validateAllCodeBlocks() {
       document.querySelectorAll('[data-code-id]').forEach(b => validateCodeBlock(b.dataset.codeId));
     }
     document.getElementById('validateAllBtn').addEventListener('click', validateAllCodeBlocks);
 
     // Search
-    function openSearch() {
-      searchContainer.classList.add('visible');
-      searchInput.focus();
-    }
+    function openSearch() { searchContainer.classList.add('visible'); searchInput.focus(); }
     function closeSearch() {
       searchContainer.classList.remove('visible');
       searchResults.classList.remove('visible');
       searchInput.value = '';
       clearSearch();
     }
-
     searchToggle.addEventListener('click', () => {
-      if (searchContainer.classList.contains('visible')) {
-        closeSearch();
-      } else {
-        openSearch();
-      }
+      if (searchContainer.classList.contains('visible')) closeSearch(); else openSearch();
     });
-
     searchInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
         const query = searchInput.value.trim();
-        if (query) {
-          performSearch(query);
-        } else {
-          clearSearch();
-        }
-      } else if (e.key === 'Escape') {
-        closeSearch();
-      }
+        if (query) performSearch(query); else clearSearch();
+      } else if (e.key === 'Escape') closeSearch();
     });
-
     function performSearch(query) {
       searchQuery = query.toLowerCase();
-      allMatches = [];
-      currentMatchIdx = -1;
+      allMatches = []; currentMatchIdx = -1;
       const results = [];
       chats.forEach(chat => {
         chat.messages.forEach((msg, msgIdx) => {
@@ -1004,9 +931,7 @@
           let startIdx = 0;
           while ((startIdx = lowerContent.indexOf(searchQuery, startIdx)) !== -1) {
             results.push({
-              chatId: chat.id,
-              msgIdx,
-              startIdx,
+              chatId: chat.id, msgIdx, startIdx,
               endIdx: startIdx + searchQuery.length,
               snippet: content.substring(Math.max(0, startIdx - 20), startIdx + searchQuery.length + 20)
             });
@@ -1017,7 +942,6 @@
       renderSearchDropdown(results);
       applySearchHighlights();
     }
-
     function renderSearchDropdown(results) {
       searchResults.innerHTML = '';
       if (results.length === 0) {
@@ -1025,7 +949,7 @@
         searchResults.classList.add('visible');
         return;
       }
-      results.forEach((res, i) => {
+      results.forEach((res) => {
         const chat = chats.find(c => c.id === res.chatId);
         const title = getChatTitle(chat);
         const item = document.createElement('div');
@@ -1035,9 +959,7 @@
           <div class="search-result-snippet">...${escapeHtml(res.snippet)}...</div>
         `;
         item.addEventListener('click', () => {
-          if (currentChatId !== res.chatId) {
-            loadChat(res.chatId);
-          }
+          if (currentChatId !== res.chatId) loadChat(res.chatId);
           setTimeout(() => {
             scrollToMessage(res.chatId, res.msgIdx);
             applySearchHighlights();
@@ -1053,7 +975,6 @@
       });
       searchResults.classList.add('visible');
     }
-
     function scrollToMessage(chatId, msgIdx) {
       const msgEl = messagesEl.querySelector(`.msg[data-chat-id="${chatId}"][data-msg-idx="${msgIdx}"]`);
       if (msgEl) {
@@ -1063,16 +984,13 @@
         setTimeout(() => { msgEl.style.boxShadow = ''; }, 1500);
       }
     }
-
     function applySearchHighlights() {
       removeHighlights();
       if (!searchQuery) return;
       allMatches = [];
       const msgs = messagesEl.querySelectorAll('.msg');
       msgs.forEach(msgEl => {
-        const chatId = msgEl.dataset.chatId;
-        const msgIdx = parseInt(msgEl.dataset.msgIdx);
-        highlightTextInElement(msgEl, searchQuery, chatId, msgIdx);
+        highlightTextInElement(msgEl, searchQuery, msgEl.dataset.chatId, parseInt(msgEl.dataset.msgIdx));
       });
       updateMatchCounter();
       if (allMatches.length > 0) {
@@ -1081,7 +999,6 @@
         scrollToMatch(currentMatchIdx);
       }
     }
-
     function highlightTextInElement(element, query, chatId, msgIdx) {
       const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
         acceptNode: function(node) {
@@ -1091,7 +1008,6 @@
       });
       const textNodes = [];
       while (walker.nextNode()) textNodes.push(walker.currentNode);
-
       textNodes.forEach(node => {
         const text = node.textContent;
         const lowerText = text.toLowerCase();
@@ -1100,9 +1016,7 @@
         const fragment = document.createDocumentFragment();
         let lastIdx = 0;
         while (idx !== -1) {
-          if (idx > lastIdx) {
-            fragment.appendChild(document.createTextNode(text.substring(lastIdx, idx)));
-          }
+          if (idx > lastIdx) fragment.appendChild(document.createTextNode(text.substring(lastIdx, idx)));
           const mark = document.createElement('mark');
           mark.className = 'search-highlight';
           mark.textContent = text.substring(idx, idx + query.length);
@@ -1111,13 +1025,10 @@
           lastIdx = idx + query.length;
           idx = lowerText.indexOf(query, lastIdx);
         }
-        if (lastIdx < text.length) {
-          fragment.appendChild(document.createTextNode(text.substring(lastIdx)));
-        }
+        if (lastIdx < text.length) fragment.appendChild(document.createTextNode(text.substring(lastIdx)));
         node.parentNode.replaceChild(fragment, node);
       });
     }
-
     function removeHighlights() {
       const marks = messagesEl.querySelectorAll('mark.search-highlight, mark.search-current-highlight');
       marks.forEach(mark => {
@@ -1125,19 +1036,14 @@
         parent.replaceChild(document.createTextNode(mark.textContent), mark);
         parent.normalize();
       });
-      allMatches = [];
-      currentMatchIdx = -1;
-      updateMatchCounter();
+      allMatches = []; currentMatchIdx = -1; updateMatchCounter();
     }
-
     function clearSearch() {
-      searchQuery = '';
-      searchInput.value = '';
+      searchQuery = ''; searchInput.value = '';
       removeHighlights();
       searchResults.classList.remove('visible');
       matchCounter.textContent = '';
     }
-
     function updateCurrentHighlight() {
       messagesEl.querySelectorAll('mark.search-current-highlight').forEach(m => {
         m.classList.remove('search-current-highlight');
@@ -1150,36 +1056,24 @@
       }
       updateMatchCounter();
     }
-
     function updateMatchCounter() {
-      if (allMatches.length === 0) {
-        matchCounter.textContent = '';
-      } else {
-        const current = currentMatchIdx >= 0 ? currentMatchIdx + 1 : 0;
-        matchCounter.textContent = `${current}/${allMatches.length}`;
-      }
+      if (allMatches.length === 0) matchCounter.textContent = '';
+      else matchCounter.textContent = `${currentMatchIdx >= 0 ? currentMatchIdx + 1 : 0}/${allMatches.length}`;
     }
-
     function scrollToMatch(index) {
       if (index < 0 || index >= allMatches.length) return;
-      const mark = allMatches[index].element;
-      mark.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      allMatches[index].element.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
-
     prevMatchBtn.addEventListener('click', () => {
       if (allMatches.length === 0) return;
       currentMatchIdx = (currentMatchIdx - 1 + allMatches.length) % allMatches.length;
-      updateCurrentHighlight();
-      scrollToMatch(currentMatchIdx);
+      updateCurrentHighlight(); scrollToMatch(currentMatchIdx);
     });
-
     nextMatchBtn.addEventListener('click', () => {
       if (allMatches.length === 0) return;
       currentMatchIdx = (currentMatchIdx + 1) % allMatches.length;
-      updateCurrentHighlight();
-      scrollToMatch(currentMatchIdx);
+      updateCurrentHighlight(); scrollToMatch(currentMatchIdx);
     });
-
     document.addEventListener('click', (e) => {
       if (!searchContainer.contains(e.target) && e.target !== searchToggle) {
         searchResults.classList.remove('visible');
@@ -1195,7 +1089,10 @@
     }
 
     async function send() {
-      if (isProcessing || !apiKey) return;
+      if (isProcessing || !apiKey) {
+        if (!apiKey) alert('Please enter your API key for ' + getProvider().name);
+        return;
+      }
       if (!currentChatId) newChat();
       const text = userInput.value.trim();
       if (!text && !attachedFiles.length) return;
@@ -1208,6 +1105,7 @@
       }
 
       const chat = chats.find(c => c.id === currentChatId);
+      const p = getProvider();
       chat.messages.push({ role: 'user', content: full });
       chat.updatedAt = Date.now(); await saveChats(); renderChatList();
 
@@ -1225,21 +1123,19 @@
 
       try {
         const msgs = chat.messages.map(m => ({ role: m.role, content: m.content }));
-        const requestBody = {
+        const baseBody = {
           model: modelSelect.value,
           messages: msgs,
           temperature: 1.0,
           stream: false
         };
-        // DeepInfra: reasoning_effort controls thinking depth
-        if (thinkingToggle.checked) {
-          requestBody.reasoning_effort = "high";
-        }
-        const res = await fetch(API_URL, {
+        const requestBody = p.buildBody(baseBody, { thinking: thinkingToggle.checked });
+
+        const res = await fetch(p.url, {
           method: 'POST',
-          headers: { 
-            'Content-Type': 'application/json', 
-            'Authorization': `Bearer ${apiKey}` 
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${apiKey}`
           },
           body: JSON.stringify(requestBody),
           signal: controller.signal
@@ -1248,8 +1144,8 @@
         if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
         if (!data.choices?.[0]?.message?.content) throw new Error('Invalid response format');
         const content = data.choices[0].message.content;
-        console.log('API returned model:', data.model);
-        chat.messages.push({ role: 'assistant', content }); 
+        console.log(`[${p.name}] API returned model:`, data.model);
+        chat.messages.push({ role: 'assistant', content });
         chat.updatedAt = Date.now(); await saveChats();
 
         const assistantMsgDiv = createMessageElement(currentChatId, chat.messages.length - 1, 'assistant', formatContent(content));
@@ -1267,9 +1163,7 @@
         stopBtn.style.display = 'none'; userInput.disabled = false; controller = null;
         userInput.focus();
       }
-      if (searchQuery) {
-        applySearchHighlights();
-      }
+      if (searchQuery) applySearchHighlights();
     }
 
     sendBtn.addEventListener('click', send);
@@ -1286,11 +1180,9 @@
       a.click();
       URL.revokeObjectURL(a.href);
     });
-
     document.getElementById('importChatsBtn').addEventListener('click', () => {
       const inp = document.createElement('input');
-      inp.type = 'file';
-      inp.accept = '.json';
+      inp.type = 'file'; inp.accept = '.json';
       inp.onchange = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
@@ -1315,12 +1207,17 @@
     });
 
     async function initApp() {
-      try {
-        chats = await loadChatsFromDB();
-      } catch (e) {
-        alert('Failed to load chats from storage: ' + e.message);
-        chats = [];
-      }
+      try { chats = await loadChatsFromDB(); }
+      catch (e) { alert('Failed to load chats from storage: ' + e.message); chats = []; }
+
+      thinkingToggle.checked = localStorage.getItem('ds_thinking') === 'true';
+
+      // Initialize provider UI
+      providerSelect.value = provider;
+      populateModels();
+      loadApiKeyForProvider();
+      updateStatus();
+
       if (!chats.length) newChat();
       else loadChat(chats[0].id);
       renderChatList();
