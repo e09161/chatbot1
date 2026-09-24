@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>Educasa Chat · DeepSeek + DeepInfra</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <!-- ✅ CHANGE 1: DOMPurify for sanitizing rendered markdown -->
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -411,7 +413,6 @@
           { id: 'deepseek-chat',         label: 'deepseek-chat (legacy)' },
           { id: 'deepseek-reasoner',     label: 'deepseek-reasoner (legacy)' }
         ],
-        // DeepSeek uses the "thinking" object; reasoning_effort is a hint
         buildBody(base, { thinking }) {
           const body = { ...base };
           if (thinking) {
@@ -432,7 +433,6 @@
           { id: 'deepseek-ai/DeepSeek-V4-Pro-0813',   label: 'DeepSeek V4 Pro' },
           { id: 'deepseek-ai/DeepSeek-V4-Flash-0731', label: 'DeepSeek V4 Flash' }
         ],
-        // DeepInfra uses top-level reasoning_effort only
         buildBody(base, { thinking }) {
           const body = { ...base };
           if (thinking) body.reasoning_effort = 'high';
@@ -740,7 +740,8 @@
       attachedFiles.forEach((f, i) => {
         const chip = document.createElement('div');
         chip.className = 'attached-file';
-        chip.innerHTML = `${f.icon} ${f.name} (${(f.size/1024).toFixed(1)}KB) <span class="remove-file">×</span>`;
+        // ✅ CHANGE 3: escape file name to prevent HTML/script injection via filename
+        chip.innerHTML = `${f.icon} ${escapeHtml(f.name)} (${(f.size/1024).toFixed(1)}KB) <span class="remove-file">×</span>`;
         chip.querySelector('.remove-file').addEventListener('click', () => { attachedFiles.splice(i,1); renderAttachedFiles(); });
         attachedFilesContainer.appendChild(chip);
       });
@@ -764,6 +765,20 @@
 
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
+    // ✅ CHANGE 2: sanitize the markdown-rendered (non-code) portions before inserting into the DOM.
+    // This neutralizes <style>, <script>, <iframe>, on* handlers, raw full HTML documents, etc.
+    const PURIFY_CONFIG = {
+      FORBID_TAGS: ['style', 'script', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'form', 'input', 'button'],
+      FORBID_ATTR: ['style', 'onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur', 'onmouseenter', 'onmouseleave', 'onkeydown', 'onkeyup', 'onkeypress', 'onsubmit', 'onchange', 'oninput']
+    };
+    function sanitize(html) {
+      if (typeof DOMPurify !== 'undefined') {
+        return DOMPurify.sanitize(html, PURIFY_CONFIG);
+      }
+      // Fallback if DOMPurify failed to load: escape everything
+      return escapeHtml(html);
+    }
+
     function formatContent(content) {
       if (!content) return '';
       const parts = content.split('```');
@@ -771,9 +786,10 @@
       for (let i = 0; i < parts.length; i++) {
         if (i % 2 === 0) {
           if (parts[i].trim()) {
-            html += typeof marked !== 'undefined'
+            const raw = typeof marked !== 'undefined'
               ? marked.parse(parts[i])
               : escapeHtml(parts[i]).replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+            html += sanitize(raw);
           }
         } else {
           const code = parts[i];
@@ -782,6 +798,7 @@
           const codeContent = nl > -1 ? code.substring(nl + 1) : code;
           const id = 'c' + Math.random().toString(36).substring(2, 10);
           const ext = lang === 'python' ? 'py' : lang === 'xml' ? 'xml' : lang === 'html' ? 'html' : 'txt';
+          // Code blocks stay escaped (as before) — safe.
           html += `<div class="code-block" data-code-id="${id}">
             <div class="code-header">
               <span>${escapeHtml(lang)} <span class="validation-badge" id="badge-${id}"></span></span>
@@ -1113,7 +1130,7 @@
       chat.updatedAt = Date.now(); await saveChats(); renderChatList();
 
       const userMsgDiv = createMessageElement(currentChatId, chat.messages.length - 1, 'user',
-        escapeHtml(text) + (attachedFiles.length ? '<br><br>📎 '+attachedFiles.map(f=>f.name).join(', ') : '')
+        escapeHtml(text) + (attachedFiles.length ? '<br><br>📎 '+attachedFiles.map(f=>escapeHtml(f.name)).join(', ') : '')
       );
       messagesEl.appendChild(userMsgDiv);
       scrollToBottom();
@@ -1215,7 +1232,6 @@
 
       thinkingToggle.checked = localStorage.getItem('ds_thinking') === 'true';
 
-      // Initialize provider UI
       providerSelect.value = provider;
       populateModels();
       loadApiKeyForProvider();
