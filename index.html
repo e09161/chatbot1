@@ -85,6 +85,24 @@
     .sync-btn:hover { background: #3a3a4a; }
     #sidebarStatus { margin-top: 4px; }
 
+    /* ✅ NEW: folder sync UI */
+    .opt-row {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; color: #9a9aa8; user-select: none; cursor: pointer;
+    }
+    #folderList { display: flex; flex-direction: column; gap: 4px; max-height: 130px; overflow-y: auto; }
+    .folder-item {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 11px; color: #bbb;
+      padding: 4px 6px; background: #141420;
+      border: 1px solid #262626; border-radius: 6px;
+    }
+    .folder-item .fname { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .folder-item .fstate { cursor: pointer; font-size: 12px; }
+    .folder-item .fdel { cursor: pointer; color: #777; font-weight: bold; }
+    .folder-item .fdel:hover { color: #f44; }
+    #autoExportStatus { font-size: 11px; color: #7a7a8a; line-height: 1.4; }
+
     #main {
       flex: 1;
       display: flex;
@@ -342,6 +360,17 @@
       <button class="sync-btn" id="exportChatsBtn">📤 Export</button>
       <button class="sync-btn" id="importChatsBtn">📥 Import</button>
     </div>
+    <!-- ✅ NEW: folder sync controls -->
+    <div class="sync-btns">
+      <button class="sync-btn" id="connectFolderBtn" title="Connect a local or network folder">📁 Add folder</button>
+      <button class="sync-btn" id="syncNowBtn" title="Export + import newest right now">🔄 Sync now</button>
+    </div>
+    <div id="folderList"></div>
+    <label class="opt-row">
+      <input type="checkbox" id="autoExportToggle" checked>
+      Auto-export 15 min after last inquiry
+    </label>
+    <div id="autoExportStatus">⏱ Auto-export: armed on next inquiry</div>
     <div id="sidebarStatus">⚡ API status</div>
   </div>
 </div>
@@ -441,13 +470,14 @@
       }
     };
 
-    // IndexedDB
+    // IndexedDB  (✅ v2: added 'handles' store for persistent folder handles)
     function openDB() {
       return new Promise((resolve, reject) => {
-        const request = indexedDB.open('ds_chat_storage', 1);
+        const request = indexedDB.open('ds_chat_storage', 2);
         request.onupgradeneeded = (e) => {
           const db = e.target.result;
           if (!db.objectStoreNames.contains('chats')) db.createObjectStore('chats');
+          if (!db.objectStoreNames.contains('handles')) db.createObjectStore('handles');
         };
         request.onsuccess = (e) => resolve(e.target.result);
         request.onerror = (e) => reject(e.target.error);
@@ -469,6 +499,25 @@
         const tx = db.transaction('chats', 'readwrite');
         const store = tx.objectStore('chats');
         store.put(chatsArray, 'ds_chats');
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+    // ✅ NEW: persistent directory handles
+    async function loadHandlesFromDB() {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('handles', 'readonly');
+        const request = tx.objectStore('handles').get('dirs');
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+      });
+    }
+    async function saveHandlesToDB(list) {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('handles', 'readwrite');
+        tx.objectStore('handles').put(list, 'dirs');
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
       });
@@ -766,7 +815,6 @@
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
     // ✅ CHANGE 2: sanitize the markdown-rendered (non-code) portions before inserting into the DOM.
-    // This neutralizes <style>, <script>, <iframe>, on* handlers, raw full HTML documents, etc.
     const PURIFY_CONFIG = {
       FORBID_TAGS: ['style', 'script', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'form', 'input', 'button'],
       FORBID_ATTR: ['style', 'onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur', 'onmouseenter', 'onmouseleave', 'onkeydown', 'onkeyup', 'onkeypress', 'onsubmit', 'onchange', 'oninput']
@@ -775,7 +823,6 @@
       if (typeof DOMPurify !== 'undefined') {
         return DOMPurify.sanitize(html, PURIFY_CONFIG);
       }
-      // Fallback if DOMPurify failed to load: escape everything
       return escapeHtml(html);
     }
 
@@ -798,7 +845,6 @@
           const codeContent = nl > -1 ? code.substring(nl + 1) : code;
           const id = 'c' + Math.random().toString(36).substring(2, 10);
           const ext = lang === 'python' ? 'py' : lang === 'xml' ? 'xml' : lang === 'html' ? 'html' : 'txt';
-          // Code blocks stay escaped (as before) — safe.
           html += `<div class="code-block" data-code-id="${id}">
             <div class="code-header">
               <span>${escapeHtml(lang)} <span class="validation-badge" id="badge-${id}"></span></span>
@@ -849,6 +895,7 @@
       if (currentChatId === chatId) loadChat(chatId);
       renderChatList();
       if (searchQuery) applySearchHighlights();
+      scheduleAutoExport();   // ✅ NEW: chat content changed
     }
 
     document.addEventListener('click', e => {
@@ -1184,6 +1231,7 @@
         userInput.focus();
       }
       if (searchQuery) applySearchHighlights();
+      scheduleAutoExport();   // ✅ NEW: arm the 15-minute idle export
     }
 
     sendBtn.addEventListener('click', send);
@@ -1191,15 +1239,326 @@
     userInput.addEventListener('keydown', e => { if (e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); send(); } });
     userInput.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 150) + 'px'; });
 
-    // Export / Import
-    document.getElementById('exportChatsBtn').addEventListener('click', () => {
-      const blob = new Blob([JSON.stringify(chats, null, 2)], { type: 'application/json' });
+    // =====================================================================
+    // ✅ NEW BLOCK: AUTO-EXPORT (15 min idle) + MULTI-FOLDER SYNC
+    // =====================================================================
+    const AUTO_EXPORT_DELAY = 15 * 60 * 1000;          // 15 minutes
+    const EXPORT_RE = /^educasa_chats_.*\.json$/i;      // files we manage
+    const MAX_EXPORTS_PER_FOLDER = 30;                 // prune older ones
+
+    const autoExportToggle = document.getElementById('autoExportToggle');
+    const autoExportStatus = document.getElementById('autoExportStatus');
+    const folderListEl     = document.getElementById('folderList');
+    const connectFolderBtn = document.getElementById('connectFolderBtn');
+    const syncNowBtn       = document.getElementById('syncNowBtn');
+
+    let dirHandles = [];                 // [{id, name, handle}]
+    let autoExportTimer = null;
+    let autoExportDeadline = 0;
+    let autoExportEnabled = localStorage.getItem('ds_autoexport') !== 'false';
+    let lastExportLabel = '';
+
+    autoExportToggle.checked = autoExportEnabled;
+    autoExportToggle.addEventListener('change', () => {
+      autoExportEnabled = autoExportToggle.checked;
+      localStorage.setItem('ds_autoexport', autoExportEnabled);
+      if (!autoExportEnabled) { clearTimeout(autoExportTimer); autoExportTimer = null; }
+      updateAutoExportStatus();
+    });
+
+    function buildExportName() {
+      const d = new Date();
+      const p = (n) => String(n).padStart(2, '0');
+      return `educasa_chats_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}.json`;
+    }
+
+    function downloadJson(json, filename) {
+      const blob = new Blob([json], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `educasa_chats_${new Date().toISOString().slice(0,10)}.json`;
+      a.download = filename;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(a.href);
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    }
+
+    // --- write to connected folders ---
+    async function writeExportToFolders(json, filename) {
+      const written = [];
+      for (const d of dirHandles) {
+        try {
+          if (d.handle.queryPermission) {
+            const perm = await d.handle.queryPermission({ mode: 'readwrite' });
+            if (perm !== 'granted') continue;
+          }
+          const fh = await d.handle.getFileHandle(filename, { create: true });
+          const w = await fh.createWritable();
+          await w.write(json);
+          await w.close();
+          written.push(d.name);
+          pruneOldExports(d.handle);
+        } catch (e) {
+          console.warn('Write failed for', d.name, e);
+        }
+      }
+      return written;
+    }
+
+    async function pruneOldExports(dirHandle) {
+      try {
+        const files = [];
+        for await (const entry of dirHandle.values()) {
+          if (entry.kind !== 'file' || !EXPORT_RE.test(entry.name)) continue;
+          const f = await entry.getFile();
+          files.push({ name: entry.name, ts: f.lastModified });
+        }
+        if (files.length <= MAX_EXPORTS_PER_FOLDER) return;
+        files.sort((a, b) => b.ts - a.ts);
+        for (const f of files.slice(MAX_EXPORTS_PER_FOLDER)) {
+          try { await dirHandle.removeEntry(f.name); } catch (e) {}
+        }
+      } catch (e) { /* ignore */ }
+    }
+
+    // --- find newest export across all connected folders ---
+    async function findNewestExportInFolder(dirHandle) {
+      let newest = null;
+      for await (const entry of dirHandle.values()) {
+        if (entry.kind !== 'file' || !EXPORT_RE.test(entry.name)) continue;
+        const file = await entry.getFile();
+        if (!newest || file.lastModified > newest.lastModified) {
+          newest = { name: entry.name, file, lastModified: file.lastModified };
+        }
+      }
+      return newest;
+    }
+
+    async function scanForNewestExport({ silent = true } = {}) {
+      if (!dirHandles.length) {
+        if (!silent) alert('No folders connected yet. Click "📁 Add folder" first.');
+        return null;
+      }
+      let best = null, bestDir = null;
+      for (const d of dirHandles) {
+        try {
+          if (d.handle.queryPermission) {
+            const perm = await d.handle.queryPermission({ mode: 'readwrite' });
+            if (perm !== 'granted') continue;   // needs a user gesture to re-grant
+          }
+          const found = await findNewestExportInFolder(d.handle);
+          if (found && (!best || found.lastModified > best.lastModified)) {
+            best = found; bestDir = d;
+          }
+        } catch (e) { console.warn('Scan failed for', d.name, e); }
+      }
+      if (!best) {
+        if (!silent) alert('No educasa_chats_*.json export files found in the connected folders.');
+        return null;
+      }
+      const applied = await applySyncFile(best, bestDir);
+      return applied;
+    }
+
+    // --- merge newest export into current state ---
+    function mergeChats(localChats, incomingChats) {
+      const map = new Map();
+      localChats.forEach(c => map.set(c.id, c));
+      let added = 0, updated = 0;
+      incomingChats.forEach(inc => {
+        if (!inc || !inc.id || !Array.isArray(inc.messages)) return;
+        const cur = map.get(inc.id);
+        if (!cur) { map.set(inc.id, inc); added++; return; }
+        if ((inc.updatedAt || 0) > (cur.updatedAt || 0)) { map.set(inc.id, inc); updated++; }
+      });
+      return { merged: [...map.values()], added, updated };
+    }
+
+    async function applySyncFile(best, dir) {
+      let parsed;
+      try {
+        const text = await best.file.text();
+        parsed = JSON.parse(text);
+      } catch (e) {
+        console.warn('Could not parse export file', best.name, e);
+        return false;
+      }
+      if (!Array.isArray(parsed)) return false;
+
+      const { merged, added, updated } = mergeChats(chats, parsed);
+      if (added || updated) {
+        chats = merged;
+        await saveChats();
+        renderChatList();
+        if (currentChatId && chats.find(c => c.id === currentChatId)) loadChat(currentChatId);
+        else if (chats.length) loadChat(chats[0].id);
+        else newChat();
+        if (searchQuery) applySearchHighlights();
+      }
+      const when = new Date(best.lastModified).toLocaleString();
+      lastSyncInfo = `🔄 Synced from ${dir ? dir.name : '?'} · ${best.name}\n(${added} new, ${updated} updated chats)`;
+      autoExportStatus.textContent = `🔄 Synced ${when} · +${added}/~${updated}`;
+      autoExportStatus.style.color = '#4a90d9';
+      return true;
+    }
+
+    // --- timer handling ---
+    function scheduleAutoExport() {
+      if (!autoExportEnabled) return;
+      clearTimeout(autoExportTimer);
+      autoExportDeadline = Date.now() + AUTO_EXPORT_DELAY;
+      autoExportTimer = setTimeout(() => {
+        autoExportTimer = null;
+        performAutoExport();
+      }, AUTO_EXPORT_DELAY);
+      updateAutoExportStatus();
+    }
+
+    async function performAutoExport() {
+      clearTimeout(autoExportTimer);
+      autoExportTimer = null;
+      const filename = buildExportName();
+      const json = JSON.stringify(chats, null, 2);
+      const written = await writeExportToFolders(json, filename);
+      if (!written.length) downloadJson(json, filename);
+      const stamp = new Date().toLocaleTimeString();
+      lastExportLabel = written.length
+        ? `💾 Auto-exported to ${written.join(', ')} at ${stamp}`
+        : `💾 Auto-export downloaded at ${stamp} (no folder connected)`;
+      updateAutoExportStatus();
+      // Next export will be armed by the next inquiry / content change.
+    }
+
+    function updateAutoExportStatus() {
+      if (!autoExportEnabled) {
+        autoExportStatus.textContent = '⏱ Auto-export: off';
+        autoExportStatus.style.color = '#7a7a8a';
+        return;
+      }
+      if (!autoExportTimer) {
+        autoExportStatus.textContent = lastExportLabel || lastSyncInfo || '⏱ Auto-export: armed on next inquiry';
+        autoExportStatus.style.color = lastExportLabel ? '#4caf50' : '#7a7a8a';
+        return;
+      }
+      const left = Math.max(0, autoExportDeadline - Date.now());
+      const m = Math.floor(left / 60000);
+      const s = Math.floor((left % 60000) / 1000);
+      autoExportStatus.textContent = `⏱ Auto-export in ${m}:${String(s).padStart(2, '0')}`;
+      autoExportStatus.style.color = '#ff9800';
+    }
+    setInterval(() => { if (autoExportTimer) updateAutoExportStatus(); }, 1000);
+
+    // --- folder management ---
+    const FS_SUPPORTED = (typeof window.showDirectoryPicker === 'function');
+
+    async function connectFolder() {
+      if (!FS_SUPPORTED) {
+        alert('Your browser does not support direct folder access.\n\n' +
+              'Use Chrome or Edge over https:// (or open this file locally in Chrome).\n' +
+              'Without it, auto-export will simply download the JSON file to your default Downloads folder.');
+        return;
+      }
+      try {
+        const handle = await window.showDirectoryPicker({ id: 'educasa-sync', mode: 'readwrite' });
+        let perm = 'granted';
+        if (handle.requestPermission) perm = await handle.requestPermission({ mode: 'readwrite' });
+        if (perm !== 'granted') { alert('Permission denied for that folder.'); return; }
+        if (dirHandles.some(d => d.name === handle.name)) { alert('That folder is already connected.'); return; }
+        dirHandles.push({ id: 'dir_' + Date.now(), name: handle.name, handle });
+        await saveHandlesToDB(dirHandles);
+        await renderFolderList();
+        // Immediately pull the newest export from the newly added folder
+        await scanForNewestExport({ silent: true });
+      } catch (e) {
+        if (e.name !== 'AbortError') alert('Could not connect folder: ' + e.message);
+      }
+    }
+
+    async function requestFolderPermission(d) {
+      try {
+        if (!d.handle.requestPermission) return;
+        const perm = await d.handle.requestPermission({ mode: 'readwrite' });
+        if (perm === 'granted') await scanForNewestExport({ silent: true });
+      } catch (e) { console.warn(e); }
+    }
+
+    async function renderFolderList() {
+      folderListEl.innerHTML = '';
+      if (!dirHandles.length) {
+        folderListEl.innerHTML = '<div style="font-size:11px;color:#666;padding:2px 0;">No folders connected — export will be downloaded instead.</div>';
+        return;
+      }
+      for (const d of dirHandles) {
+        let icon = '❔';
+        try {
+          if (d.handle.queryPermission) {
+            const p = await d.handle.queryPermission({ mode: 'readwrite' });
+            icon = p === 'granted' ? '✅' : '🔒';
+          } else icon = '✅';
+        } catch (e) { icon = '⚠️'; }
+
+        const row = document.createElement('div');
+        row.className = 'folder-item';
+
+        const name = document.createElement('span');
+        name.className = 'fname';
+        name.textContent = d.name;
+        name.title = d.name;
+
+        const state = document.createElement('span');
+        state.className = 'fstate';
+        state.textContent = icon;
+        state.title = icon === '🔒' ? 'Click to grant access' : 'Access granted';
+        state.addEventListener('click', async () => { await requestFolderPermission(d); renderFolderList(); });
+
+        const del = document.createElement('span');
+        del.className = 'fdel';
+        del.textContent = '✕';
+        del.title = 'Disconnect this folder';
+        del.addEventListener('click', async () => {
+          dirHandles = dirHandles.filter(x => x.id !== d.id);
+          await saveHandlesToDB(dirHandles);
+          renderFolderList();
+        });
+
+        row.appendChild(name);
+        row.appendChild(state);
+        row.appendChild(del);
+        folderListEl.appendChild(row);
+      }
+    }
+
+    // --- buttons ---
+    connectFolderBtn.addEventListener('click', connectFolder);
+
+    syncNowBtn.addEventListener('click', async () => {
+      // 1) write current state out
+      const filename = buildExportName();
+      const json = JSON.stringify(chats, null, 2);
+      const written = await writeExportToFolders(json, filename);
+      if (!written.length) downloadJson(json, filename);
+      // 2) pull the newest export back in
+      await scanForNewestExport({ silent: false });
+      lastExportLabel = written.length
+        ? `💾 Exported to ${written.join(', ')} at ${new Date().toLocaleTimeString()}`
+        : `💾 Downloaded export at ${new Date().toLocaleTimeString()}`;
+      updateAutoExportStatus();
     });
+
+    // =====================================================================
+    // Export / Import (manual buttons now also write to connected folders)
+    // =====================================================================
+    document.getElementById('exportChatsBtn').addEventListener('click', async () => {
+      const filename = buildExportName();
+      const json = JSON.stringify(chats, null, 2);
+      const written = await writeExportToFolders(json, filename);
+      if (!written.length) downloadJson(json, filename);
+      lastExportLabel = written.length
+        ? `💾 Exported to ${written.join(', ')} at ${new Date().toLocaleTimeString()}`
+        : `💾 Downloaded export at ${new Date().toLocaleTimeString()}`;
+      updateAutoExportStatus();
+    });
+
     document.getElementById('importChatsBtn').addEventListener('click', () => {
       const inp = document.createElement('input');
       inp.type = 'file'; inp.accept = '.json';
@@ -1218,6 +1577,7 @@
               currentChatId = chats.length ? chats[0].id : null;
               currentChatId ? loadChat(currentChatId) : (messagesEl.innerHTML = '', newChat());
               renderChatList();
+              scheduleAutoExport();
             }
           } catch (err) { alert('Import failed: ' + err.message); }
         };
@@ -1226,6 +1586,9 @@
       inp.click();
     });
 
+    // =====================================================================
+    // INIT
+    // =====================================================================
     async function initApp() {
       try { chats = await loadChatsFromDB(); }
       catch (e) { alert('Failed to load chats from storage: ' + e.message); chats = []; }
@@ -1237,14 +1600,35 @@
       loadApiKeyForProvider();
       updateStatus();
 
+      // ✅ NEW: restore connected folders
+      try {
+        dirHandles = await loadHandlesFromDB();
+      } catch (e) { console.warn('Could not restore folder handles', e); dirHandles = []; }
+      await renderFolderList();
+
       if (!chats.length) newChat();
       else loadChat(chats[0].id);
       renderChatList();
+
       if (window.innerWidth <= 600) {
         sidebar.classList.remove('visible');
         mainEl.classList.add('full-width');
       }
       if (currentChatId) setTimeout(validateAllCodeBlocks, 600);
+
+      // ✅ NEW: on startup, pull the newest export found in the connected folders
+      if (dirHandles.length) {
+        try { await scanForNewestExport({ silent: true }); }
+        catch (e) { console.warn('Startup sync failed', e); }
+      }
+
+      updateAutoExportStatus();
+
+      if (!FS_SUPPORTED) {
+        autoExportStatus.textContent = '⚠️ Folder sync unsupported in this browser — auto-export will download files.';
+        autoExportStatus.style.color = '#ff9800';
+        connectFolderBtn.title = 'Not supported in this browser';
+      }
     }
 
     initApp();
