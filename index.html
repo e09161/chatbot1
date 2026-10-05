@@ -72,7 +72,6 @@
     .chat-item-delete { color: #666; margin-left: 8px; cursor: pointer; font-weight: bold; }
     .chat-item-delete:hover { color: #f44; }
 
-    /* ============ SIDEBAR FOOTER + COLLAPSIBLE SYNC PANEL ============ */
     #sidebar-footer {
       padding: 10px 12px 12px;
       border-top: 1px solid #222;
@@ -184,7 +183,6 @@
 
     #autoExportStatus { font-size: 11px; color: #7a7a8a; line-height: 1.4; }
     #sidebarStatus { font-size: 11px; color: #888; padding-top: 4px; border-top: 1px solid #222; }
-    /* ================================================================= */
 
     #main {
       flex: 1;
@@ -438,7 +436,6 @@
     #attachBtn:hover { background: #666; }
     .drag-hint { font-size: 11px; color: #666; text-align: center; }
 
-    /* ============ TOASTS ============ */
     #toastContainer {
       position: fixed;
       bottom: 90px;
@@ -487,7 +484,6 @@
       border: 1px solid #4a90d9;
       color: #4a90d9;
     }
-    /* ================================ */
 
     @media (max-width: 600px) {
       #sidebar { transform: translateX(-100%); }
@@ -657,7 +653,6 @@
       }
     };
 
-    // IndexedDB
     function openDB() {
       return new Promise((resolve, reject) => {
         const request = indexedDB.open('ds_chat_storage', 2);
@@ -709,7 +704,6 @@
       });
     }
 
-    // App state
     let provider = localStorage.getItem('ds_provider') || 'deepseek';
     let apiKey = '';
     let chats = [];
@@ -755,7 +749,6 @@
     const matchCounter     = document.getElementById('matchCounter');
     const toastContainer   = document.getElementById('toastContainer');
 
-    // Collapsible sync panel
     const syncPanel        = document.getElementById('syncPanel');
     const syncPanelHeader  = document.getElementById('syncPanelHeader');
     const syncPanelDot     = document.getElementById('syncPanelDot');
@@ -772,7 +765,6 @@
       marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
     }
 
-    // ===== TOAST HELPER =====
     function showToast(html, { kind = 'info', duration = 5000, onAction = null, actionLabel = null } = {}) {
       const el = document.createElement('div');
       el.className = 'toast' + (kind === 'success' ? ' success' : kind === 'warn' ? ' warn' : '');
@@ -827,7 +819,6 @@
       window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' });
     }
 
-    // ===== PROVIDER LOGIC =====
     function getProvider() { return PROVIDERS[provider]; }
 
     function populateModels() {
@@ -1609,7 +1600,7 @@
       return newest;
     }
 
-    async function scanForNewestExport({ silent = true } = {}) {
+    async function scanForNewestExport({ silent = true, autoOpenNewest = false } = {}) {
       if (!dirHandles.length) {
         if (!silent) alert('No folders connected yet. Click "📁 Add folder" first.');
         renderLastSync(null, null);
@@ -1634,7 +1625,7 @@
         return null;
       }
       renderLastSync(best, bestDir);
-      const applied = await applySyncFile(best, bestDir);
+      const applied = await applySyncFile(best, bestDir, { forceOpenNewest: autoOpenNewest });
       return applied;
     }
 
@@ -1651,7 +1642,7 @@
       return { merged: [...map.values()], added, updated };
     }
 
-    async function applySyncFile(best, dir) {
+    async function applySyncFile(best, dir, { forceOpenNewest = false } = {}) {
       let parsed;
       try {
         const text = await best.file.text();
@@ -1666,7 +1657,6 @@
       const changed = added || updated;
 
       if (changed) {
-        // Find the newest chat from the incoming file
         let newestIncomingId = null, newestTs = 0;
         parsed.forEach(c => {
           if (!c || !c.id) return;
@@ -1700,17 +1690,16 @@
 
         const newestChat = newestIncomingId ? chats.find(c => c.id === newestIncomingId) : null;
         const currentChatObj = currentChatId ? chats.find(c => c.id === currentChatId) : null;
-        if (newestChat && newestChat.id !== currentChatId &&
-            (newestChat.updatedAt || 0) > (currentChatObj?.updatedAt || 0)) {
-          showToast(summary, {
-            kind: 'success',
-            duration: 12000,
-            actionLabel: `Open "${escapeHtml(getChatTitle(newestChat))}"`,
-            onAction: () => {
-              loadChat(newestChat.id);
-              scrollToBottom();
-            }
-          });
+        const newestIsDifferent = newestChat && newestChat.id !== currentChatId &&
+          (newestChat.updatedAt || 0) > (currentChatObj?.updatedAt || 0);
+
+        if (newestChat && (forceOpenNewest || newestIsDifferent)) {
+          loadChat(newestChat.id);
+          scrollToBottom();
+          showToast(
+            summary + `<br><span style="opacity:.8">Opened: ${escapeHtml(getChatTitle(newestChat))}</span>`,
+            { kind: 'success', duration: 4000 }
+          );
         } else {
           showToast(summary, { kind: 'success', duration: 4000 });
           if (currentWasUpdated) setTimeout(scrollToBottom, 60);
@@ -1924,7 +1913,7 @@
       const json = JSON.stringify(chats, null, 2);
       const written = await writeExportToFolders(json, filename);
       if (!written.length) downloadJson(json, filename);
-      await scanForNewestExport({ silent: false });
+      await scanForNewestExport({ silent: false, autoOpenNewest: true });
       lastExportLabel = written.length
         ? `💾 Exported to ${written.join(', ')} at ${new Date().toLocaleTimeString()}`
         : `💾 Downloaded export at ${new Date().toLocaleTimeString()}`;
