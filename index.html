@@ -83,7 +83,6 @@
       flex: 1; text-align: center;
     }
     .sync-btn:hover { background: #3a3a4a; }
-    #sidebarStatus { margin-top: 4px; }
 
     /* ✅ NEW: folder sync UI */
     .opt-row {
@@ -101,7 +100,21 @@
     .folder-item .fstate { cursor: pointer; font-size: 12px; }
     .folder-item .fdel { cursor: pointer; color: #777; font-weight: bold; }
     .folder-item .fdel:hover { color: #f44; }
+
+    /* ✅ NEW: last sync info line */
+    #lastSyncInfo {
+      font-size: 11px;
+      color: #7a7a8a;
+      padding: 4px 2px 0;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    #lastSyncInfo .src { color: #4a90d9; font-weight: bold; }
+    #lastSyncInfo .own { color: #4caf50; font-weight: bold; }
+    #lastSyncInfo .when { color: #bbb; }
+
     #autoExportStatus { font-size: 11px; color: #7a7a8a; line-height: 1.4; }
+    #sidebarStatus { margin-top: 4px; }
 
     #main {
       flex: 1;
@@ -160,6 +173,36 @@
     #validateAllBtn { background: #ff9800; }
     #validateAllBtn:hover { background: #f57c00; }
     #status { font-size: 12px; margin-left: auto; color: #4caf50; }
+
+    /* ✅ NEW: permission banner */
+    #permissionBanner {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 15px;
+      background: #b8860b;
+      color: #fff;
+      font-size: 13px;
+      border-bottom: 1px solid #8a6508;
+    }
+    #permissionBanner.show { display: flex; }
+    #permissionBanner button {
+      background: #4a90d9;
+      color: #fff;
+      border: none;
+      padding: 4px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    #permissionBanner button:hover { background: #357abd; }
+    #permissionBanner #dismissBannerBtn {
+      background: transparent;
+      font-size: 14px;
+      margin-left: auto;
+      padding: 2px 8px;
+    }
+    #permissionBanner #dismissBannerBtn:hover { background: rgba(0,0,0,0.2); }
 
     #searchToggle {
       background: none;
@@ -360,12 +403,12 @@
       <button class="sync-btn" id="exportChatsBtn">📤 Export</button>
       <button class="sync-btn" id="importChatsBtn">📥 Import</button>
     </div>
-    <!-- ✅ NEW: folder sync controls -->
     <div class="sync-btns">
       <button class="sync-btn" id="connectFolderBtn" title="Connect a local or network folder">📁 Add folder</button>
       <button class="sync-btn" id="syncNowBtn" title="Export + import newest right now">🔄 Sync now</button>
     </div>
     <div id="folderList"></div>
+    <div id="lastSyncInfo">🔎 No sync yet this session</div>
     <label class="opt-row">
       <input type="checkbox" id="autoExportToggle" checked>
       Auto-export 15 min after last inquiry
@@ -406,6 +449,13 @@
       <div id="searchResults"></div>
     </div>
     <span id="status">⚪</span>
+  </div>
+
+  <!-- ✅ NEW: permission banner -->
+  <div id="permissionBanner">
+    <span id="permissionBannerText"></span>
+    <button id="regrantBtn">Reconnect now</button>
+    <button id="dismissBannerBtn" title="Dismiss">✕</button>
   </div>
 
   <div id="messages"></div>
@@ -503,7 +553,6 @@
         tx.onerror = () => reject(tx.error);
       });
     }
-    // ✅ NEW: persistent directory handles
     async function loadHandlesFromDB() {
       const db = await openDB();
       return new Promise((resolve, reject) => {
@@ -534,6 +583,14 @@
     let searchQuery = '';
     let allMatches = [];
     let currentMatchIdx = -1;
+
+    // ✅ NEW: machine ID for multi-writer exports
+    const MACHINE_ID = (localStorage.getItem('ds_machine_id') ||
+      (() => {
+        const id = 'm' + Math.random().toString(36).substring(2, 7);
+        localStorage.setItem('ds_machine_id', id);
+        return id;
+      })());
 
     const providerSelect   = document.getElementById('providerSelect');
     const apiKeyInput      = document.getElementById('apiKey');
@@ -789,7 +846,6 @@
       attachedFiles.forEach((f, i) => {
         const chip = document.createElement('div');
         chip.className = 'attached-file';
-        // ✅ CHANGE 3: escape file name to prevent HTML/script injection via filename
         chip.innerHTML = `${f.icon} ${escapeHtml(f.name)} (${(f.size/1024).toFixed(1)}KB) <span class="remove-file">×</span>`;
         chip.querySelector('.remove-file').addEventListener('click', () => { attachedFiles.splice(i,1); renderAttachedFiles(); });
         attachedFilesContainer.appendChild(chip);
@@ -814,7 +870,6 @@
 
     function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
 
-    // ✅ CHANGE 2: sanitize the markdown-rendered (non-code) portions before inserting into the DOM.
     const PURIFY_CONFIG = {
       FORBID_TAGS: ['style', 'script', 'iframe', 'object', 'embed', 'link', 'meta', 'base', 'form', 'input', 'button'],
       FORBID_ATTR: ['style', 'onerror', 'onload', 'onclick', 'onmouseover', 'onfocus', 'onblur', 'onmouseenter', 'onmouseleave', 'onkeydown', 'onkeyup', 'onkeypress', 'onsubmit', 'onchange', 'oninput']
@@ -895,7 +950,7 @@
       if (currentChatId === chatId) loadChat(chatId);
       renderChatList();
       if (searchQuery) applySearchHighlights();
-      scheduleAutoExport();   // ✅ NEW: chat content changed
+      scheduleAutoExport();
     }
 
     document.addEventListener('click', e => {
@@ -1231,7 +1286,7 @@
         userInput.focus();
       }
       if (searchQuery) applySearchHighlights();
-      scheduleAutoExport();   // ✅ NEW: arm the 15-minute idle export
+      scheduleAutoExport();
     }
 
     sendBtn.addEventListener('click', send);
@@ -1240,23 +1295,31 @@
     userInput.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 150) + 'px'; });
 
     // =====================================================================
-    // ✅ NEW BLOCK: AUTO-EXPORT (15 min idle) + MULTI-FOLDER SYNC
+    // AUTO-EXPORT + MULTI-FOLDER SYNC
     // =====================================================================
-    const AUTO_EXPORT_DELAY = 15 * 60 * 1000;          // 15 minutes
-    const EXPORT_RE = /^educasa_chats_.*\.json$/i;      // files we manage
-    const MAX_EXPORTS_PER_FOLDER = 30;                 // prune older ones
+    const AUTO_EXPORT_DELAY = 15 * 60 * 1000;
+    const EXPORT_RE = /^educasa_chats_.*\.json$/i;
+    const MAX_EXPORTS_PER_FOLDER = 100;   // ✅ bumped from 30
 
     const autoExportToggle = document.getElementById('autoExportToggle');
     const autoExportStatus = document.getElementById('autoExportStatus');
     const folderListEl     = document.getElementById('folderList');
     const connectFolderBtn = document.getElementById('connectFolderBtn');
     const syncNowBtn       = document.getElementById('syncNowBtn');
+    const lastSyncInfoEl   = document.getElementById('lastSyncInfo');
 
-    let dirHandles = [];                 // [{id, name, handle}]
+    const permissionBanner     = document.getElementById('permissionBanner');
+    const permissionBannerText = document.getElementById('permissionBannerText');
+    const regrantBtn           = document.getElementById('regrantBtn');
+    const dismissBannerBtn     = document.getElementById('dismissBannerBtn');
+
+    let dirHandles = [];
     let autoExportTimer = null;
     let autoExportDeadline = 0;
     let autoExportEnabled = localStorage.getItem('ds_autoexport') !== 'false';
     let lastExportLabel = '';
+    let lastSyncInfo = '';
+    let rescanTimer = null;
 
     autoExportToggle.checked = autoExportEnabled;
     autoExportToggle.addEventListener('change', () => {
@@ -1266,10 +1329,43 @@
       updateAutoExportStatus();
     });
 
+    // ✅ machine ID included
     function buildExportName() {
       const d = new Date();
       const p = (n) => String(n).padStart(2, '0');
-      return `educasa_chats_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}.json`;
+      return `educasa_chats_${MACHINE_ID}_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}.json`;
+    }
+
+    // ✅ parses "educasa_chats_mabc12_2026-10-05_14-30-00.json"
+    function parseExportFilename(name) {
+      const m = name.match(/^educasa_chats_([a-z0-9]+)_(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.json$/i);
+      if (!m) return null;
+      const [, machineId, y, mo, d, h, mi, s] = m;
+      const ts = new Date(
+        Number(y), Number(mo) - 1, Number(d),
+        Number(h), Number(mi), Number(s)
+      ).getTime();
+      return { machineId, ts };
+    }
+
+    function renderLastSync(best, dir) {
+      if (!best) {
+        lastSyncInfoEl.textContent = '🔎 No export found in connected folders';
+        return;
+      }
+      const parsed = parseExportFilename(best.name);
+      const when = new Date(best.lastModified).toLocaleString();
+      let who;
+      if (!parsed) {
+        who = `<span class="src">${escapeHtml(best.name)}</span>`;
+      } else if (parsed.machineId === MACHINE_ID) {
+        who = `<span class="own">this machine (${MACHINE_ID})</span>`;
+      } else {
+        who = `<span class="src">${escapeHtml(parsed.machineId)}</span>`;
+      }
+      const folder = dir ? escapeHtml(dir.name) : '?';
+      lastSyncInfoEl.innerHTML =
+        `📡 Newest: ${who} in <b>${folder}</b><br><span class="when">${when}</span>`;
     }
 
     function downloadJson(json, filename) {
@@ -1283,7 +1379,6 @@
       setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     }
 
-    // --- write to connected folders ---
     async function writeExportToFolders(json, filename) {
       const written = [];
       for (const d of dirHandles) {
@@ -1321,7 +1416,6 @@
       } catch (e) { /* ignore */ }
     }
 
-    // --- find newest export across all connected folders ---
     async function findNewestExportInFolder(dirHandle) {
       let newest = null;
       for await (const entry of dirHandle.values()) {
@@ -1337,6 +1431,7 @@
     async function scanForNewestExport({ silent = true } = {}) {
       if (!dirHandles.length) {
         if (!silent) alert('No folders connected yet. Click "📁 Add folder" first.');
+        renderLastSync(null, null);
         return null;
       }
       let best = null, bestDir = null;
@@ -1344,7 +1439,7 @@
         try {
           if (d.handle.queryPermission) {
             const perm = await d.handle.queryPermission({ mode: 'readwrite' });
-            if (perm !== 'granted') continue;   // needs a user gesture to re-grant
+            if (perm !== 'granted') continue;
           }
           const found = await findNewestExportInFolder(d.handle);
           if (found && (!best || found.lastModified > best.lastModified)) {
@@ -1353,14 +1448,15 @@
         } catch (e) { console.warn('Scan failed for', d.name, e); }
       }
       if (!best) {
+        renderLastSync(null, null);
         if (!silent) alert('No educasa_chats_*.json export files found in the connected folders.');
         return null;
       }
+      renderLastSync(best, bestDir);
       const applied = await applySyncFile(best, bestDir);
       return applied;
     }
 
-    // --- merge newest export into current state ---
     function mergeChats(localChats, incomingChats) {
       const map = new Map();
       localChats.forEach(c => map.set(c.id, c));
@@ -1396,13 +1492,12 @@
         if (searchQuery) applySearchHighlights();
       }
       const when = new Date(best.lastModified).toLocaleString();
-      lastSyncInfo = `🔄 Synced from ${dir ? dir.name : '?'} · ${best.name}\n(${added} new, ${updated} updated chats)`;
+      lastSyncInfo = `🔄 Synced from ${dir ? dir.name : '?'} · ${best.name} (${added} new, ${updated} updated)`;
       autoExportStatus.textContent = `🔄 Synced ${when} · +${added}/~${updated}`;
       autoExportStatus.style.color = '#4a90d9';
       return true;
     }
 
-    // --- timer handling ---
     function scheduleAutoExport() {
       if (!autoExportEnabled) return;
       clearTimeout(autoExportTimer);
@@ -1426,7 +1521,6 @@
         ? `💾 Auto-exported to ${written.join(', ')} at ${stamp}`
         : `💾 Auto-export downloaded at ${stamp} (no folder connected)`;
       updateAutoExportStatus();
-      // Next export will be armed by the next inquiry / content change.
     }
 
     function updateAutoExportStatus() {
@@ -1448,6 +1542,60 @@
     }
     setInterval(() => { if (autoExportTimer) updateAutoExportStatus(); }, 1000);
 
+    // ✅ periodic re-scan
+    function startPeriodicRescan() {
+      if (rescanTimer) clearInterval(rescanTimer);
+      rescanTimer = setInterval(async () => {
+        if (!dirHandles.length) return;
+        if (document.visibilityState !== 'visible') return;
+        try { await scanForNewestExport({ silent: true }); } catch (e) {}
+      }, 5 * 60 * 1000);
+    }
+
+    // ✅ permission banner
+    async function checkFolderPermissions() {
+      const needRegrant = [];
+      for (const d of dirHandles) {
+        if (!d.handle.queryPermission) continue;
+        try {
+          const p = await d.handle.queryPermission({ mode: 'readwrite' });
+          if (p !== 'granted') needRegrant.push(d);
+        } catch (e) { needRegrant.push(d); }
+      }
+      return needRegrant;
+    }
+
+    async function showPermissionBannerIfNeeded() {
+      const need = await checkFolderPermissions();
+      if (!need.length) {
+        permissionBanner.classList.remove('show');
+        return;
+      }
+      const names = need.map(d => d.name).join(', ');
+      permissionBannerText.textContent = `🔒 ${need.length} folder(s) need permission: ${names}`;
+      permissionBanner.classList.add('show');
+    }
+
+    async function regrantAllFolders() {
+      for (const d of dirHandles) {
+        try {
+          if (d.handle.requestPermission) {
+            await d.handle.requestPermission({ mode: 'readwrite' });
+          }
+        } catch (e) { console.warn('Regrant failed for', d.name, e); }
+      }
+      await renderFolderList();
+      await showPermissionBannerIfNeeded();
+      try { await scanForNewestExport({ silent: true }); } catch (e) {}
+    }
+
+    regrantBtn.addEventListener('click', regrantAllFolders);
+    dismissBannerBtn.addEventListener('click', () => permissionBanner.classList.remove('show'));
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') showPermissionBannerIfNeeded();
+    });
+
     // --- folder management ---
     const FS_SUPPORTED = (typeof window.showDirectoryPicker === 'function');
 
@@ -1467,7 +1615,7 @@
         dirHandles.push({ id: 'dir_' + Date.now(), name: handle.name, handle });
         await saveHandlesToDB(dirHandles);
         await renderFolderList();
-        // Immediately pull the newest export from the newly added folder
+        await showPermissionBannerIfNeeded();
         await scanForNewestExport({ silent: true });
       } catch (e) {
         if (e.name !== 'AbortError') alert('Could not connect folder: ' + e.message);
@@ -1478,7 +1626,10 @@
       try {
         if (!d.handle.requestPermission) return;
         const perm = await d.handle.requestPermission({ mode: 'readwrite' });
-        if (perm === 'granted') await scanForNewestExport({ silent: true });
+        if (perm === 'granted') {
+          await showPermissionBannerIfNeeded();
+          await scanForNewestExport({ silent: true });
+        }
       } catch (e) { console.warn(e); }
     }
 
@@ -1519,6 +1670,7 @@
           dirHandles = dirHandles.filter(x => x.id !== d.id);
           await saveHandlesToDB(dirHandles);
           renderFolderList();
+          showPermissionBannerIfNeeded();
         });
 
         row.appendChild(name);
@@ -1528,16 +1680,13 @@
       }
     }
 
-    // --- buttons ---
     connectFolderBtn.addEventListener('click', connectFolder);
 
     syncNowBtn.addEventListener('click', async () => {
-      // 1) write current state out
       const filename = buildExportName();
       const json = JSON.stringify(chats, null, 2);
       const written = await writeExportToFolders(json, filename);
       if (!written.length) downloadJson(json, filename);
-      // 2) pull the newest export back in
       await scanForNewestExport({ silent: false });
       lastExportLabel = written.length
         ? `💾 Exported to ${written.join(', ')} at ${new Date().toLocaleTimeString()}`
@@ -1546,7 +1695,7 @@
     });
 
     // =====================================================================
-    // Export / Import (manual buttons now also write to connected folders)
+    // Export / Import (manual)
     // =====================================================================
     document.getElementById('exportChatsBtn').addEventListener('click', async () => {
       const filename = buildExportName();
@@ -1600,7 +1749,6 @@
       loadApiKeyForProvider();
       updateStatus();
 
-      // ✅ NEW: restore connected folders
       try {
         dirHandles = await loadHandlesFromDB();
       } catch (e) { console.warn('Could not restore folder handles', e); dirHandles = []; }
@@ -1616,12 +1764,13 @@
       }
       if (currentChatId) setTimeout(validateAllCodeBlocks, 600);
 
-      // ✅ NEW: on startup, pull the newest export found in the connected folders
       if (dirHandles.length) {
         try { await scanForNewestExport({ silent: true }); }
         catch (e) { console.warn('Startup sync failed', e); }
       }
 
+      await showPermissionBannerIfNeeded();
+      startPeriodicRescan();
       updateAutoExportStatus();
 
       if (!FS_SUPPORTED) {
