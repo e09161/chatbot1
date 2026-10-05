@@ -119,7 +119,6 @@
     #syncPanel.open #syncPanelHeader .chev,
     #syncPanel:hover #syncPanelHeader .chev { transform: rotate(180deg); color: #4a90d9; }
 
-    /* collapsed indicator (dot) shown when auto-export is armed */
     #syncPanelHeader .dot {
       width: 7px; height: 7px; border-radius: 50%;
       background: #4caf50;
@@ -439,6 +438,57 @@
     #attachBtn:hover { background: #666; }
     .drag-hint { font-size: 11px; color: #666; text-align: center; }
 
+    /* ============ TOASTS ============ */
+    #toastContainer {
+      position: fixed;
+      bottom: 90px;
+      right: 20px;
+      z-index: 500;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-width: 320px;
+      pointer-events: none;
+    }
+    .toast {
+      background: #0f3460;
+      border: 1px solid #4a90d9;
+      color: #e0e0e0;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      line-height: 1.5;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      pointer-events: auto;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      cursor: default;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    .toast.success { border-color: #4caf50; background: #14371f; }
+    .toast.warn { border-color: #ff9800; background: #3a2a0f; }
+    .toast.clickable { cursor: pointer; }
+    .toast.clickable:hover { background: #14406e; }
+    .toast .toast-title { font-weight: bold; color: #fff; margin-bottom: 2px; }
+    .toast .toast-actions { display: flex; gap: 6px; margin-top: 6px; }
+    .toast .toast-actions button {
+      background: #4a90d9;
+      border: none;
+      color: #fff;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .toast .toast-actions button:hover { background: #357abd; }
+    .toast .toast-actions button.ghost {
+      background: transparent;
+      border: 1px solid #4a90d9;
+      color: #4a90d9;
+    }
+    /* ================================ */
+
     @media (max-width: 600px) {
       #sidebar { transform: translateX(-100%); }
       #sidebar.visible { transform: translateX(0); box-shadow: 2px 0 10px rgba(0,0,0,0.5); }
@@ -451,6 +501,7 @@
       .msg { max-width: 95%; }
       #input-area { padding: 10px; }
       .drag-hint { display: none; }
+      #toastContainer { right: 10px; left: 10px; max-width: none; bottom: 80px; }
     }
     @media (max-width: 400px) {
       #header input { width: 80px; font-size: 11px; }
@@ -469,7 +520,6 @@
   <div id="new-chat-btn">+ New Chat</div>
   <div id="chat-list"></div>
 
-  <!-- ✅ Collapsible sync panel -->
   <div id="sidebar-footer">
     <div id="syncPanel">
       <div id="syncPanelHeader" title="Hover to expand · Click to pin open">
@@ -558,6 +608,8 @@
 </div>
 
 <input type="file" id="fileInput" multiple accept=".py,.xml,.txt,.html,.js,.css,.json,.md,.csv" style="display:none;">
+
+<div id="toastContainer"></div>
 
 <script>
   (function() {
@@ -701,13 +753,13 @@
     const prevMatchBtn     = document.getElementById('prevMatch');
     const nextMatchBtn     = document.getElementById('nextMatch');
     const matchCounter     = document.getElementById('matchCounter');
+    const toastContainer   = document.getElementById('toastContainer');
 
-    // ✅ Collapsible sync panel
+    // Collapsible sync panel
     const syncPanel        = document.getElementById('syncPanel');
     const syncPanelHeader  = document.getElementById('syncPanelHeader');
     const syncPanelDot     = document.getElementById('syncPanelDot');
 
-    // Restore pinned state
     if (localStorage.getItem('ds_syncpanel_open') === 'true') {
       syncPanel.classList.add('open');
     }
@@ -718,6 +770,43 @@
 
     if (typeof marked !== 'undefined') {
       marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
+    }
+
+    // ===== TOAST HELPER =====
+    function showToast(html, { kind = 'info', duration = 5000, onAction = null, actionLabel = null } = {}) {
+      const el = document.createElement('div');
+      el.className = 'toast' + (kind === 'success' ? ' success' : kind === 'warn' ? ' warn' : '');
+      el.innerHTML = html;
+
+      if (actionLabel && onAction) {
+        const actions = document.createElement('div');
+        actions.className = 'toast-actions';
+        const btn = document.createElement('button');
+        btn.textContent = actionLabel;
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          onAction();
+          dismiss();
+        });
+        const close = document.createElement('button');
+        close.className = 'ghost';
+        close.textContent = 'Dismiss';
+        close.addEventListener('click', (e) => { e.stopPropagation(); dismiss(); });
+        actions.appendChild(btn);
+        actions.appendChild(close);
+        el.appendChild(actions);
+      }
+
+      toastContainer.appendChild(el);
+      requestAnimationFrame(() => el.classList.add('show'));
+
+      let timer = duration > 0 ? setTimeout(dismiss, duration) : null;
+      function dismiss() {
+        if (timer) { clearTimeout(timer); timer = null; }
+        el.classList.remove('show');
+        setTimeout(() => el.remove(), 300);
+      }
+      return dismiss;
     }
 
     function toggleSidebar() {
@@ -1574,15 +1663,60 @@
       if (!Array.isArray(parsed)) return false;
 
       const { merged, added, updated } = mergeChats(chats, parsed);
-      if (added || updated) {
+      const changed = added || updated;
+
+      if (changed) {
+        // Find the newest chat from the incoming file
+        let newestIncomingId = null, newestTs = 0;
+        parsed.forEach(c => {
+          if (!c || !c.id) return;
+          const ts = c.updatedAt || 0;
+          if (ts > newestTs) { newestTs = ts; newestIncomingId = c.id; }
+        });
+
         chats = merged;
         await saveChats();
         renderChatList();
-        if (currentChatId && chats.find(c => c.id === currentChatId)) loadChat(currentChatId);
-        else if (chats.length) loadChat(chats[0].id);
-        else newChat();
+
+        const currentStillExists = currentChatId && chats.find(c => c.id === currentChatId);
+        const currentWasUpdated  = parsed.some(p => p && p.id === currentChatId);
+
+        if (currentStillExists) {
+          loadChat(currentChatId);
+        } else if (chats.length) {
+          loadChat(chats[0].id);
+        } else {
+          newChat();
+        }
+
         if (searchQuery) applySearchHighlights();
+
+        const parts = [];
+        if (added)   parts.push(`${added} new`);
+        if (updated) parts.push(`${updated} updated`);
+        const fromFolder = dir ? escapeHtml(dir.name) : '?';
+        const summary = `<div class="toast-title">🔄 Synced from ${fromFolder}</div>` +
+                        `${parts.join(', ')} chat(s)`;
+
+        const newestChat = newestIncomingId ? chats.find(c => c.id === newestIncomingId) : null;
+        const currentChatObj = currentChatId ? chats.find(c => c.id === currentChatId) : null;
+        if (newestChat && newestChat.id !== currentChatId &&
+            (newestChat.updatedAt || 0) > (currentChatObj?.updatedAt || 0)) {
+          showToast(summary, {
+            kind: 'success',
+            duration: 12000,
+            actionLabel: `Open "${escapeHtml(getChatTitle(newestChat))}"`,
+            onAction: () => {
+              loadChat(newestChat.id);
+              scrollToBottom();
+            }
+          });
+        } else {
+          showToast(summary, { kind: 'success', duration: 4000 });
+          if (currentWasUpdated) setTimeout(scrollToBottom, 60);
+        }
       }
+
       const when = new Date(best.lastModified).toLocaleString();
       lastSyncInfo = `🔄 Synced from ${dir ? dir.name : '?'} · ${best.name} (${added} new, ${updated} updated)`;
       autoExportStatus.textContent = `🔄 Synced ${when} · +${added}/~${updated}`;
@@ -1616,7 +1750,6 @@
     }
 
     function updateAutoExportStatus() {
-      // ✅ drive the collapsed-header dot
       if (!autoExportEnabled) {
         syncPanelDot.style.background = '#666';
         syncPanelDot.style.boxShadow = 'none';
@@ -1655,7 +1788,7 @@
         if (!dirHandles.length) return;
         if (document.visibilityState !== 'visible') return;
         try { await scanForNewestExport({ silent: true }); } catch (e) {}
-      }, 5 * 60 * 1000);
+      }, 2 * 60 * 1000);
     }
 
     async function checkFolderPermissions() {
