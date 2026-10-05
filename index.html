@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
   <title>Educasa Chat · DeepSeek + DeepInfra</title>
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-  <!-- ✅ CHANGE 1: DOMPurify for sanitizing rendered markdown -->
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -72,10 +71,83 @@
     }
     .chat-item-delete { color: #666; margin-left: 8px; cursor: pointer; font-weight: bold; }
     .chat-item-delete:hover { color: #f44; }
+
+    /* ============ SIDEBAR FOOTER + COLLAPSIBLE SYNC PANEL ============ */
     #sidebar-footer {
-      padding: 15px; border-top: 1px solid #222; font-size: 12px; color: #888;
-      display: flex; flex-direction: column; gap: 8px;
+      padding: 10px 12px 12px;
+      border-top: 1px solid #222;
+      font-size: 12px;
+      color: #888;
     }
+
+    #syncPanel {
+      display: flex;
+      flex-direction: column;
+    }
+
+    #syncPanelHeader {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      background: #141420;
+      border: 1px solid #262626;
+      border-radius: 6px;
+      font-size: 11px;
+      color: #9a9aa8;
+      user-select: none;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+    }
+    #syncPanelHeader:hover {
+      color: #ddd;
+      background: #1a1a2a;
+      border-color: #333;
+    }
+    #syncPanel.open #syncPanelHeader,
+    #syncPanel:hover #syncPanelHeader {
+      border-color: #4a90d9;
+      color: #ddd;
+    }
+    #syncPanelHeader .label { display: flex; align-items: center; gap: 6px; font-weight: bold; letter-spacing: 0.3px; }
+    #syncPanelHeader .chev {
+      transition: transform 0.25s ease;
+      font-size: 10px;
+      color: #666;
+    }
+    #syncPanel.open #syncPanelHeader .chev,
+    #syncPanel:hover #syncPanelHeader .chev { transform: rotate(180deg); color: #4a90d9; }
+
+    /* collapsed indicator (dot) shown when auto-export is armed */
+    #syncPanelHeader .dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #4caf50;
+      box-shadow: 0 0 6px rgba(76,175,80,0.6);
+      animation: pulseDot 2s ease-in-out infinite;
+    }
+    @keyframes pulseDot {
+      0%,100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    #syncPanelBody {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 0.3s ease, opacity 0.2s ease, margin-top 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 0;
+    }
+    #syncPanel:hover #syncPanelBody,
+    #syncPanel.open #syncPanelBody {
+      max-height: 700px;
+      opacity: 1;
+      margin-top: 8px;
+    }
+
     .sync-btns { display: flex; gap: 6px; }
     .sync-btn {
       background: #2a2a3a; border: 1px solid #444; color: #ccc;
@@ -84,7 +156,6 @@
     }
     .sync-btn:hover { background: #3a3a4a; }
 
-    /* ✅ NEW: folder sync UI */
     .opt-row {
       display: flex; align-items: center; gap: 6px;
       font-size: 11px; color: #9a9aa8; user-select: none; cursor: pointer;
@@ -101,7 +172,6 @@
     .folder-item .fdel { cursor: pointer; color: #777; font-weight: bold; }
     .folder-item .fdel:hover { color: #f44; }
 
-    /* ✅ NEW: last sync info line */
     #lastSyncInfo {
       font-size: 11px;
       color: #7a7a8a;
@@ -114,7 +184,8 @@
     #lastSyncInfo .when { color: #bbb; }
 
     #autoExportStatus { font-size: 11px; color: #7a7a8a; line-height: 1.4; }
-    #sidebarStatus { margin-top: 4px; }
+    #sidebarStatus { font-size: 11px; color: #888; padding-top: 4px; border-top: 1px solid #222; }
+    /* ================================================================= */
 
     #main {
       flex: 1;
@@ -174,7 +245,6 @@
     #validateAllBtn:hover { background: #f57c00; }
     #status { font-size: 12px; margin-left: auto; color: #4caf50; }
 
-    /* ✅ NEW: permission banner */
     #permissionBanner {
       display: none;
       align-items: center;
@@ -398,23 +468,39 @@
   </div>
   <div id="new-chat-btn">+ New Chat</div>
   <div id="chat-list"></div>
+
+  <!-- ✅ Collapsible sync panel -->
   <div id="sidebar-footer">
-    <div class="sync-btns">
-      <button class="sync-btn" id="exportChatsBtn">📤 Export</button>
-      <button class="sync-btn" id="importChatsBtn">📥 Import</button>
+    <div id="syncPanel">
+      <div id="syncPanelHeader" title="Hover to expand · Click to pin open">
+        <span class="label">
+          <span>⚙️</span>
+          <span>Sync &amp; Files</span>
+        </span>
+        <span style="display:flex; align-items:center; gap:8px;">
+          <span class="dot" id="syncPanelDot"></span>
+          <span class="chev">▼</span>
+        </span>
+      </div>
+      <div id="syncPanelBody">
+        <div class="sync-btns">
+          <button class="sync-btn" id="exportChatsBtn">📤 Export</button>
+          <button class="sync-btn" id="importChatsBtn">📥 Import</button>
+        </div>
+        <div class="sync-btns">
+          <button class="sync-btn" id="connectFolderBtn" title="Connect a local or network folder">📁 Add folder</button>
+          <button class="sync-btn" id="syncNowBtn" title="Export + import newest right now">🔄 Sync now</button>
+        </div>
+        <div id="folderList"></div>
+        <div id="lastSyncInfo">🔎 No sync yet this session</div>
+        <label class="opt-row">
+          <input type="checkbox" id="autoExportToggle" checked>
+          Auto-export 15 min after last inquiry
+        </label>
+        <div id="autoExportStatus">⏱ Auto-export: armed on next inquiry</div>
+        <div id="sidebarStatus">⚡ API status</div>
+      </div>
     </div>
-    <div class="sync-btns">
-      <button class="sync-btn" id="connectFolderBtn" title="Connect a local or network folder">📁 Add folder</button>
-      <button class="sync-btn" id="syncNowBtn" title="Export + import newest right now">🔄 Sync now</button>
-    </div>
-    <div id="folderList"></div>
-    <div id="lastSyncInfo">🔎 No sync yet this session</div>
-    <label class="opt-row">
-      <input type="checkbox" id="autoExportToggle" checked>
-      Auto-export 15 min after last inquiry
-    </label>
-    <div id="autoExportStatus">⏱ Auto-export: armed on next inquiry</div>
-    <div id="sidebarStatus">⚡ API status</div>
   </div>
 </div>
 
@@ -451,7 +537,6 @@
     <span id="status">⚪</span>
   </div>
 
-  <!-- ✅ NEW: permission banner -->
   <div id="permissionBanner">
     <span id="permissionBannerText"></span>
     <button id="regrantBtn">Reconnect now</button>
@@ -520,7 +605,7 @@
       }
     };
 
-    // IndexedDB  (✅ v2: added 'handles' store for persistent folder handles)
+    // IndexedDB
     function openDB() {
       return new Promise((resolve, reject) => {
         const request = indexedDB.open('ds_chat_storage', 2);
@@ -584,7 +669,6 @@
     let allMatches = [];
     let currentMatchIdx = -1;
 
-    // ✅ NEW: machine ID for multi-writer exports
     const MACHINE_ID = (localStorage.getItem('ds_machine_id') ||
       (() => {
         const id = 'm' + Math.random().toString(36).substring(2, 7);
@@ -617,6 +701,20 @@
     const prevMatchBtn     = document.getElementById('prevMatch');
     const nextMatchBtn     = document.getElementById('nextMatch');
     const matchCounter     = document.getElementById('matchCounter');
+
+    // ✅ Collapsible sync panel
+    const syncPanel        = document.getElementById('syncPanel');
+    const syncPanelHeader  = document.getElementById('syncPanelHeader');
+    const syncPanelDot     = document.getElementById('syncPanelDot');
+
+    // Restore pinned state
+    if (localStorage.getItem('ds_syncpanel_open') === 'true') {
+      syncPanel.classList.add('open');
+    }
+    syncPanelHeader.addEventListener('click', () => {
+      syncPanel.classList.toggle('open');
+      localStorage.setItem('ds_syncpanel_open', syncPanel.classList.contains('open'));
+    });
 
     if (typeof marked !== 'undefined') {
       marked.setOptions({ breaks: true, gfm: true, headerIds: false, mangle: false });
@@ -820,7 +918,6 @@
       newChat(); handleChatSelection();
     });
 
-    // File handling
     function processFiles(files) {
       const allowed = ['.py','.xml','.txt','.html','.js','.css','.json','.md','.csv'];
       Array.from(files).forEach(file => {
@@ -970,7 +1067,6 @@
       if (e.target.classList.contains('validate-btn')) validateCodeBlock(e.target.dataset.id);
     });
 
-    // Validation
     function detectLang(c) {
       if (/^(import |from |def |class )/m.test(c)) return 'python';
       if (/^<\?xml|<manifest/i.test(c)) return 'xml';
@@ -1024,7 +1120,6 @@
     }
     document.getElementById('validateAllBtn').addEventListener('click', validateAllCodeBlocks);
 
-    // Search
     function openSearch() { searchContainer.classList.add('visible'); searchInput.focus(); }
     function closeSearch() {
       searchContainer.classList.remove('visible');
@@ -1202,7 +1297,6 @@
       }
     });
 
-    // Send / Stop
     function stop() {
       if (controller) { controller.abort(); controller = null; }
       isProcessing = false;
@@ -1299,7 +1393,7 @@
     // =====================================================================
     const AUTO_EXPORT_DELAY = 15 * 60 * 1000;
     const EXPORT_RE = /^educasa_chats_.*\.json$/i;
-    const MAX_EXPORTS_PER_FOLDER = 100;   // ✅ bumped from 30
+    const MAX_EXPORTS_PER_FOLDER = 100;
 
     const autoExportToggle = document.getElementById('autoExportToggle');
     const autoExportStatus = document.getElementById('autoExportStatus');
@@ -1329,14 +1423,12 @@
       updateAutoExportStatus();
     });
 
-    // ✅ machine ID included
     function buildExportName() {
       const d = new Date();
       const p = (n) => String(n).padStart(2, '0');
       return `educasa_chats_${MACHINE_ID}_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}.json`;
     }
 
-    // ✅ parses "educasa_chats_mabc12_2026-10-05_14-30-00.json"
     function parseExportFilename(name) {
       const m = name.match(/^educasa_chats_([a-z0-9]+)_(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.json$/i);
       if (!m) return null;
@@ -1524,6 +1616,21 @@
     }
 
     function updateAutoExportStatus() {
+      // ✅ drive the collapsed-header dot
+      if (!autoExportEnabled) {
+        syncPanelDot.style.background = '#666';
+        syncPanelDot.style.boxShadow = 'none';
+        syncPanelDot.style.animation = 'none';
+      } else if (autoExportTimer) {
+        syncPanelDot.style.background = '#ff9800';
+        syncPanelDot.style.boxShadow = '0 0 6px rgba(255,152,0,0.6)';
+        syncPanelDot.style.animation = 'pulseDot 2s ease-in-out infinite';
+      } else {
+        syncPanelDot.style.background = '#4caf50';
+        syncPanelDot.style.boxShadow = '0 0 6px rgba(76,175,80,0.6)';
+        syncPanelDot.style.animation = 'pulseDot 2s ease-in-out infinite';
+      }
+
       if (!autoExportEnabled) {
         autoExportStatus.textContent = '⏱ Auto-export: off';
         autoExportStatus.style.color = '#7a7a8a';
@@ -1542,7 +1649,6 @@
     }
     setInterval(() => { if (autoExportTimer) updateAutoExportStatus(); }, 1000);
 
-    // ✅ periodic re-scan
     function startPeriodicRescan() {
       if (rescanTimer) clearInterval(rescanTimer);
       rescanTimer = setInterval(async () => {
@@ -1552,7 +1658,6 @@
       }, 5 * 60 * 1000);
     }
 
-    // ✅ permission banner
     async function checkFolderPermissions() {
       const needRegrant = [];
       for (const d of dirHandles) {
@@ -1596,7 +1701,6 @@
       if (document.visibilityState === 'visible') showPermissionBannerIfNeeded();
     });
 
-    // --- folder management ---
     const FS_SUPPORTED = (typeof window.showDirectoryPicker === 'function');
 
     async function connectFolder() {
@@ -1694,9 +1798,6 @@
       updateAutoExportStatus();
     });
 
-    // =====================================================================
-    // Export / Import (manual)
-    // =====================================================================
     document.getElementById('exportChatsBtn').addEventListener('click', async () => {
       const filename = buildExportName();
       const json = JSON.stringify(chats, null, 2);
@@ -1735,9 +1836,6 @@
       inp.click();
     });
 
-    // =====================================================================
-    // INIT
-    // =====================================================================
     async function initApp() {
       try { chats = await loadChatsFromDB(); }
       catch (e) { alert('Failed to load chats from storage: ' + e.message); chats = []; }
