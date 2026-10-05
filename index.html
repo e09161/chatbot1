@@ -79,10 +79,7 @@
       color: #888;
     }
 
-    #syncPanel {
-      display: flex;
-      flex-direction: column;
-    }
+    #syncPanel { display: flex; flex-direction: column; }
 
     #syncPanelHeader {
       cursor: pointer;
@@ -110,11 +107,7 @@
       color: #ddd;
     }
     #syncPanelHeader .label { display: flex; align-items: center; gap: 6px; font-weight: bold; letter-spacing: 0.3px; }
-    #syncPanelHeader .chev {
-      transition: transform 0.25s ease;
-      font-size: 10px;
-      color: #666;
-    }
+    #syncPanelHeader .chev { transition: transform 0.25s ease; font-size: 10px; color: #666; }
     #syncPanel.open #syncPanelHeader .chev,
     #syncPanel:hover #syncPanelHeader .chev { transform: rotate(180deg); color: #4a90d9; }
 
@@ -609,7 +602,6 @@
 
 <script>
   (function() {
-    // ===== PROVIDER CONFIGURATION =====
     const PROVIDERS = {
       deepseek: {
         name: 'DeepSeek',
@@ -1588,37 +1580,46 @@
       } catch (e) { /* ignore */ }
     }
 
-    async function findNewestExportInFolder(dirHandle) {
-      let newest = null;
-      for await (const entry of dirHandle.values()) {
-        if (entry.kind !== 'file' || !EXPORT_RE.test(entry.name)) continue;
-        const file = await entry.getFile();
-        if (!newest || file.lastModified > newest.lastModified) {
-          newest = { name: entry.name, file, lastModified: file.lastModified };
-        }
-      }
-      return newest;
-    }
-
+    // ✅ NEW: scans for the newest export, PREFERRING files from OTHER machines.
+    // Only falls back to our own files if no other machine has ever exported.
     async function scanForNewestExport({ silent = true, autoOpenNewest = false } = {}) {
       if (!dirHandles.length) {
         if (!silent) alert('No folders connected yet. Click "📁 Add folder" first.');
         renderLastSync(null, null);
         return null;
       }
-      let best = null, bestDir = null;
+      let bestFromOther = null, bestFromOtherDir = null;
+      let bestFromSelf  = null, bestFromSelfDir  = null;
+
       for (const d of dirHandles) {
         try {
           if (d.handle.queryPermission) {
             const perm = await d.handle.queryPermission({ mode: 'readwrite' });
             if (perm !== 'granted') continue;
           }
-          const found = await findNewestExportInFolder(d.handle);
-          if (found && (!best || found.lastModified > best.lastModified)) {
-            best = found; bestDir = d;
+          for await (const entry of d.handle.values()) {
+            if (entry.kind !== 'file' || !EXPORT_RE.test(entry.name)) continue;
+            const file = await entry.getFile();
+            const parsed = parseExportFilename(entry.name);
+            const fromSelf = parsed && parsed.machineId === MACHINE_ID;
+            const cand = { name: entry.name, file, lastModified: file.lastModified };
+            if (fromSelf) {
+              if (!bestFromSelf || file.lastModified > bestFromSelf.lastModified) {
+                bestFromSelf = cand; bestFromSelfDir = d;
+              }
+            } else {
+              if (!bestFromOther || file.lastModified > bestFromOther.lastModified) {
+                bestFromOther = cand; bestFromOtherDir = d;
+              }
+            }
           }
         } catch (e) { console.warn('Scan failed for', d.name, e); }
       }
+
+      // Prefer another machine's newest export; fall back to our own if no peer exists.
+      const best    = bestFromOther || bestFromSelf;
+      const bestDir = bestFromOther ? bestFromOtherDir : bestFromSelfDir;
+
       if (!best) {
         renderLastSync(null, null);
         if (!silent) alert('No educasa_chats_*.json export files found in the connected folders.');
@@ -1908,16 +1909,31 @@
 
     connectFolderBtn.addEventListener('click', connectFolder);
 
+    // ✅ Sync Now: PULL first (from other machines), THEN push our merged state.
     syncNowBtn.addEventListener('click', async () => {
+      // 1) Pull the newest export from any OTHER machine and merge it in
+      const pulled = await scanForNewestExport({ silent: false, autoOpenNewest: true });
+
+      // 2) Now write our (possibly updated) state back out to every folder
       const filename = buildExportName();
       const json = JSON.stringify(chats, null, 2);
       const written = await writeExportToFolders(json, filename);
       if (!written.length) downloadJson(json, filename);
-      await scanForNewestExport({ silent: false, autoOpenNewest: true });
+
       lastExportLabel = written.length
-        ? `💾 Exported to ${written.join(', ')} at ${new Date().toLocaleTimeString()}`
-        : `💾 Downloaded export at ${new Date().toLocaleTimeString()}`;
+        ? `💾 Synced · wrote to ${written.join(', ')} at ${new Date().toLocaleTimeString()}`
+        : `💾 Sync downloaded export at ${new Date().toLocaleTimeString()}`;
       updateAutoExportStatus();
+
+      if (!pulled) {
+        // Nothing new came in — let the user know sync completed
+        showToast(
+          `<div class="toast-title">🔄 Sync complete</div>` +
+          `No newer file found from other machines.<br>` +
+          `<span style="opacity:.75">Wrote current state to ${written.length ? written.join(', ') : 'downloads'}.</span>`,
+          { kind: 'success', duration: 4000 }
+        );
+      }
     });
 
     document.getElementById('exportChatsBtn').addEventListener('click', async () => {
