@@ -147,6 +147,16 @@
     }
     .sync-btn:hover { background: #3a3a4a; }
 
+    /* ✅ NEW: pull button — distinct green look */
+    .sync-btn-pull {
+      background: #1f4d2a;
+      border-color: #4caf50;
+      color: #c8e6c9;
+      font-weight: bold;
+    }
+    .sync-btn-pull:hover:not(:disabled) { background: #2a6636; }
+    .sync-btn-pull:disabled { opacity: 0.6; cursor: wait; }
+
     .opt-row {
       display: flex; align-items: center; gap: 6px;
       font-size: 11px; color: #9a9aa8; user-select: none; cursor: pointer;
@@ -529,6 +539,9 @@
         <div class="sync-btns">
           <button class="sync-btn" id="connectFolderBtn" title="Connect a local or network folder">📁 Add folder</button>
           <button class="sync-btn" id="syncNowBtn" title="Export + import newest right now">🔄 Sync now</button>
+        </div>
+        <div class="sync-btns">
+          <button class="sync-btn sync-btn-pull" id="pullNewestBtn" title="Only read the newest file from other machines — never writes yours">⬇️ Pull newest</button>
         </div>
         <div id="folderList"></div>
         <div id="lastSyncInfo">🔎 No sync yet this session</div>
@@ -1472,6 +1485,7 @@
     const folderListEl     = document.getElementById('folderList');
     const connectFolderBtn = document.getElementById('connectFolderBtn');
     const syncNowBtn       = document.getElementById('syncNowBtn');
+    const pullNewestBtn    = document.getElementById('pullNewestBtn');
     const lastSyncInfoEl   = document.getElementById('lastSyncInfo');
 
     const permissionBanner     = document.getElementById('permissionBanner');
@@ -1580,8 +1594,8 @@
       } catch (e) { /* ignore */ }
     }
 
-    // ✅ NEW: scans for the newest export, PREFERRING files from OTHER machines.
-    // Only falls back to our own files if no other machine has ever exported.
+    // Scans for newest export, preferring files from OTHER machines.
+    // Returns { ok, added, updated, changed, fromSelf } or null if nothing found.
     async function scanForNewestExport({ silent = true, autoOpenNewest = false } = {}) {
       if (!dirHandles.length) {
         if (!silent) alert('No folders connected yet. Click "📁 Add folder" first.');
@@ -1616,7 +1630,6 @@
         } catch (e) { console.warn('Scan failed for', d.name, e); }
       }
 
-      // Prefer another machine's newest export; fall back to our own if no peer exists.
       const best    = bestFromOther || bestFromSelf;
       const bestDir = bestFromOther ? bestFromOtherDir : bestFromSelfDir;
 
@@ -1626,8 +1639,8 @@
         return null;
       }
       renderLastSync(best, bestDir);
-      const applied = await applySyncFile(best, bestDir, { forceOpenNewest: autoOpenNewest });
-      return applied;
+      const result = await applySyncFile(best, bestDir, { forceOpenNewest: autoOpenNewest });
+      return { ...result, fromSelf: !bestFromOther };
     }
 
     function mergeChats(localChats, incomingChats) {
@@ -1650,9 +1663,9 @@
         parsed = JSON.parse(text);
       } catch (e) {
         console.warn('Could not parse export file', best.name, e);
-        return false;
+        return { ok: false, added: 0, updated: 0, changed: false };
       }
-      if (!Array.isArray(parsed)) return false;
+      if (!Array.isArray(parsed)) return { ok: false, added: 0, updated: 0, changed: false };
 
       const { merged, added, updated } = mergeChats(chats, parsed);
       const changed = added || updated;
@@ -1711,7 +1724,7 @@
       lastSyncInfo = `🔄 Synced from ${dir ? dir.name : '?'} · ${best.name} (${added} new, ${updated} updated)`;
       autoExportStatus.textContent = `🔄 Synced ${when} · +${added}/~${updated}`;
       autoExportStatus.style.color = '#4a90d9';
-      return true;
+      return { ok: true, added, updated, changed };
     }
 
     function scheduleAutoExport() {
@@ -1909,12 +1922,48 @@
 
     connectFolderBtn.addEventListener('click', connectFolder);
 
-    // ✅ Sync Now: PULL first (from other machines), THEN push our merged state.
+    // ✅ NEW: Pull newest — reads only, never writes.
+    pullNewestBtn.addEventListener('click', async () => {
+      if (!dirHandles.length) {
+        alert('No folders connected yet. Click "📁 Add folder" first.');
+        return;
+      }
+      const original = pullNewestBtn.innerHTML;
+      pullNewestBtn.disabled = true;
+      pullNewestBtn.innerHTML = '⏳ Checking…';
+      try {
+        const result = await scanForNewestExport({ silent: true, autoOpenNewest: true });
+        if (!result) {
+          showToast(
+            `<div class="toast-title">⬇️ Pull</div>No export file found in the connected folders.`,
+            { kind: 'warn', duration: 5000 }
+          );
+        } else if (!result.changed) {
+          const srcLabel = result.fromSelf
+            ? 'your own export'
+            : 'the other machine\'s export';
+          showToast(
+            `<div class="toast-title">✅ Already up to date</div>` +
+            `Newest file is ${srcLabel} — no newer chats to merge.`,
+            { kind: 'info', duration: 4000 }
+          );
+        }
+        // If changed === true, applySyncFile already showed its "Synced" toast.
+      } catch (e) {
+        showToast(
+          `<div class="toast-title">⚠️ Pull failed</div>${escapeHtml(e.message || String(e))}`,
+          { kind: 'warn', duration: 6000 }
+        );
+      } finally {
+        pullNewestBtn.disabled = false;
+        pullNewestBtn.innerHTML = original;
+      }
+    });
+
+    // Sync Now: PULL first (from other machines), THEN push our merged state.
     syncNowBtn.addEventListener('click', async () => {
-      // 1) Pull the newest export from any OTHER machine and merge it in
       const pulled = await scanForNewestExport({ silent: false, autoOpenNewest: true });
 
-      // 2) Now write our (possibly updated) state back out to every folder
       const filename = buildExportName();
       const json = JSON.stringify(chats, null, 2);
       const written = await writeExportToFolders(json, filename);
@@ -1925,8 +1974,7 @@
         : `💾 Sync downloaded export at ${new Date().toLocaleTimeString()}`;
       updateAutoExportStatus();
 
-      if (!pulled) {
-        // Nothing new came in — let the user know sync completed
+      if (!pulled || !pulled.changed) {
         showToast(
           `<div class="toast-title">🔄 Sync complete</div>` +
           `No newer file found from other machines.<br>` +
