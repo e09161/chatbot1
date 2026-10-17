@@ -1,4 +1,3 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -2256,22 +2255,3 @@
 </script>
 </body>
 </html>
-```
-
-### Fix applied
-
-The **📋 Copy** button under each assistant message no longer includes the **📋 Copy / 📝 Raw** buttons (or the code-block toolbars) when pasting into plain-text targets.
-
-The change is entirely inside `copyRichText()`:
-
-- **Before:** the `text/plain` fallback was built from `messageElement.innerText` — the *live* DOM — which still contained the buttons.
-- **After:** it renders the **already-cleaned HTML** from `buildCopyHtml()` into a hidden temp `<div>`, reads its `innerText`, and uses that as the plain-text payload.
-
-So both MIME types now come from the same source:
-
-| Destination | Gets | Contents |
-|---|---|---|
-| Word / Docs / Outlook / Notion | `text/html` | Headings, bold, lists, tables, styled code — **no** buttons |
-| Notepad / plain fields / terminal | `text/plain` | Clean rendered text — **no** buttons |
-
-The **📝 Raw** button still does what it says: copies the original markdown source (no formatting at all).
