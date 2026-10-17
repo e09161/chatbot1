@@ -1156,6 +1156,81 @@
       return html;
     }
 
+    // ---------------------------------------------------------------------
+    // Rich (HTML) clipboard helpers — used by the per-answer Copy button.
+    // Produces a self-contained HTML fragment with inline styles so that
+    // pasting into Word / Google Docs / Outlook / Notion keeps headings,
+    // bold, lists, tables and styled code blocks intact.
+    // ---------------------------------------------------------------------
+    function buildCopyHtml(messageElement) {
+      const clone = messageElement.cloneNode(true);
+
+      // Strip UI-only elements
+      clone.querySelectorAll('.msg-actions, .delete-msg, .validation-details, .validation-badge')
+           .forEach(el => el.remove());
+
+      // Convert rendered code blocks into portable <pre> with inline styles
+      clone.querySelectorAll('.code-block').forEach(block => {
+        const langEl = block.querySelector('.code-header span:first-child');
+        const codeEl = block.querySelector('.code-content code');
+        const langText = langEl
+          ? langEl.textContent.replace(/[✅⚠️❌]/g, '').replace(/\s+/g, ' ').trim()
+          : '';
+        const codeText = codeEl ? codeEl.textContent : '';
+
+        const pre = document.createElement('pre');
+        pre.setAttribute('style',
+          'background:#0d0d0d;color:#a8d8a8;padding:12px;border-radius:6px;' +
+          'font-family:Consolas,Monaco,monospace;font-size:13px;' +
+          'white-space:pre-wrap;word-break:break-word;overflow-x:auto;margin:8px 0;');
+
+        if (langText && langText.toLowerCase() !== 'code') {
+          const label = document.createElement('div');
+          label.setAttribute('style',
+            'color:#888;font-size:10px;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px;');
+          label.textContent = langText;
+          pre.appendChild(label);
+        }
+
+        const code = document.createElement('code');
+        code.setAttribute('style', 'font-family:Consolas,Monaco,monospace;font-size:13px;color:#a8d8a8;');
+        code.textContent = codeText;
+        pre.appendChild(code);
+
+        block.replaceWith(pre);
+      });
+
+      return clone.innerHTML;
+    }
+
+    async function copyRichText(messageElement) {
+      const html = buildCopyHtml(messageElement);
+      const text = messageElement.innerText; // rendered plain-text fallback
+
+      // Preferred path: write both text/html + text/plain
+      try {
+        if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              'text/html':  new Blob([html], { type: 'text/html' }),
+              'text/plain': new Blob([text], { type: 'text/plain' })
+            })
+          ]);
+          return true;
+        }
+      } catch (err) {
+        console.warn('Rich copy failed, falling back to plain text:', err);
+      }
+
+      // Fallback: plain rendered text
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    }
+
     function createMessageElement(chatId, msgIdx, role, contentHTML) {
       const div = document.createElement('div');
       div.className = `msg ${role}`;
@@ -1177,22 +1252,40 @@
       if (role === 'assistant') {
         const actionsDiv = document.createElement('div');
         actionsDiv.className = 'msg-actions';
+
+        // Rich (HTML) copy
         const copyBtn = document.createElement('button');
         copyBtn.className = 'copy-message-btn';
         copyBtn.textContent = '📋 Copy';
-        copyBtn.title = 'Copy full answer';
-        copyBtn.addEventListener('click', (e) => {
+        copyBtn.title = 'Copy answer with formatting';
+        copyBtn.addEventListener('click', async (e) => {
           e.stopPropagation();
-          const chat = chats.find(c => c.id === chatId);
-          if (chat && msgIdx >= 0 && msgIdx < chat.messages.length) {
-            const content = chat.messages[msgIdx].content;
-            navigator.clipboard.writeText(content).then(() => {
-              copyBtn.textContent = '✅ Copied';
-              setTimeout(() => { copyBtn.textContent = '📋 Copy'; }, 1200);
-            }).catch(() => {});
+          const ok = await copyRichText(div);
+          if (ok) {
+            copyBtn.textContent = '✅ Copied';
+            setTimeout(() => { copyBtn.textContent = '📋 Copy'; }, 1200);
           }
         });
+
+        // Raw markdown copy (for users who want the source)
+        const copyRawBtn = document.createElement('button');
+        copyRawBtn.className = 'copy-message-btn';
+        copyRawBtn.textContent = '📝 Raw';
+        copyRawBtn.title = 'Copy original markdown';
+        copyRawBtn.style.marginLeft = '6px';
+        copyRawBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const chat = chats.find(c => c.id === chatId);
+          if (!chat || msgIdx < 0 || msgIdx >= chat.messages.length) return;
+          try {
+            await navigator.clipboard.writeText(chat.messages[msgIdx].content);
+            copyRawBtn.textContent = '✅ Copied';
+            setTimeout(() => { copyRawBtn.textContent = '📝 Raw'; }, 1200);
+          } catch (err) {}
+        });
+
         actionsDiv.appendChild(copyBtn);
+        actionsDiv.appendChild(copyRawBtn);
         div.appendChild(actionsDiv);
       }
 
