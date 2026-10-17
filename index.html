@@ -351,7 +351,6 @@
     }
     #matchCounter { font-size: 12px; color: #ccc; margin-left: 5px; }
 
-    /* ✅ messages is now the ONLY scroll container */
     #messages {
       flex: 1;
       min-height: 0;
@@ -560,7 +559,6 @@
         </div>
         <div class="sync-btns">
           <button class="sync-btn sync-btn-pull" id="pullNewestBtn" title="Only read the newest file from other machines — never writes yours">⬇️ Pull newest</button>
-          <button class="sync-btn" id="diagnoseBtn" title="Check folder wiring">🔍 Diagnose</button>
         </div>
         <div id="folderList"></div>
         <div id="lastSyncInfo">🔎 No sync yet this session</div>
@@ -840,7 +838,6 @@
         mainEl.classList.add('full-width');
       }
     }
-    // ✅ NEW: scroll the messages container directly, no window/body scrolling
     function scrollToBottom() {
       messagesEl.scrollTop = messagesEl.scrollHeight;
       requestAnimationFrame(() => {
@@ -1514,7 +1511,6 @@
     const connectFolderBtn = document.getElementById('connectFolderBtn');
     const syncNowBtn       = document.getElementById('syncNowBtn');
     const pullNewestBtn    = document.getElementById('pullNewestBtn');
-    const diagnoseBtn      = document.getElementById('diagnoseBtn');
     const lastSyncInfoEl   = document.getElementById('lastSyncInfo');
 
     const permissionBanner     = document.getElementById('permissionBanner');
@@ -1983,45 +1979,6 @@
         pullNewestBtn.disabled = false;
         pullNewestBtn.innerHTML = original;
       }
-    });
-
-    // ✅ NEW: Diagnose — shows folder wiring and peer-file counts
-    diagnoseBtn.addEventListener('click', async () => {
-      if (!dirHandles.length) {
-        showToast(`<div class="toast-title">🔍 Diagnose</div>No folders connected.`, { kind: 'warn', duration: 5000 });
-        return;
-      }
-      const lines = [];
-      for (const d of dirHandles) {
-        let peerCount = 0, selfCount = 0, otherCount = 0, perm = 'unknown';
-        try {
-          if (d.handle.queryPermission) {
-            perm = await d.handle.queryPermission({ mode: 'readwrite' });
-          }
-          if (perm === 'granted') {
-            for await (const entry of d.handle.values()) {
-              if (entry.kind !== 'file' || !EXPORT_RE.test(entry.name)) continue;
-              const parsed = parseExportFilename(entry.name);
-              if (!parsed) { otherCount++; continue; }
-              if (parsed.machineId === MACHINE_ID) selfCount++;
-              else peerCount++;
-            }
-          }
-        } catch (e) { perm = 'error'; }
-        const permIcon = perm === 'granted' ? '✅' : perm === 'error' ? '⚠️' : '🔒';
-        const verdict = peerCount > 0
-          ? `<span style="color:#4caf50">shared ✅</span>`
-          : `<span style="color:#ff9800">isolated — no peer files</span>`;
-        lines.push(
-          `${permIcon} <b>${escapeHtml(d.name)}</b>: ${selfCount} yours, ${peerCount} from other machines → ${verdict}`
-        );
-      }
-      showToast(
-        `<div class="toast-title">🔍 Folder diagnosis</div>` +
-        lines.join('<br>') +
-        `<br><span style="opacity:.7">You (machine ID): ${MACHINE_ID}</span>`,
-        { kind: 'info', duration: 12000 }
-      );
     });
 
     syncNowBtn.addEventListener('click', async () => {
