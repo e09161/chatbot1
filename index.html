@@ -1,3 +1,4 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1165,11 +1166,13 @@
     function buildCopyHtml(messageElement) {
       const clone = messageElement.cloneNode(true);
 
-      // Strip UI-only elements
+      // Strip UI-only elements (delete button, copy/raw buttons, validation UI)
       clone.querySelectorAll('.msg-actions, .delete-msg, .validation-details, .validation-badge')
            .forEach(el => el.remove());
 
-      // Convert rendered code blocks into portable <pre> with inline styles
+      // Convert every rendered code block into a portable <pre> with inline
+      // styles. This also removes the code-header / code-footer toolbars
+      // (Copy / Download / 🔍) so they never end up in the clipboard.
       clone.querySelectorAll('.code-block').forEach(block => {
         const langEl = block.querySelector('.code-header span:first-child');
         const codeEl = block.querySelector('.code-content code');
@@ -1205,14 +1208,22 @@
 
     async function copyRichText(messageElement) {
       const html = buildCopyHtml(messageElement);
-      const text = messageElement.innerText; // rendered plain-text fallback
+
+      // Derive the plain-text fallback from the SAME cleaned HTML, so it
+      // never includes the Copy/Raw buttons or code-block toolbars.
+      const temp = document.createElement('div');
+      temp.style.cssText = 'position:absolute;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;';
+      temp.innerHTML = html;
+      document.body.appendChild(temp);
+      const text = (temp.innerText || temp.textContent || '').trim();
+      document.body.removeChild(temp);
 
       // Preferred path: write both text/html + text/plain
       try {
         if (navigator.clipboard && typeof ClipboardItem !== 'undefined') {
           await navigator.clipboard.write([
             new ClipboardItem({
-              'text/html':  new Blob([html], { type: 'text/html' }),
+              'text/html':  new Blob([html],  { type: 'text/html'  }),
               'text/plain': new Blob([text], { type: 'text/plain' })
             })
           ]);
@@ -2245,3 +2256,22 @@
 </script>
 </body>
 </html>
+```
+
+### Fix applied
+
+The **📋 Copy** button under each assistant message no longer includes the **📋 Copy / 📝 Raw** buttons (or the code-block toolbars) when pasting into plain-text targets.
+
+The change is entirely inside `copyRichText()`:
+
+- **Before:** the `text/plain` fallback was built from `messageElement.innerText` — the *live* DOM — which still contained the buttons.
+- **After:** it renders the **already-cleaned HTML** from `buildCopyHtml()` into a hidden temp `<div>`, reads its `innerText`, and uses that as the plain-text payload.
+
+So both MIME types now come from the same source:
+
+| Destination | Gets | Contents |
+|---|---|---|
+| Word / Docs / Outlook / Notion | `text/html` | Headings, bold, lists, tables, styled code — **no** buttons |
+| Notepad / plain fields / terminal | `text/plain` | Clean rendered text — **no** buttons |
+
+The **📝 Raw** button still does what it says: copies the original markdown source (no formatting at all).
