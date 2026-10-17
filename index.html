@@ -8,16 +8,17 @@
   <script src="https://cdn.jsdelivr.net/npm/dompurify@3/dist/purify.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+    }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       background: #1a1a2e;
       color: #e0e0e0;
-      min-height: 100vh;
-      min-height: 100dvh;
       display: flex;
       flex-direction: column;
-      overflow-y: auto;
-      overflow-x: hidden;
       position: relative;
     }
     #sidebar {
@@ -43,6 +44,7 @@
       display: flex;
       align-items: center;
       gap: 10px;
+      flex-shrink: 0;
     }
     #sidebar-header img { width: 32px; height: 32px; border-radius: 4px; }
     #new-chat-btn {
@@ -50,9 +52,10 @@
       background: #1a1a2e; border: 1px solid #333;
       border-radius: 8px; color: #e0e0e0;
       cursor: pointer; text-align: center; font-size: 14px;
+      flex-shrink: 0;
     }
     #new-chat-btn:hover { background: #222; }
-    #chat-list { flex: 1; overflow-y: auto; padding: 10px; }
+    #chat-list { flex: 1; overflow-y: auto; padding: 10px; min-height: 0; }
     .chat-item {
       padding: 12px; margin: 4px 0; border-radius: 8px;
       cursor: pointer; font-size: 13px; color: #999;
@@ -77,6 +80,7 @@
       border-top: 1px solid #222;
       font-size: 12px;
       color: #888;
+      flex-shrink: 0;
     }
 
     #syncPanel { display: flex; flex-direction: column; }
@@ -147,7 +151,6 @@
     }
     .sync-btn:hover { background: #3a3a4a; }
 
-    /* ✅ NEW: pull button — distinct green look */
     .sync-btn-pull {
       background: #1f4d2a;
       border-color: #4caf50;
@@ -189,18 +192,19 @@
 
     #main {
       flex: 1;
+      min-height: 0;
       display: flex;
       flex-direction: column;
       min-width: 0;
       background: #1a1a2e;
       margin-left: 260px;
+      overflow: hidden;
       transition: margin-left 0.3s ease;
     }
     #main.full-width { margin-left: 0; }
 
     #header {
-      position: sticky;
-      top: 0;
+      flex-shrink: 0;
       z-index: 10;
       padding: 12px 20px;
       background: #0d0d0d;
@@ -210,6 +214,7 @@
       border-bottom: 1px solid #222;
       flex-wrap: wrap;
       overflow-x: auto;
+      overflow-y: visible;
       -webkit-overflow-scrolling: touch;
     }
     #toggleSidebarBtn {
@@ -247,6 +252,7 @@
 
     #permissionBanner {
       display: none;
+      flex-shrink: 0;
       align-items: center;
       gap: 10px;
       padding: 8px 15px;
@@ -345,9 +351,18 @@
     }
     #matchCounter { font-size: 12px; color: #ccc; margin-left: 5px; }
 
+    /* ✅ messages is now the ONLY scroll container */
     #messages {
-      flex: 1; padding: 20px;
-      max-width: 850px; margin: 0 auto; width: 100%;
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+    #messagesInner {
+      max-width: 850px;
+      margin: 0 auto;
+      padding: 20px;
     }
     .msg {
       margin-bottom: 20px; padding: 15px; border-radius: 10px;
@@ -414,10 +429,13 @@
     .ok-line { color: #4caf50; }
 
     #input-area {
-      position: sticky; bottom: 0; z-index: 10;
-      background: #0d0d0d; padding: 15px 20px;
+      flex-shrink: 0;
+      background: #0d0d0d;
+      padding: 15px 20px;
       display: flex; flex-direction: column; gap: 8px;
-      max-width: 850px; margin: 0 auto; width: 100%;
+      max-width: 850px;
+      margin: 0 auto;
+      width: 100%;
       border-top: 1px solid #222;
       transition: background 0.2s, border 0.2s;
     }
@@ -496,7 +514,7 @@
       #header { flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding: 10px; }
       #header input { width: 120px; }
       #searchInput { width: 120px; }
-      #messages { padding: 10px; }
+      #messagesInner { padding: 10px; }
       .msg { max-width: 95%; }
       #input-area { padding: 10px; }
       .drag-hint { display: none; }
@@ -542,6 +560,7 @@
         </div>
         <div class="sync-btns">
           <button class="sync-btn sync-btn-pull" id="pullNewestBtn" title="Only read the newest file from other machines — never writes yours">⬇️ Pull newest</button>
+          <button class="sync-btn" id="diagnoseBtn" title="Check folder wiring">🔍 Diagnose</button>
         </div>
         <div id="folderList"></div>
         <div id="lastSyncInfo">🔎 No sync yet this session</div>
@@ -595,7 +614,7 @@
     <button id="dismissBannerBtn" title="Dismiss">✕</button>
   </div>
 
-  <div id="messages"></div>
+  <div id="messages"><div id="messagesInner"></div></div>
 
   <div id="input-area">
     <div class="attached-files" id="attachedFiles"></div>
@@ -735,6 +754,7 @@
     const sidebarStatus    = document.getElementById('sidebarStatus');
     const chatListEl       = document.getElementById('chat-list');
     const messagesEl       = document.getElementById('messages');
+    const messagesInnerEl  = document.getElementById('messagesInner');
     const userInput        = document.getElementById('userInput');
     const sendBtn          = document.getElementById('sendBtn');
     const stopBtn          = document.getElementById('stopBtn');
@@ -820,8 +840,12 @@
         mainEl.classList.add('full-width');
       }
     }
+    // ✅ NEW: scroll the messages container directly, no window/body scrolling
     function scrollToBottom() {
-      window.scrollTo({ top: document.body.scrollHeight, behavior: 'instant' });
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      requestAnimationFrame(() => {
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+      });
     }
 
     function getProvider() { return PROVIDERS[provider]; }
@@ -969,18 +993,22 @@
       chats.push({ id: currentChatId, messages: [], createdAt: Date.now(), updatedAt: Date.now() });
       saveChats();
       renderChatList();
-      messagesEl.innerHTML = ''; attachedFiles = []; renderAttachedFiles();
+      messagesInnerEl.innerHTML = '';
+      messagesEl.scrollTop = 0;
+      attachedFiles = []; renderAttachedFiles();
       clearSearch();
     }
 
     function loadChat(id) {
       currentChatId = id;
       const chat = chats.find(c => c.id === id);
-      messagesEl.innerHTML = ''; attachedFiles = []; renderAttachedFiles();
+      messagesInnerEl.innerHTML = '';
+      messagesEl.scrollTop = 0;
+      attachedFiles = []; renderAttachedFiles();
       if (chat?.messages) {
         chat.messages.forEach((m, idx) => {
           const msgDiv = createMessageElement(chat.id, idx, m.role, formatContent(m.content));
-          messagesEl.appendChild(msgDiv);
+          messagesInnerEl.appendChild(msgDiv);
         });
         scrollToBottom();
         setTimeout(validateAllCodeBlocks, 400);
@@ -991,7 +1019,7 @@
 
     async function deleteChat(id) {
       chats = chats.filter(c => c.id !== id);
-      if (currentChatId === id) { currentChatId = null; messagesEl.innerHTML = ''; }
+      if (currentChatId === id) { currentChatId = null; messagesInnerEl.innerHTML = ''; }
       if (!chats.length) newChat();
       else if (!currentChatId) loadChat(chats[0].id);
       await saveChats();
@@ -1303,769 +1331,4 @@
     }
     function highlightTextInElement(element, query, chatId, msgIdx) {
       const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
-        acceptNode: function(node) {
-          if (node.parentElement.tagName === 'MARK') return NodeFilter.FILTER_REJECT;
-          return NodeFilter.FILTER_ACCEPT;
-        }
-      });
-      const textNodes = [];
-      while (walker.nextNode()) textNodes.push(walker.currentNode);
-      textNodes.forEach(node => {
-        const text = node.textContent;
-        const lowerText = text.toLowerCase();
-        let idx = lowerText.indexOf(query);
-        if (idx === -1) return;
-        const fragment = document.createDocumentFragment();
-        let lastIdx = 0;
-        while (idx !== -1) {
-          if (idx > lastIdx) fragment.appendChild(document.createTextNode(text.substring(lastIdx, idx)));
-          const mark = document.createElement('mark');
-          mark.className = 'search-highlight';
-          mark.textContent = text.substring(idx, idx + query.length);
-          fragment.appendChild(mark);
-          allMatches.push({ chatId, msgIdx, element: mark });
-          lastIdx = idx + query.length;
-          idx = lowerText.indexOf(query, lastIdx);
-        }
-        if (lastIdx < text.length) fragment.appendChild(document.createTextNode(text.substring(lastIdx)));
-        node.parentNode.replaceChild(fragment, node);
-      });
-    }
-    function removeHighlights() {
-      const marks = messagesEl.querySelectorAll('mark.search-highlight, mark.search-current-highlight');
-      marks.forEach(mark => {
-        const parent = mark.parentNode;
-        parent.replaceChild(document.createTextNode(mark.textContent), mark);
-        parent.normalize();
-      });
-      allMatches = []; currentMatchIdx = -1; updateMatchCounter();
-    }
-    function clearSearch() {
-      searchQuery = ''; searchInput.value = '';
-      removeHighlights();
-      searchResults.classList.remove('visible');
-      matchCounter.textContent = '';
-    }
-    function updateCurrentHighlight() {
-      messagesEl.querySelectorAll('mark.search-current-highlight').forEach(m => {
-        m.classList.remove('search-current-highlight');
-        m.classList.add('search-highlight');
-      });
-      if (currentMatchIdx >= 0 && currentMatchIdx < allMatches.length) {
-        const currentMark = allMatches[currentMatchIdx].element;
-        currentMark.classList.remove('search-highlight');
-        currentMark.classList.add('search-current-highlight');
-      }
-      updateMatchCounter();
-    }
-    function updateMatchCounter() {
-      if (allMatches.length === 0) matchCounter.textContent = '';
-      else matchCounter.textContent = `${currentMatchIdx >= 0 ? currentMatchIdx + 1 : 0}/${allMatches.length}`;
-    }
-    function scrollToMatch(index) {
-      if (index < 0 || index >= allMatches.length) return;
-      allMatches[index].element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    prevMatchBtn.addEventListener('click', () => {
-      if (allMatches.length === 0) return;
-      currentMatchIdx = (currentMatchIdx - 1 + allMatches.length) % allMatches.length;
-      updateCurrentHighlight(); scrollToMatch(currentMatchIdx);
-    });
-    nextMatchBtn.addEventListener('click', () => {
-      if (allMatches.length === 0) return;
-      currentMatchIdx = (currentMatchIdx + 1) % allMatches.length;
-      updateCurrentHighlight(); scrollToMatch(currentMatchIdx);
-    });
-    document.addEventListener('click', (e) => {
-      if (!searchContainer.contains(e.target) && e.target !== searchToggle) {
-        searchResults.classList.remove('visible');
-      }
-    });
-
-    function stop() {
-      if (controller) { controller.abort(); controller = null; }
-      isProcessing = false;
-      sendBtn.disabled = false; stopBtn.style.display = 'none';
-      userInput.disabled = false; attachBtn.disabled = false;
-    }
-
-    async function send() {
-      if (isProcessing || !apiKey) {
-        if (!apiKey) alert('Please enter your API key for ' + getProvider().name);
-        return;
-      }
-      if (!currentChatId) newChat();
-      const text = userInput.value.trim();
-      if (!text && !attachedFiles.length) return;
-
-      let full = text;
-      if (attachedFiles.length) {
-        if (full) full += '\n\n';
-        full += '--- Attached Files ---\n';
-        attachedFiles.forEach(f => full += `\n### ${f.name}\n\`\`\`\n${f.content}\n\`\`\`\n`);
-      }
-
-      const chat = chats.find(c => c.id === currentChatId);
-      const p = getProvider();
-      chat.messages.push({ role: 'user', content: full });
-      chat.updatedAt = Date.now(); await saveChats(); renderChatList();
-
-      const userMsgDiv = createMessageElement(currentChatId, chat.messages.length - 1, 'user',
-        escapeHtml(text) + (attachedFiles.length ? '<br><br>📎 '+attachedFiles.map(f=>escapeHtml(f.name)).join(', ') : '')
-      );
-      messagesEl.appendChild(userMsgDiv);
-      scrollToBottom();
-      userInput.value = ''; userInput.style.height = 'auto';
-      attachedFiles = []; renderAttachedFiles();
-
-      isProcessing = true; sendBtn.disabled = true; attachBtn.disabled = true;
-      stopBtn.style.display = 'inline'; userInput.disabled = true;
-      controller = new AbortController();
-
-      try {
-        const msgs = chat.messages.map(m => ({ role: m.role, content: m.content }));
-        const baseBody = {
-          model: modelSelect.value,
-          messages: msgs,
-          temperature: 1.0,
-          stream: false
-        };
-        const requestBody = p.buildBody(baseBody, { thinking: thinkingToggle.checked });
-
-        const res = await fetch(p.url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify(requestBody),
-          signal: controller.signal
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error?.message || `HTTP ${res.status}`);
-        if (!data.choices?.[0]?.message?.content) throw new Error('Invalid response format');
-        const content = data.choices[0].message.content;
-        console.log(`[${p.name}] API returned model:`, data.model);
-        chat.messages.push({ role: 'assistant', content });
-        chat.updatedAt = Date.now(); await saveChats();
-
-        const assistantMsgDiv = createMessageElement(currentChatId, chat.messages.length - 1, 'assistant', formatContent(content));
-        messagesEl.appendChild(assistantMsgDiv);
-        scrollToBottom();
-        setTimeout(() => assistantMsgDiv.querySelectorAll('[data-code-id]').forEach(b => validateCodeBlock(b.dataset.codeId)), 100);
-      } catch (err) {
-        if (err.name !== 'AbortError') {
-          const errorMsgDiv = createMessageElement(currentChatId, chat.messages.length - 1, 'assistant', '❌ ' + escapeHtml(err.message));
-          messagesEl.appendChild(errorMsgDiv);
-          scrollToBottom();
-        }
-      } finally {
-        isProcessing = false; sendBtn.disabled = false; attachBtn.disabled = false;
-        stopBtn.style.display = 'none'; userInput.disabled = false; controller = null;
-        userInput.focus();
-      }
-      if (searchQuery) applySearchHighlights();
-      scheduleAutoExport();
-    }
-
-    sendBtn.addEventListener('click', send);
-    stopBtn.addEventListener('click', stop);
-    userInput.addEventListener('keydown', e => { if (e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); send(); } });
-    userInput.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 150) + 'px'; });
-
-    // =====================================================================
-    // AUTO-EXPORT + MULTI-FOLDER SYNC
-    // =====================================================================
-    const AUTO_EXPORT_DELAY = 15 * 60 * 1000;
-    const EXPORT_RE = /^educasa_chats_.*\.json$/i;
-    const MAX_EXPORTS_PER_FOLDER = 100;
-
-    const autoExportToggle = document.getElementById('autoExportToggle');
-    const autoExportStatus = document.getElementById('autoExportStatus');
-    const folderListEl     = document.getElementById('folderList');
-    const connectFolderBtn = document.getElementById('connectFolderBtn');
-    const syncNowBtn       = document.getElementById('syncNowBtn');
-    const pullNewestBtn    = document.getElementById('pullNewestBtn');
-    const lastSyncInfoEl   = document.getElementById('lastSyncInfo');
-
-    const permissionBanner     = document.getElementById('permissionBanner');
-    const permissionBannerText = document.getElementById('permissionBannerText');
-    const regrantBtn           = document.getElementById('regrantBtn');
-    const dismissBannerBtn     = document.getElementById('dismissBannerBtn');
-
-    let dirHandles = [];
-    let autoExportTimer = null;
-    let autoExportDeadline = 0;
-    let autoExportEnabled = localStorage.getItem('ds_autoexport') !== 'false';
-    let lastExportLabel = '';
-    let lastSyncInfo = '';
-    let rescanTimer = null;
-
-    autoExportToggle.checked = autoExportEnabled;
-    autoExportToggle.addEventListener('change', () => {
-      autoExportEnabled = autoExportToggle.checked;
-      localStorage.setItem('ds_autoexport', autoExportEnabled);
-      if (!autoExportEnabled) { clearTimeout(autoExportTimer); autoExportTimer = null; }
-      updateAutoExportStatus();
-    });
-
-    function buildExportName() {
-      const d = new Date();
-      const p = (n) => String(n).padStart(2, '0');
-      return `educasa_chats_${MACHINE_ID}_${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}_${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}.json`;
-    }
-
-    function parseExportFilename(name) {
-      const m = name.match(/^educasa_chats_([a-z0-9]+)_(\d{4})-(\d{2})-(\d{2})_(\d{2})-(\d{2})-(\d{2})\.json$/i);
-      if (!m) return null;
-      const [, machineId, y, mo, d, h, mi, s] = m;
-      const ts = new Date(
-        Number(y), Number(mo) - 1, Number(d),
-        Number(h), Number(mi), Number(s)
-      ).getTime();
-      return { machineId, ts };
-    }
-
-    function renderLastSync(best, dir) {
-      if (!best) {
-        lastSyncInfoEl.textContent = '🔎 No export found in connected folders';
-        return;
-      }
-      const parsed = parseExportFilename(best.name);
-      const when = new Date(best.lastModified).toLocaleString();
-      let who;
-      if (!parsed) {
-        who = `<span class="src">${escapeHtml(best.name)}</span>`;
-      } else if (parsed.machineId === MACHINE_ID) {
-        who = `<span class="own">this machine (${MACHINE_ID})</span>`;
-      } else {
-        who = `<span class="src">${escapeHtml(parsed.machineId)}</span>`;
-      }
-      const folder = dir ? escapeHtml(dir.name) : '?';
-      lastSyncInfoEl.innerHTML =
-        `📡 Newest: ${who} in <b>${folder}</b><br><span class="when">${when}</span>`;
-    }
-
-    function downloadJson(json, filename) {
-      const blob = new Blob([json], { type: 'application/json' });
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-    }
-
-    async function writeExportToFolders(json, filename) {
-      const written = [];
-      for (const d of dirHandles) {
-        try {
-          if (d.handle.queryPermission) {
-            const perm = await d.handle.queryPermission({ mode: 'readwrite' });
-            if (perm !== 'granted') continue;
-          }
-          const fh = await d.handle.getFileHandle(filename, { create: true });
-          const w = await fh.createWritable();
-          await w.write(json);
-          await w.close();
-          written.push(d.name);
-          pruneOldExports(d.handle);
-        } catch (e) {
-          console.warn('Write failed for', d.name, e);
-        }
-      }
-      return written;
-    }
-
-    async function pruneOldExports(dirHandle) {
-      try {
-        const files = [];
-        for await (const entry of dirHandle.values()) {
-          if (entry.kind !== 'file' || !EXPORT_RE.test(entry.name)) continue;
-          const f = await entry.getFile();
-          files.push({ name: entry.name, ts: f.lastModified });
-        }
-        if (files.length <= MAX_EXPORTS_PER_FOLDER) return;
-        files.sort((a, b) => b.ts - a.ts);
-        for (const f of files.slice(MAX_EXPORTS_PER_FOLDER)) {
-          try { await dirHandle.removeEntry(f.name); } catch (e) {}
-        }
-      } catch (e) { /* ignore */ }
-    }
-
-    // Scans for newest export, preferring files from OTHER machines.
-    // Returns { ok, added, updated, changed, fromSelf } or null if nothing found.
-    async function scanForNewestExport({ silent = true, autoOpenNewest = false } = {}) {
-      if (!dirHandles.length) {
-        if (!silent) alert('No folders connected yet. Click "📁 Add folder" first.');
-        renderLastSync(null, null);
-        return null;
-      }
-      let bestFromOther = null, bestFromOtherDir = null;
-      let bestFromSelf  = null, bestFromSelfDir  = null;
-
-      for (const d of dirHandles) {
-        try {
-          if (d.handle.queryPermission) {
-            const perm = await d.handle.queryPermission({ mode: 'readwrite' });
-            if (perm !== 'granted') continue;
-          }
-          for await (const entry of d.handle.values()) {
-            if (entry.kind !== 'file' || !EXPORT_RE.test(entry.name)) continue;
-            const file = await entry.getFile();
-            const parsed = parseExportFilename(entry.name);
-            const fromSelf = parsed && parsed.machineId === MACHINE_ID;
-            const cand = { name: entry.name, file, lastModified: file.lastModified };
-            if (fromSelf) {
-              if (!bestFromSelf || file.lastModified > bestFromSelf.lastModified) {
-                bestFromSelf = cand; bestFromSelfDir = d;
-              }
-            } else {
-              if (!bestFromOther || file.lastModified > bestFromOther.lastModified) {
-                bestFromOther = cand; bestFromOtherDir = d;
-              }
-            }
-          }
-        } catch (e) { console.warn('Scan failed for', d.name, e); }
-      }
-
-      const best    = bestFromOther || bestFromSelf;
-      const bestDir = bestFromOther ? bestFromOtherDir : bestFromSelfDir;
-
-      if (!best) {
-        renderLastSync(null, null);
-        if (!silent) alert('No educasa_chats_*.json export files found in the connected folders.');
-        return null;
-      }
-      renderLastSync(best, bestDir);
-      const result = await applySyncFile(best, bestDir, { forceOpenNewest: autoOpenNewest });
-      return { ...result, fromSelf: !bestFromOther };
-    }
-
-    function mergeChats(localChats, incomingChats) {
-      const map = new Map();
-      localChats.forEach(c => map.set(c.id, c));
-      let added = 0, updated = 0;
-      incomingChats.forEach(inc => {
-        if (!inc || !inc.id || !Array.isArray(inc.messages)) return;
-        const cur = map.get(inc.id);
-        if (!cur) { map.set(inc.id, inc); added++; return; }
-        if ((inc.updatedAt || 0) > (cur.updatedAt || 0)) { map.set(inc.id, inc); updated++; }
-      });
-      return { merged: [...map.values()], added, updated };
-    }
-
-    async function applySyncFile(best, dir, { forceOpenNewest = false } = {}) {
-      let parsed;
-      try {
-        const text = await best.file.text();
-        parsed = JSON.parse(text);
-      } catch (e) {
-        console.warn('Could not parse export file', best.name, e);
-        return { ok: false, added: 0, updated: 0, changed: false };
-      }
-      if (!Array.isArray(parsed)) return { ok: false, added: 0, updated: 0, changed: false };
-
-      const { merged, added, updated } = mergeChats(chats, parsed);
-      const changed = added || updated;
-
-      if (changed) {
-        let newestIncomingId = null, newestTs = 0;
-        parsed.forEach(c => {
-          if (!c || !c.id) return;
-          const ts = c.updatedAt || 0;
-          if (ts > newestTs) { newestTs = ts; newestIncomingId = c.id; }
-        });
-
-        chats = merged;
-        await saveChats();
-        renderChatList();
-
-        const currentStillExists = currentChatId && chats.find(c => c.id === currentChatId);
-        const currentWasUpdated  = parsed.some(p => p && p.id === currentChatId);
-
-        if (currentStillExists) {
-          loadChat(currentChatId);
-        } else if (chats.length) {
-          loadChat(chats[0].id);
-        } else {
-          newChat();
-        }
-
-        if (searchQuery) applySearchHighlights();
-
-        const parts = [];
-        if (added)   parts.push(`${added} new`);
-        if (updated) parts.push(`${updated} updated`);
-        const fromFolder = dir ? escapeHtml(dir.name) : '?';
-        const summary = `<div class="toast-title">🔄 Synced from ${fromFolder}</div>` +
-                        `${parts.join(', ')} chat(s)`;
-
-        const newestChat = newestIncomingId ? chats.find(c => c.id === newestIncomingId) : null;
-        const currentChatObj = currentChatId ? chats.find(c => c.id === currentChatId) : null;
-        const newestIsDifferent = newestChat && newestChat.id !== currentChatId &&
-          (newestChat.updatedAt || 0) > (currentChatObj?.updatedAt || 0);
-
-        if (newestChat && (forceOpenNewest || newestIsDifferent)) {
-          loadChat(newestChat.id);
-          scrollToBottom();
-          showToast(
-            summary + `<br><span style="opacity:.8">Opened: ${escapeHtml(getChatTitle(newestChat))}</span>`,
-            { kind: 'success', duration: 4000 }
-          );
-        } else {
-          showToast(summary, { kind: 'success', duration: 4000 });
-          if (currentWasUpdated) setTimeout(scrollToBottom, 60);
-        }
-      }
-
-      const when = new Date(best.lastModified).toLocaleString();
-      lastSyncInfo = `🔄 Synced from ${dir ? dir.name : '?'} · ${best.name} (${added} new, ${updated} updated)`;
-      autoExportStatus.textContent = `🔄 Synced ${when} · +${added}/~${updated}`;
-      autoExportStatus.style.color = '#4a90d9';
-      return { ok: true, added, updated, changed };
-    }
-
-    function scheduleAutoExport() {
-      if (!autoExportEnabled) return;
-      clearTimeout(autoExportTimer);
-      autoExportDeadline = Date.now() + AUTO_EXPORT_DELAY;
-      autoExportTimer = setTimeout(() => {
-        autoExportTimer = null;
-        performAutoExport();
-      }, AUTO_EXPORT_DELAY);
-      updateAutoExportStatus();
-    }
-
-    async function performAutoExport() {
-      clearTimeout(autoExportTimer);
-      autoExportTimer = null;
-      const filename = buildExportName();
-      const json = JSON.stringify(chats, null, 2);
-      const written = await writeExportToFolders(json, filename);
-      if (!written.length) downloadJson(json, filename);
-      const stamp = new Date().toLocaleTimeString();
-      lastExportLabel = written.length
-        ? `💾 Auto-exported to ${written.join(', ')} at ${stamp}`
-        : `💾 Auto-export downloaded at ${stamp} (no folder connected)`;
-      updateAutoExportStatus();
-    }
-
-    function updateAutoExportStatus() {
-      if (!autoExportEnabled) {
-        syncPanelDot.style.background = '#666';
-        syncPanelDot.style.boxShadow = 'none';
-        syncPanelDot.style.animation = 'none';
-      } else if (autoExportTimer) {
-        syncPanelDot.style.background = '#ff9800';
-        syncPanelDot.style.boxShadow = '0 0 6px rgba(255,152,0,0.6)';
-        syncPanelDot.style.animation = 'pulseDot 2s ease-in-out infinite';
-      } else {
-        syncPanelDot.style.background = '#4caf50';
-        syncPanelDot.style.boxShadow = '0 0 6px rgba(76,175,80,0.6)';
-        syncPanelDot.style.animation = 'pulseDot 2s ease-in-out infinite';
-      }
-
-      if (!autoExportEnabled) {
-        autoExportStatus.textContent = '⏱ Auto-export: off';
-        autoExportStatus.style.color = '#7a7a8a';
-        return;
-      }
-      if (!autoExportTimer) {
-        autoExportStatus.textContent = lastExportLabel || lastSyncInfo || '⏱ Auto-export: armed on next inquiry';
-        autoExportStatus.style.color = lastExportLabel ? '#4caf50' : '#7a7a8a';
-        return;
-      }
-      const left = Math.max(0, autoExportDeadline - Date.now());
-      const m = Math.floor(left / 60000);
-      const s = Math.floor((left % 60000) / 1000);
-      autoExportStatus.textContent = `⏱ Auto-export in ${m}:${String(s).padStart(2, '0')}`;
-      autoExportStatus.style.color = '#ff9800';
-    }
-    setInterval(() => { if (autoExportTimer) updateAutoExportStatus(); }, 1000);
-
-    function startPeriodicRescan() {
-      if (rescanTimer) clearInterval(rescanTimer);
-      rescanTimer = setInterval(async () => {
-        if (!dirHandles.length) return;
-        if (document.visibilityState !== 'visible') return;
-        try { await scanForNewestExport({ silent: true }); } catch (e) {}
-      }, 2 * 60 * 1000);
-    }
-
-    async function checkFolderPermissions() {
-      const needRegrant = [];
-      for (const d of dirHandles) {
-        if (!d.handle.queryPermission) continue;
-        try {
-          const p = await d.handle.queryPermission({ mode: 'readwrite' });
-          if (p !== 'granted') needRegrant.push(d);
-        } catch (e) { needRegrant.push(d); }
-      }
-      return needRegrant;
-    }
-
-    async function showPermissionBannerIfNeeded() {
-      const need = await checkFolderPermissions();
-      if (!need.length) {
-        permissionBanner.classList.remove('show');
-        return;
-      }
-      const names = need.map(d => d.name).join(', ');
-      permissionBannerText.textContent = `🔒 ${need.length} folder(s) need permission: ${names}`;
-      permissionBanner.classList.add('show');
-    }
-
-    async function regrantAllFolders() {
-      for (const d of dirHandles) {
-        try {
-          if (d.handle.requestPermission) {
-            await d.handle.requestPermission({ mode: 'readwrite' });
-          }
-        } catch (e) { console.warn('Regrant failed for', d.name, e); }
-      }
-      await renderFolderList();
-      await showPermissionBannerIfNeeded();
-      try { await scanForNewestExport({ silent: true }); } catch (e) {}
-    }
-
-    regrantBtn.addEventListener('click', regrantAllFolders);
-    dismissBannerBtn.addEventListener('click', () => permissionBanner.classList.remove('show'));
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') showPermissionBannerIfNeeded();
-    });
-
-    const FS_SUPPORTED = (typeof window.showDirectoryPicker === 'function');
-
-    async function connectFolder() {
-      if (!FS_SUPPORTED) {
-        alert('Your browser does not support direct folder access.\n\n' +
-              'Use Chrome or Edge over https:// (or open this file locally in Chrome).\n' +
-              'Without it, auto-export will simply download the JSON file to your default Downloads folder.');
-        return;
-      }
-      try {
-        const handle = await window.showDirectoryPicker({ id: 'educasa-sync', mode: 'readwrite' });
-        let perm = 'granted';
-        if (handle.requestPermission) perm = await handle.requestPermission({ mode: 'readwrite' });
-        if (perm !== 'granted') { alert('Permission denied for that folder.'); return; }
-        if (dirHandles.some(d => d.name === handle.name)) { alert('That folder is already connected.'); return; }
-        dirHandles.push({ id: 'dir_' + Date.now(), name: handle.name, handle });
-        await saveHandlesToDB(dirHandles);
-        await renderFolderList();
-        await showPermissionBannerIfNeeded();
-        await scanForNewestExport({ silent: true });
-      } catch (e) {
-        if (e.name !== 'AbortError') alert('Could not connect folder: ' + e.message);
-      }
-    }
-
-    async function requestFolderPermission(d) {
-      try {
-        if (!d.handle.requestPermission) return;
-        const perm = await d.handle.requestPermission({ mode: 'readwrite' });
-        if (perm === 'granted') {
-          await showPermissionBannerIfNeeded();
-          await scanForNewestExport({ silent: true });
-        }
-      } catch (e) { console.warn(e); }
-    }
-
-    async function renderFolderList() {
-      folderListEl.innerHTML = '';
-      if (!dirHandles.length) {
-        folderListEl.innerHTML = '<div style="font-size:11px;color:#666;padding:2px 0;">No folders connected — export will be downloaded instead.</div>';
-        return;
-      }
-      for (const d of dirHandles) {
-        let icon = '❔';
-        try {
-          if (d.handle.queryPermission) {
-            const p = await d.handle.queryPermission({ mode: 'readwrite' });
-            icon = p === 'granted' ? '✅' : '🔒';
-          } else icon = '✅';
-        } catch (e) { icon = '⚠️'; }
-
-        const row = document.createElement('div');
-        row.className = 'folder-item';
-
-        const name = document.createElement('span');
-        name.className = 'fname';
-        name.textContent = d.name;
-        name.title = d.name;
-
-        const state = document.createElement('span');
-        state.className = 'fstate';
-        state.textContent = icon;
-        state.title = icon === '🔒' ? 'Click to grant access' : 'Access granted';
-        state.addEventListener('click', async () => { await requestFolderPermission(d); renderFolderList(); });
-
-        const del = document.createElement('span');
-        del.className = 'fdel';
-        del.textContent = '✕';
-        del.title = 'Disconnect this folder';
-        del.addEventListener('click', async () => {
-          dirHandles = dirHandles.filter(x => x.id !== d.id);
-          await saveHandlesToDB(dirHandles);
-          renderFolderList();
-          showPermissionBannerIfNeeded();
-        });
-
-        row.appendChild(name);
-        row.appendChild(state);
-        row.appendChild(del);
-        folderListEl.appendChild(row);
-      }
-    }
-
-    connectFolderBtn.addEventListener('click', connectFolder);
-
-    // ✅ NEW: Pull newest — reads only, never writes.
-    pullNewestBtn.addEventListener('click', async () => {
-      if (!dirHandles.length) {
-        alert('No folders connected yet. Click "📁 Add folder" first.');
-        return;
-      }
-      const original = pullNewestBtn.innerHTML;
-      pullNewestBtn.disabled = true;
-      pullNewestBtn.innerHTML = '⏳ Checking…';
-      try {
-        const result = await scanForNewestExport({ silent: true, autoOpenNewest: true });
-        if (!result) {
-          showToast(
-            `<div class="toast-title">⬇️ Pull</div>No export file found in the connected folders.`,
-            { kind: 'warn', duration: 5000 }
-          );
-        } else if (!result.changed) {
-          const srcLabel = result.fromSelf
-            ? 'your own export'
-            : 'the other machine\'s export';
-          showToast(
-            `<div class="toast-title">✅ Already up to date</div>` +
-            `Newest file is ${srcLabel} — no newer chats to merge.`,
-            { kind: 'info', duration: 4000 }
-          );
-        }
-        // If changed === true, applySyncFile already showed its "Synced" toast.
-      } catch (e) {
-        showToast(
-          `<div class="toast-title">⚠️ Pull failed</div>${escapeHtml(e.message || String(e))}`,
-          { kind: 'warn', duration: 6000 }
-        );
-      } finally {
-        pullNewestBtn.disabled = false;
-        pullNewestBtn.innerHTML = original;
-      }
-    });
-
-    // Sync Now: PULL first (from other machines), THEN push our merged state.
-    syncNowBtn.addEventListener('click', async () => {
-      const pulled = await scanForNewestExport({ silent: false, autoOpenNewest: true });
-
-      const filename = buildExportName();
-      const json = JSON.stringify(chats, null, 2);
-      const written = await writeExportToFolders(json, filename);
-      if (!written.length) downloadJson(json, filename);
-
-      lastExportLabel = written.length
-        ? `💾 Synced · wrote to ${written.join(', ')} at ${new Date().toLocaleTimeString()}`
-        : `💾 Sync downloaded export at ${new Date().toLocaleTimeString()}`;
-      updateAutoExportStatus();
-
-      if (!pulled || !pulled.changed) {
-        showToast(
-          `<div class="toast-title">🔄 Sync complete</div>` +
-          `No newer file found from other machines.<br>` +
-          `<span style="opacity:.75">Wrote current state to ${written.length ? written.join(', ') : 'downloads'}.</span>`,
-          { kind: 'success', duration: 4000 }
-        );
-      }
-    });
-
-    document.getElementById('exportChatsBtn').addEventListener('click', async () => {
-      const filename = buildExportName();
-      const json = JSON.stringify(chats, null, 2);
-      const written = await writeExportToFolders(json, filename);
-      if (!written.length) downloadJson(json, filename);
-      lastExportLabel = written.length
-        ? `💾 Exported to ${written.join(', ')} at ${new Date().toLocaleTimeString()}`
-        : `💾 Downloaded export at ${new Date().toLocaleTimeString()}`;
-      updateAutoExportStatus();
-    });
-
-    document.getElementById('importChatsBtn').addEventListener('click', () => {
-      const inp = document.createElement('input');
-      inp.type = 'file'; inp.accept = '.json';
-      inp.onchange = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = async (ev) => {
-          try {
-            const imported = JSON.parse(ev.target.result);
-            if (!Array.isArray(imported)) throw new Error('Invalid format');
-            imported.forEach(c => { if (!c.id || !Array.isArray(c.messages)) throw new Error('Corrupted data'); });
-            if (confirm(`Replace with ${imported.length} chat(s)?`)) {
-              chats = imported;
-              await saveChats();
-              currentChatId = chats.length ? chats[0].id : null;
-              currentChatId ? loadChat(currentChatId) : (messagesEl.innerHTML = '', newChat());
-              renderChatList();
-              scheduleAutoExport();
-            }
-          } catch (err) { alert('Import failed: ' + err.message); }
-        };
-        reader.readAsText(file);
-      };
-      inp.click();
-    });
-
-    async function initApp() {
-      try { chats = await loadChatsFromDB(); }
-      catch (e) { alert('Failed to load chats from storage: ' + e.message); chats = []; }
-
-      thinkingToggle.checked = localStorage.getItem('ds_thinking') === 'true';
-
-      providerSelect.value = provider;
-      populateModels();
-      loadApiKeyForProvider();
-      updateStatus();
-
-      try {
-        dirHandles = await loadHandlesFromDB();
-      } catch (e) { console.warn('Could not restore folder handles', e); dirHandles = []; }
-      await renderFolderList();
-
-      if (!chats.length) newChat();
-      else loadChat(chats[0].id);
-      renderChatList();
-
-      if (window.innerWidth <= 600) {
-        sidebar.classList.remove('visible');
-        mainEl.classList.add('full-width');
-      }
-      if (currentChatId) setTimeout(validateAllCodeBlocks, 600);
-
-      if (dirHandles.length) {
-        try { await scanForNewestExport({ silent: true }); }
-        catch (e) { console.warn('Startup sync failed', e); }
-      }
-
-      await showPermissionBannerIfNeeded();
-      startPeriodicRescan();
-      updateAutoExportStatus();
-
-      if (!FS_SUPPORTED) {
-        autoExportStatus.textContent = '⚠️ Folder sync unsupported in this browser — auto-export will download files.';
-        autoExportStatus.style.color = '#ff9800';
-        connectFolderBtn.title = 'Not supported in this browser';
-      }
-    }
-
-    initApp();
-  })();
-</script>
-</body>
-</html>
+        acceptNode: function
