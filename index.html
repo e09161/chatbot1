@@ -414,14 +414,23 @@
 
     .code-block { background: #0d0d0d; border: 1px solid #333; border-radius: 8px; margin: 10px 0; overflow: hidden; }
     .code-header { background: #222; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #888; flex-wrap: wrap; }
-    .code-header button { background: #333; color: #ccc; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-left: 5px; }
-    .code-header button:hover { background: #444; }
+    .code-header button, .code-footer button { background: #333; color: #ccc; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-left: 5px; }
+    .code-header button:hover, .code-footer button:hover { background: #444; }
+    .code-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 5px;
+      padding: 6px 12px;
+      background: #141414;
+      border-top: 1px solid #262626;
+    }
+    .code-footer button { margin-left: 0; }
     .code-content { padding: 15px; font-family: 'Courier New', monospace; font-size: 13px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; overflow-x: auto; color: #a8d8a8; }
     .validation-badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: bold; margin-left: 8px; }
     .validation-pass { background: #1b5e20; color: #4caf50; }
     .validation-warn { background: #e65100; color: #ff9800; }
     .validation-error { background: #b71c1c; color: #f44336; }
-    .validation-details { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 10px; margin-top: 8px; font-size: 12px; font-family: 'Courier New', monospace; display: none; }
+    .validation-details { background: #1a1a1a; border: 1px solid #333; border-radius: 6px; padding: 10px; margin: 8px 12px 12px; font-size: 12px; font-family: 'Courier New', monospace; display: none; }
     .validation-details.show { display: block; }
     .error-line { color: #f44336; }
     .warn-line { color: #ff9800; }
@@ -1117,6 +1126,10 @@
               </span>
             </div>
             <div class="code-content"><code id="${id}">${escapeHtml(codeContent.trim())}</code></div>
+            <div class="code-footer">
+              <button class="copy-btn" data-id="${id}">📋 Copy</button>
+              <button class="download-btn" data-id="${id}" data-ext="${ext}">⬇️ Download</button>
+            </div>
             <div class="validation-details" id="details-${id}"></div>
           </div>`;
         }
@@ -1163,7 +1176,14 @@
     document.addEventListener('click', e => {
       if (e.target.classList.contains('copy-btn')) {
         const el = document.getElementById(e.target.dataset.id);
-        if (el) navigator.clipboard.writeText(el.textContent);
+        if (el) {
+          navigator.clipboard.writeText(el.textContent).then(() => {
+            const btn = e.target;
+            const original = btn.textContent;
+            btn.textContent = '✅ Copied';
+            setTimeout(() => { btn.textContent = original; }, 1200);
+          }).catch(() => {});
+        }
       }
       if (e.target.classList.contains('download-btn')) {
         const el = document.getElementById(e.target.dataset.id);
