@@ -247,8 +247,6 @@
       border: 1px solid #4a90d9 !important;
       font-weight: bold;
     }
-    #validateAllBtn { background: #ff9800; }
-    #validateAllBtn:hover { background: #f57c00; }
     #status { font-size: 12px; margin-left: auto; color: #4caf50; }
 
     #permissionBanner {
@@ -621,7 +619,6 @@
       <input type="checkbox" id="thinkingToggle"> High Effort
     </label>
 
-    <button id="validateAllBtn">🔍 Validate</button>
     <button id="searchToggle" title="Search messages">🔍</button>
     <div id="searchContainer">
       <input type="text" id="searchInput" placeholder="Search all chats...">
@@ -1396,7 +1393,6 @@
     function validateAllCodeBlocks() {
       document.querySelectorAll('[data-code-id]').forEach(b => validateCodeBlock(b.dataset.codeId));
     }
-    document.getElementById('validateAllBtn').addEventListener('click', validateAllCodeBlocks);
 
     function openSearch() { searchContainer.classList.add('visible'); searchInput.focus(); }
     function closeSearch() {
