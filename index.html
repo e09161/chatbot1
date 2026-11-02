@@ -854,14 +854,14 @@
 
     function toggleSidebar() {
       sidebar.classList.toggle('visible');
-      if (window.innerWidth <= 600) {
+      if (window.innerWidth <= 700) {
         mainEl.classList.toggle('full-width', !sidebar.classList.contains('visible'));
       }
     }
     toggleSidebarBtn.addEventListener('click', toggleSidebar);
 
     function handleChatSelection() {
-      if (window.innerWidth <= 600) {
+      if (window.innerWidth <= 700) {
         sidebar.classList.remove('visible');
         mainEl.classList.add('full-width');
       }
