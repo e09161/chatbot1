@@ -24,7 +24,8 @@
     #sidebar {
       position: fixed;
       top: 0; left: 0;
-      width: 260px;
+      width: 360px;              /* was 260px */
+      max-width: 85vw;           /* guard for narrow phones */
       height: 100vh;
       height: 100dvh;
       background: #0d0d0d;
@@ -197,7 +198,7 @@
       flex-direction: column;
       min-width: 0;
       background: #1a1a2e;
-      margin-left: 260px;
+      margin-left: 360px;        /* was 260px */
       overflow: hidden;
       transition: margin-left 0.3s ease;
     }
@@ -947,7 +948,7 @@
     function getChatTitle(chat) {
       if (chat.title && chat.title.trim()) return chat.title;
       const first = chat.messages.find(m => m.role === 'user');
-      return first ? first.content.substring(0, 35) : 'New Chat';
+      return first ? first.content.substring(0, 60) : 'New Chat';   /* was 35 */
     }
 
     const clickTimers = {};
@@ -960,6 +961,7 @@
         const titleSpan = document.createElement('span');
         titleSpan.className = 'chat-item-title';
         titleSpan.textContent = getChatTitle(chat);
+        titleSpan.title = getChatTitle(chat);   /* full text on hover */
         titleSpan.addEventListener('dblclick', (e) => {
           e.preventDefault(); e.stopPropagation();
           if (clickTimers[chat.id]) { clearTimeout(clickTimers[chat.id]); delete clickTimers[chat.id]; }
