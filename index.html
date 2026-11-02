@@ -24,7 +24,7 @@
     #sidebar {
       position: fixed;
       top: 0; left: 0;
-      width: 360px;
+      width: 260px;
       height: 100vh;
       height: 100dvh;
       background: #0d0d0d;
@@ -854,14 +854,14 @@
 
     function toggleSidebar() {
       sidebar.classList.toggle('visible');
-      if (window.innerWidth <= 700) {
+      if (window.innerWidth <= 600) {
         mainEl.classList.toggle('full-width', !sidebar.classList.contains('visible'));
       }
     }
     toggleSidebarBtn.addEventListener('click', toggleSidebar);
 
     function handleChatSelection() {
-      if (window.innerWidth <= 700) {
+      if (window.innerWidth <= 600) {
         sidebar.classList.remove('visible');
         mainEl.classList.add('full-width');
       }
